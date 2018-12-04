@@ -10,7 +10,6 @@ var Js_exn                  = require("../../lib/js/js_exn.js");
 var Lexing                  = require("../../lib/js/lexing.js");
 var Printf                  = require("../../lib/js/printf.js");
 var $$String                = require("../../lib/js/string.js");
-var Hashtbl                 = require("../../lib/js/hashtbl.js");
 var Parsing                 = require("../../lib/js/parsing.js");
 var Caml_obj                = require("../../lib/js/caml_obj.js");
 var Filename                = require("../../lib/js/filename.js");
@@ -337,23 +336,23 @@ function to_string(param) {
 }
 
 function string_of_programmatic_error(e) {
-  var $js;
+  var tmp;
   switch (e) {
     case 0 : 
-        $js = "string split error";
+        tmp = "string split error";
         break;
     case 1 : 
-        $js = "unexpected field type";
+        tmp = "unexpected field type";
         break;
     case 2 : 
-        $js = "no type was found for type id";
+        tmp = "no type was found for type id";
         break;
     case 3 : 
-        $js = "one of variant encoding must be inlined in message";
+        tmp = "one of variant encoding must be inlined in message";
         break;
     
   }
-  return "Programatic_error" + $js;
+  return "Programatic_error" + tmp;
 }
 
 var Compilation_error = Caml_exceptions.create("Ocaml_proto_test.Exception.Compilation_error");
@@ -646,11 +645,11 @@ function prepare_error(param) {
 function add_loc(loc, exn) {
   var exit = 0;
   if (exn[0] === Compilation_error) {
-    var $js = exn[1];
-    if (typeof $js === "number") {
+    var tmp = exn[1];
+    if (typeof tmp === "number") {
       exit = 1;
     } else {
-      switch ($js.tag | 0) {
+      switch (tmp.tag | 0) {
         case 5 : 
         case 9 : 
         case 10 : 
@@ -2879,29 +2878,29 @@ function gen_decode_const_variant(and_, param, sc) {
 
 function gen_struct(and_, t, sc) {
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_decode_record(and_, match[0], sc),
           /* true */1
         ];
         break;
     case 1 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_decode_variant(and_, match[0], sc),
           /* true */1
         ];
         break;
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_decode_const_variant(and_, match[0], sc),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 function gen_sig(_, t, sc) {
@@ -2943,19 +2942,19 @@ function gen_sig(_, t, sc) {
                       ]), type_name, type_name));
   };
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
     case 1 : 
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           f(match[0][/* cv_name */0]),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 var Codegen_decode = /* module */[
@@ -4510,39 +4509,7 @@ function compile_message_p2(types, param, message) {
     if (typeof field_type === "number") {
       var param = field_type;
       if (typeof param === "number") {
-        switch (param) {
-          case 0 : 
-              return /* Field_type_double */0;
-          case 1 : 
-              return /* Field_type_float */1;
-          case 2 : 
-              return /* Field_type_int32 */2;
-          case 3 : 
-              return /* Field_type_int64 */3;
-          case 4 : 
-              return /* Field_type_uint32 */4;
-          case 5 : 
-              return /* Field_type_uint64 */5;
-          case 6 : 
-              return /* Field_type_sint32 */6;
-          case 7 : 
-              return /* Field_type_sint64 */7;
-          case 8 : 
-              return /* Field_type_fixed32 */8;
-          case 9 : 
-              return /* Field_type_fixed64 */9;
-          case 10 : 
-              return /* Field_type_sfixed32 */10;
-          case 11 : 
-              return /* Field_type_sfixed64 */11;
-          case 12 : 
-              return /* Field_type_bool */12;
-          case 13 : 
-              return /* Field_type_string */13;
-          case 14 : 
-              return /* Field_type_bytes */14;
-          
-        }
+        return param;
       } else {
         throw [
               Compilation_error,
@@ -4808,11 +4775,7 @@ function gen_type_record(mutable_, and_, param, sc) {
     }
   };
   var field_prefix = function (field_type, field_mutable) {
-    if (field_mutable) {
-      return "mutable ";
-    } else if (is_imperative_type(field_type)) {
-      return "";
-    } else if (mutable_$1) {
+    if (field_mutable || !(is_imperative_type(field_type) || !mutable_$1)) {
       return "mutable ";
     } else {
       return "";
@@ -5580,29 +5543,29 @@ function gen_encode_const_variant(and_, param, sc) {
 
 function gen_struct$3(and_, t, sc) {
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_encode_record(and_, match[0], sc),
           /* true */1
         ];
         break;
     case 1 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_encode_variant(and_, match[0], sc),
           /* true */1
         ];
         break;
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_encode_const_variant(and_, match[0], sc),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 function gen_sig$3(_, t, sc) {
@@ -5641,19 +5604,19 @@ function gen_sig$3(_, t, sc) {
                       ]), type_name));
   };
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
     case 1 : 
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           f(match[0][/* cv_name */0]),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 var Codegen_encode = /* module */[
@@ -6157,30 +6120,30 @@ function gen_default_const_variant(and_, param, sc) {
 
 function gen_struct$4(and_, t, sc) {
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
         var r = match[0];
-        $js = /* tuple */[
+        tmp = /* tuple */[
           (gen_default_record(/* None */0, and_, r, sc), line$1(sc, ""), gen_default_record(/* Some */[/* () */0], /* Some */[/* () */0], r, sc)),
           /* true */1
         ];
         break;
     case 1 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_default_variant(and_, match[0], sc),
           /* true */1
         ];
         break;
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_default_const_variant(/* None */0, match[0], sc),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 function gen_sig_record(sc, param) {
@@ -6285,24 +6248,24 @@ function gen_sig$4(_, t, sc) {
                       ]), type_name, type_name));
   };
   var match = t[/* spec */1];
-  var $js;
+  var tmp;
   switch (match.tag | 0) {
     case 0 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           gen_sig_record(sc, match[0]),
           /* true */1
         ];
         break;
     case 1 : 
     case 2 : 
-        $js = /* tuple */[
+        tmp = /* tuple */[
           f(match[0][/* cv_name */0]),
           /* true */1
         ];
         break;
     
   }
-  return $js[1];
+  return tmp[1];
 }
 
 var Codegen_default = /* module */[

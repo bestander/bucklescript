@@ -1,12 +1,35 @@
 
 let suites = Mt.[
+  "captures", (fun _ ->
+    let re = [%re "/(\\d+)-(?:(\\d+))?/g"] in
+    let str = "3-" in
+    match re |> Js.Re.exec str with
+      | Some result ->
+        let defined = (Js.Re.captures result).(1) in
+        let undefined = (Js.Re.captures result).(2) in
+        Eq((Js.Nullable.return "3", Js.Nullable.null), (defined, undefined))
+      | None -> Fail()
+  );
+
+  "fromString", (fun _ ->
+    (* From the example in js_re.mli *)
+    let contentOf tag xmlString =
+      Js.Re.fromString ("<" ^ tag ^ ">(.*?)<\\/" ^ tag ^">")
+        |> Js.Re.exec xmlString
+        |> function
+          | Some result -> Js.Nullable.to_opt (Js.Re.captures result).(1)
+          | None -> None in
+    Eq (contentOf "div" "<div>Hi</div>", Some "Hi")
+  );
+
   "exec_literal", (fun _ ->
     match [%re "/[^.]+/"] |> Js.Re.exec "http://xxx.domain.com" with
-    | Some res -> 
-      Eq ("xxx", (res |> Js.Re.matches).(0) |> Js.String.substringToEnd ~from:7)
+    | Some res ->
+      Eq(Js.Nullable.return "http://xxx", (Js.Re.captures res).(0))
     | None ->
       FailWith "regex should match"
   );
+
   "exec_no_match", (fun _ ->
     match [%re "/https:\\/\\/(.*)/"] |> Js.Re.exec "http://xxx.domain.com" with
     | Some _ ->  FailWith "regex should not match"
@@ -59,6 +82,15 @@ let suites = Mt.[
     let _ = re |> Js.Re.exec "banana" in
 
     Eq(4,  re |> Js.Re.lastIndex)
+  );
+  "t_setLastIndex", (fun _ ->
+    let re = [%re "/na/g"] in
+
+    let before = Js.Re.lastIndex re in
+    let () = Js.Re.setLastIndex re 42 in
+    let after = Js.Re.lastIndex re in
+
+    Eq((0, 42),  (before, after))
   );
   "t_multiline", (fun _ ->
     Eq(false, [%re "/./ig"] |> Js.Re.multiline)

@@ -23,15 +23,22 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
+(**
+    This module is used for fatal errros
+*)
+type error  
+exception Error of error
 
-type error = 
-    | Package_not_found of string * string option (* json file *)
+val print : Format.formatter -> error -> unit 
+val package_not_found : pkg:string -> json:string option -> 'a
 
+val conflict_module:
+    string -> string -> string -> 'a 
+    
+val errorf : loc:Ext_position.t ->  ('a, unit, string, 'b) format4 -> 'a
 
-val error : error -> 'a
+val config_error : Ext_json_types.t -> string -> 'a 
 
-val failf : ?loc:Ext_position.t ->  ('a, unit, string, 'b) format4 -> 'a
+val invalid_spec : string -> 'a
 
-val failwith_config : Ext_json_types.t -> ('a, unit, string, 'b) format4 -> 'a
-
-(* val expect_an_array_fmt : (string -> 'a, 'b, 'a) format *)
+val invalid_json : string -> 'a

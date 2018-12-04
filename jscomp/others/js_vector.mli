@@ -38,7 +38,10 @@ val memByRef : 'a -> 'a t -> bool
 val iter : ('a -> unit [@bs]) -> 'a t -> unit
 val iteri : (int -> 'a -> unit [@bs]) -> 'a t -> unit 
 
-val ofList : 'a list -> 'a t 
+
+[@@deprecated "Use Js.List.toVector instead"]
+val ofList : 'a list -> 'a t  
+
 val toList : 'a t -> 'a list
 
 val map : ('a -> 'b [@bs]) -> 'a t -> 'b t 
@@ -85,12 +88,8 @@ val init : int -> (int -> 'a [@bs]) -> 'a t
     @param fn callback
     @raise RangeError when [n] is negative  *)
 
-(*val append : 'a t -> 'a t -> 'a t *)
-(** create a new array, there is no shallow-sharing
-    between the output and input
-*)
+val append : 'a -> 'a t -> 'a t
+(** [append x a] returns a fresh array with x appended to a *)
 
 external unsafe_get : 'a t -> int -> 'a = "%array_unsafe_get"
 external unsafe_set : 'a t -> int -> 'a -> unit = "%array_unsafe_set"
-
-

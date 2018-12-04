@@ -51,8 +51,14 @@ type t
 (** the result of a executing a RegExp on a string *)
 type result
 
-(** an array of the matches, the first is the full match and the remaining are the substring matches *)
+(** an array of the match and captures, the first is the full match and the remaining are the substring captures *)
+external captures : result -> string Js.nullable array = "%identity"
+
+(** an array of the matches, the first is the full match and the remaining are the substring matches
+ *  @deprecated Use [captures] instead.
+ *)
 external matches : result -> string array = "%identity"
+[@@deprecated "Use Js.Re.captures instead"]
 
 (** 0-based index of the match in the input string *)
 external index : result -> int = "" [@@bs.get]
@@ -70,10 +76,10 @@ Regex literals ([\[%re "/.../"\]]) should generally be preferred, but
 (* A function that extracts the content of the first element with the given tag *)
 
 let contentOf tag xmlString =
-  Js.Re.fromString ("<" ^ tag ^ ">(.|\n)*?<\/" ^ tag ^">")
+  Js.Re.fromString ("<" ^ tag ^ ">(.*?)<\\/" ^ tag ^">")
     |> Js.Re.exec xmlString
     |> function
-      | Some result -> Some (Js.Re.matches result).(1)
+      | Some result -> Js.Nullable.to_opt (Js.Re.captures result).(1)
       | None -> None
 ]}
 *)
@@ -119,17 +125,20 @@ let str = "abbcdefabh" in
 let break = ref false in
 while not !break do
   match re |> Js.Re.exec str with
-  | None -> break := false
+  | None -> break := true
   | Some result ->
-    let match_ = (Js.Re.matches result).(0) in
-    let next = string_of_int (Js.Re.lastIndex re) in
-    Js.log ("Found " ^ match_ ^ ". Next match starts at " ^ next)
+    Js.Nullable.iter (Js.Re.captures result).(0) ((fun match_ ->
+      let next = string_of_int (Js.Re.lastIndex re) in
+      Js.log ("Found " ^ match_ ^ ". Next match starts at " ^ next)))
 done
 ]}
 
 @see <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/lastIndex> MDN
 *)
 external lastIndex : t -> int = "" [@@bs.get]
+
+(** sets the index at which the next match will start its search from *)
+external setLastIndex : t -> int -> unit = "lastIndex" [@@bs.set]
 
 (** returns a bool indicating whether the [multiline] flag is set *)
 external multiline : t -> bool = "" [@@bs.get]

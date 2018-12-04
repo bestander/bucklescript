@@ -7,7 +7,7 @@ let rec unsafe_root_dir_aux cwd  =
 
 let project_root = unsafe_root_dir_aux (Sys.getcwd ())
 let jscomp = project_root // "jscomp"
-let bsc_bin = jscomp // "bin" 
+let bsc_bin = project_root // "lib" 
 
 let bsc_exe = bsc_bin // "bsc.exe"
 let runtime_dir = jscomp // "runtime"
@@ -102,7 +102,7 @@ let perform_bsc args =
          stdlib_dir
        |] args)
 
-let bsc_eval str = 
+let bsc_check_eval str = 
   perform_bsc [|"-bs-eval"; str|]        
 
   let debug_output o = 

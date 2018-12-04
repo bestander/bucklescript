@@ -34,20 +34,14 @@ module E = Js_exp_make
    better names for external module 
 *)
 let handle_external 
-    ({bundle ; bind_name} : Ast_ffi_types.external_module_name)
+    ({bundle ; module_bind_name} : External_ffi_types.external_module_name)
   : Ident.t * string 
   =
-  match bind_name with 
-  | None -> 
-    Lam_compile_env.add_js_module bundle , bundle
-  | Some bind_name -> 
-    Lam_compile_env.add_js_module 
-      ~hint_name:bind_name
-      bundle,
-    bundle
+  Lam_compile_env.add_js_module module_bind_name bundle , 
+  bundle
 
 let handle_external_opt 
-    (module_name : Ast_ffi_types.external_module_name option) 
+    (module_name : External_ffi_types.external_module_name option) 
   : (Ident.t * string) option = 
   match module_name with 
   | Some module_name -> Some (handle_external module_name) 
@@ -78,13 +72,13 @@ let handle_external_opt
      This would not work with [NonNullString]
 *)
 let ocaml_to_js_eff 
-    ({ Ast_arg.arg_label;  arg_type })
-    (arg : J.expression) 
+    ({ External_arg_spec.arg_label;  arg_type })
+    (raw_arg : J.expression)
   : E.t list * E.t list  =
   let arg =
     match arg_label with
-    | Optional label -> Js_of_lam_option.get_default_undefined arg 
-    | Label (_, None) | Empty None -> arg 
+    | Optional label -> Js_of_lam_option.get_default_undefined raw_arg
+    | Label (_, None) | Empty None -> raw_arg
     | Label (_, Some _) 
     | Empty ( Some _)
       -> assert false in 
@@ -93,7 +87,7 @@ let ocaml_to_js_eff
   | Fn_uncurry_arity _ -> assert false  
   (* has to be preprocessed by {!Lam} module first *)
   | Extern_unit ->  
-    (if arg_label = Ast_arg.empty_label then [] else [E.unit]), 
+    (if arg_label = External_arg_spec.empty_label then [] else [E.unit]), 
     (if Js_analyzer.no_side_effect_expression arg then 
        []
      else 
@@ -110,6 +104,32 @@ let ocaml_to_js_eff
     Js_of_lam_variant.eval_as_event arg dispatches,[]
   | Int dispatches -> 
     [Js_of_lam_variant.eval_as_int arg dispatches],[]
+  | Unwrap ->
+    let single_arg =
+      match arg_label with
+      | Optional label ->
+        (**
+           If this is an optional arg (like `?arg`), we have to potentially do
+           2 levels of unwrapping:
+           - if ocaml arg is `None`, let js arg be `undefined` (no unwrapping)
+           - if ocaml arg is `Some x`, unwrap the arg to get the `x`, then
+             unwrap the `x` itself
+        *)
+        Js_of_lam_option.get_default_undefined
+          ~map:(fun opt_unwrapping exp ->
+              match opt_unwrapping with
+              | Static_unwrapped ->
+                (* If we can unwrap the option statically, do `arg[1]` *)
+                E.index exp 1l
+              | Runtime_maybe_unwrapped ->
+                (* If we can't, do Js_primitive.option_get_unwrap(arg) *)
+                E.runtime_call Js_runtime_modules.js_primitive "option_get_unwrap" [raw_arg]
+            )
+          raw_arg
+      | _ ->
+        Js_of_lam_variant.eval_as_unwrap raw_arg
+    in
+    [single_arg],[]
   | Nothing  | Array ->  [arg], []
 
 
@@ -131,7 +151,7 @@ let add_eff eff e =
    @return arguments and effect
 *)
 let assemble_args call_loc ffi  js_splice arg_types args : E.t list * E.t option = 
-  let rec aux (labels : Ast_arg.kind list) args = 
+  let rec aux (labels : External_arg_spec.t list) args = 
     match labels, args with 
     | [] , [] -> empty_pair
     | { arg_label =  Empty (Some cst) ; _} :: labels  , args 
@@ -146,19 +166,20 @@ let assemble_args call_loc ffi  js_splice arg_types args : E.t list * E.t option
           | Array -> 
             begin match (arg : E.t) with 
               | {expression_desc = Array (ls,_mutable_flag) ;_ } -> 
-                ls @ accs, eff 
+                Ext_list.append ls accs, eff 
               | _ -> 
                 Location.raise_errorf ~loc:call_loc
                   {|@{<error>Error:@} function call with %s  is a primitive with [@@bs.splice], it expects its `bs.splice` argument to be a syntactic array in the call site and  all arguments to be supplied|}
-                  (Ast_ffi_types.name_of_ffi ffi)
+                  (External_ffi_types.name_of_ffi ffi)
             end
           | _ -> assert false 
         end
       else 
         let accs, eff = aux labels args in 
         let acc, new_eff = ocaml_to_js_eff arg_kind arg in 
-        acc @ accs, new_eff @ eff
-    | { arg_label = Empty None | Label (_,None) | Optional _  ; _ } :: _ , [] -> assert false 
+        Ext_list.append acc  accs, Ext_list.append new_eff  eff
+    | { arg_label = Empty None | Label (_,None) | Optional _  ; _ } :: _ , [] 
+      -> assert false 
     | [],  _ :: _  -> assert false      
 
   in 
@@ -180,7 +201,7 @@ let translate_scoped_module_val module_name fn  scopes =
       | x :: rest -> 
         (* let start = E.dot (E.var id )  x in  *)
         let start = E.external_var_dot ~external_name ~dot:x id in 
-        List.fold_left (fun acc x -> E.dot  acc x) start (rest @ [fn])
+        List.fold_left (fun acc x -> E.dot  acc x) start (Ext_list.append rest  [fn])
     end
   | None ->  
     (*  no [@@bs.module], assume it's global *)
@@ -190,7 +211,7 @@ let translate_scoped_module_val module_name fn  scopes =
         E.js_var fn
       | x::rest -> 
         let start = E.js_var x  in 
-        List.fold_left (fun acc x -> E.dot acc x) start (rest @ [fn])
+        List.fold_left (fun acc x -> E.dot acc x) start (Ext_list.append rest  [fn])
     end
 
 
@@ -202,10 +223,10 @@ let translate_scoped_access scopes obj =
     List.fold_left (fun acc x -> E.dot acc x) (E.dot obj x) xs 
   
 let translate_ffi 
-    call_loc (ffi : Ast_ffi_types.ffi ) 
-    (* prim_name *)
-    (cxt  : Lam_compile_defs.cxt)
+    call_loc 
+    (cxt  : Lam_compile_context.t)
     arg_types 
+    (ffi : External_ffi_types.attr ) 
     (args : J.expression list) = 
   match ffi with 
 
@@ -296,7 +317,9 @@ let translate_ffi
   | Js_send {splice  = js_splice ; name ; pipe = false; js_send_scopes = scopes } -> 
     begin match args  with
       | self :: args -> 
-        let [@warning"-8"] ( self_type::arg_types )
+        (* PR2162 [self_type] more checks in syntax:
+          - should not be [bs.as] *)
+        let [@warning"-8"] ( _self_type::arg_types )
           = arg_types in
         let args, eff = assemble_args  call_loc ffi  js_splice arg_types args in
         add_eff eff @@ 
@@ -308,8 +331,8 @@ let translate_ffi
   | Js_send { name ; pipe = true ; splice = js_splice; js_send_scopes = scopes  }
     -> (* splice should not happen *)
     (* assert (js_splice = false) ;  *)
-    let self, args = Ext_list.exclude_tail args in
-    let self_type, arg_types = Ext_list.exclude_tail arg_types in
+    let args, self = Ext_list.split_at_last args in
+    let arg_types, self_type = Ext_list.split_at_last arg_types in
     let args, eff = assemble_args call_loc ffi  js_splice arg_types args in
     add_eff eff @@
     let self = translate_scoped_access scopes self in 

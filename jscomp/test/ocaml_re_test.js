@@ -700,11 +700,7 @@ function seq$1(ids, kind, x, y) {
   var exit = 0;
   var exit$1 = 0;
   if (typeof match === "number") {
-    if (match) {
-      exit$1 = 2;
-    } else {
-      return y;
-    }
+    return y;
   } else if (match.tag === 1) {
     if (match[0]) {
       exit$1 = 2;
@@ -716,9 +712,7 @@ function seq$1(ids, kind, x, y) {
   }
   if (exit$1 === 2) {
     if (typeof match$1 === "number") {
-      if (match$1) {
-        exit = 1;
-      } else if (kind === /* First */332064784) {
+      if (kind === /* First */332064784) {
         return x;
       } else {
         exit = 1;
@@ -1908,15 +1902,7 @@ function colorize(c, regexp) {
           case 8 : 
           case 9 : 
               return /* () */0;
-          default:
-            throw [
-                  Caml_builtin_exceptions.assert_failure,
-                  [
-                    "re.ml",
-                    502,
-                    35
-                  ]
-                ];
+          
         }
       } else {
         switch (regexp.tag | 0) {
@@ -2088,7 +2074,7 @@ function equal$2(_x1, _x2) {
             if (typeof x2 === "number") {
               return /* false */0;
             } else if (x2.tag === 4) {
-              if (Caml_obj.caml_equal(x1[0], x2[0])) {
+              if (x1[0] === x2[0]) {
                 _x2 = x2[1];
                 _x1 = x1[1];
                 continue ;
@@ -2104,7 +2090,7 @@ function equal$2(_x1, _x2) {
             if (typeof x2 === "number") {
               return /* false */0;
             } else if (x2.tag === 5) {
-              if (Caml_obj.caml_equal(x1[0], x2[0])) {
+              if (x1[0] === x2[0]) {
                 _x2 = x2[1];
                 _x1 = x1[1];
                 continue ;
@@ -2421,15 +2407,7 @@ function translate(ids, kind, _ign_group, ign_case, _greedy, pos, cache, c, _par
                     mk_expr(ids, /* Before */Block.__(6, [Re_automata_000[/* search_boundary */7]])),
                     kind
                   ];
-        default:
-          throw [
-                Caml_builtin_exceptions.assert_failure,
-                [
-                  "re.ml",
-                  714,
-                  4
-                ]
-              ];
+        
       }
     } else {
       switch (param.tag | 0) {
@@ -2737,8 +2715,7 @@ function handle_case(_ign_case, _r) {
                       r[0],
                       handle_case(ign_case, r[1])
                     ]);
-        default:
-          return r;
+        
       }
     }
   };
@@ -3065,10 +3042,10 @@ function exec_internal(name, $staropt$star, $staropt$star$1, groups, re, s) {
   var len$1 = len;
   var slen = s$1.length;
   var last = len$1 === -1 ? slen : pos$1 + len$1 | 0;
-  var $js;
+  var tmp;
   if (groups$1) {
     var n = re$1[/* tbl */6][0].length + 1 | 0;
-    $js = n <= 10 ? /* array */[
+    tmp = n <= 10 ? /* array */[
         0,
         0,
         0,
@@ -3081,12 +3058,12 @@ function exec_internal(name, $staropt$star, $staropt$star$1, groups, re, s) {
         0
       ] : Caml_array.caml_make_vect(n, 0);
   } else {
-    $js = /* int array */[];
+    tmp = /* int array */[];
   }
   var info = /* record */[
     /* re */re$1,
     /* i_cols */re$1[/* cols */2],
-    /* positions */$js,
+    /* positions */tmp,
     /* pos */pos$1,
     /* last */last
   ];

@@ -39,6 +39,7 @@ type style
   = FG of color 
   | BG of color 
   | Bold
+  | Dim
 
 
 let ansi_of_color = function
@@ -71,6 +72,7 @@ let code_of_style = function
   | BG White -> "47"
 
   | Bold -> "1"
+  | Dim -> "2"
 
 
 
@@ -79,11 +81,13 @@ let style_of_tag s = match s with
   | "error" -> [Bold; FG Red]
   | "warning" -> [Bold; FG Magenta]
   | "info" -> [Bold; FG Yellow]
+  | "dim" -> [Dim]
+  | "filename" -> [FG Cyan]
   | _ -> []
 
 let ansi_of_tag s = 
   let l = style_of_tag s in
-  let s =  String.concat ";" (List.map code_of_style l) in
+  let s =  String.concat ";" (Ext_list.map code_of_style l) in
   "\x1b[" ^ s ^ "m"
 
 

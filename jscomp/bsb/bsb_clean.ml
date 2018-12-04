@@ -23,25 +23,39 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-let (//) = Ext_filename.combine
+let (//) = Ext_path.combine
 
-let clean_bs_garbage cwd =
-  Format.fprintf Format.std_formatter "@{<info>Cleaning:@} in %s@." cwd ; 
+
+let ninja_clean bsc_dir proj_dir = 
+  try 
+    let cmd = bsc_dir // "ninja.exe" in 
+    let cwd =  proj_dir // Bsb_config.lib_bs in 
+    if Sys.file_exists cwd then 
+      let eid = 
+        (Bsb_unix.run_command_execv { cmd ; args = [|cmd; "-t"; "clean"|] ; cwd  }) in
+      if eid <> 0 then  
+        Bsb_log.warn "@{<warning>ninja clean failed@}@."
+  with  e -> 
+    Bsb_log.warn "@{<warning>ninja clean failed@} : %s @." (Printexc.to_string e)
+
+let clean_bs_garbage bsc_dir proj_dir =
+  Bsb_log.info "@{<info>Cleaning:@} in %s@." proj_dir ; 
   let aux x =
-    let x = (cwd // x)  in
+    let x = (proj_dir // x)  in
     if Sys.file_exists x then
       Bsb_unix.remove_dir_recursive x  in
-  try
-    List.iter aux Bsb_config.all_lib_artifacts
+  try  
+    ninja_clean bsc_dir proj_dir ; 
+    List.iter aux Bsb_config.all_lib_artifacts;    
   with
     e ->
-    Format.fprintf Format.err_formatter "@{<warning>Failed@} to clean due to %s" (Printexc.to_string e)
+    Bsb_log.warn "@{<warning>Failed@} to clean due to %s" (Printexc.to_string e)
 
 
-let clean_bs_deps cwd =
-  Bsb_build_util.walk_all_deps  cwd  (fun { cwd} ->
+let clean_bs_deps bsc_dir proj_dir =
+  Bsb_build_util.walk_all_deps  proj_dir  (fun { cwd} ->
       (* whether top or not always do the cleaning *)
-      clean_bs_garbage cwd
+      clean_bs_garbage bsc_dir cwd
     )
 
-let clean_self cwd = clean_bs_garbage cwd
+let clean_self bsc_dir proj_dir = clean_bs_garbage bsc_dir proj_dir

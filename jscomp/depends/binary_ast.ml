@@ -30,19 +30,12 @@ module String_set = Ast_extract.String_set
 
 
 
-let read_ast (type t ) (kind : t  Ast_extract.kind) fn : t  =
-  let magic =
-    match kind with 
-    | Ast_extract.Ml -> Config.ast_impl_magic_number
-    | Ast_extract.Mli -> Config.ast_intf_magic_number in 
+let read_ast (type t ) (kind : t  Ml_binary.kind) fn : t  =
   let ic = open_in_bin fn in
   try
     let dep_size = input_binary_int ic in 
     seek_in  ic (pos_in ic + dep_size) ; 
-    let buffer = really_input_string ic (String.length magic) in
-    assert(buffer = magic); (* already checked by apply_rewriter *)
-    Location.input_name := input_value ic;
-    let ast = input_value ic in
+    let ast = Ml_binary.read_ast kind ic in 
     close_in ic;
     ast
   with exn ->
@@ -55,11 +48,7 @@ let read_ast (type t ) (kind : t  Ast_extract.kind) fn : t  =
    1. for performance , easy skipping and calcuate the length 
    2. cut dependency, otherwise its type is {!Ast_extract.String_set.t}
 *)      
-let write_ast (type t) ~(fname : string) ~output (kind : t Ast_extract.kind) ( pt : t) : unit =
-  let magic = 
-    match kind with 
-    | Ast_extract.Ml -> Config.ast_impl_magic_number
-    | Ast_extract.Mli -> Config.ast_intf_magic_number in
+let write_ast (type t) ~(fname : string) ~output (kind : t Ml_binary.kind) ( pt : t) : unit =
   let oc = open_out_bin output in 
 
   let output_set = Ast_extract.read_parse_and_extract kind pt in
@@ -71,9 +60,6 @@ let write_ast (type t) ~(fname : string) ~output (kind : t Ast_extract.kind) ( p
   let buf_contents = Buffer.contents buf in 
   output_binary_int oc (String.length buf_contents);
   output_string oc buf_contents; 
-
-  output_string oc magic ;
-  output_value oc fname;
-  output_value oc pt;
+  Ml_binary.write_ast kind fname pt oc;
   close_out oc 
 

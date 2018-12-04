@@ -1,10 +1,10 @@
 include ../Makefile.shared
 
-CAMLC=../bin/bsc.exe
+CAMLC=../../lib/bsc.exe
 BSPACK=../bin/bspack.exe
 INCLUDES= -I ../stdlib  -I ../runtime -I ../others/
 
-OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi test_scope \
+OTHERS := test_literals a test_ari test_export2 test_internalOO test_obj_simple_ffi test_scope \
 	test_switch arith_lexer test_array test_external test_is_js test_order \
 	test_trywith arith_parser test_array_primitive test_js_ffi test_pack \
 	test_seq test_u arith_syntax test_bug test_ffi test_let test_per\
@@ -22,8 +22,11 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	test_simple_ref test_incr_ref ocaml_array ticker test_filename test_alias mt\
 	mock_mt array_test test_nullary test_for_map2 int_map test_tuple\
 	list_test map_test lexer_test google_closure_test boolean_test equal_exception_test\
-	lazy_test ext_string ext_bytes a_string_test ext_filename a_filename_test test_nested_print\
-	a_scope_bug a_recursive_type test_array_append ext_list a_list_test test_type_based_arity\
+	lazy_test ext_string_test\
+	ext_bytes_test a_string_test \
+	ext_filename_test a_filename_test test_nested_print\
+	a_scope_bug a_recursive_type test_array_append ext_list_test\
+	a_list_test test_type_based_arity\
 	abstract_type curry test_formatter test_cps test_closure test_for_loop test_while_closure\
 	test_while_side_effect for_side_effect_test cps_test for_loop_test queue_test libqueue_test\
 	libarg_test loop_suites_test const_block_test stack_test test_stack\
@@ -35,17 +38,18 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	regression_print global_exception_regression_test printf_test format_regression loop_regression_test\
 	and_or_tailcall_test const_defs const_defs_test genlex_test cross_module_inline_test runtime_encoding_test\
 	obj_magic_test caml_compare_test rec_module_test guide_for_ext local_exception_test js_obj_test extensible_variant_test\
-	ext_log lam_current_unit test_zero_nullable int64_test string_literal_print_test js_bool_test class_type_ffi_test unsafe_ppx_test\
+	ext_log_test lam_current_unit test_zero_nullable int64_test string_literal_print_test js_bool_test class_type_ffi_test unsafe_ppx_test\
 	js_date js_date_test es6_module_test int_overflow_test float_test bigarray_test float_of_bits_test swap_test int64_mul_div_test\
 	ffi_test shift_test debugger_test caml_format_test js_val epsilon_test io_test random_test ffi_js_test\
-	stringmatch_test printf_sim test_external_unit ext_array int32_test hamming_test pr_regression_test\
+	stringmatch_test printf_sim test_external_unit \
+	ext_array_test int32_test hamming_test pr_regression_test\
 	to_string_test print_alpha_test ffi_arity_test digest_test string_get_set_test exception_raise_test\
 	class_test debug_keep_test demo_int_map const_test class3_test class4_test class5_test class6_test\
 	class7_test class8_test class_repr pq_test mt_global event_ffi hash_test exception_value_test sprintf_reg_test\
 	scanf_test testing tscanf_test scanf_reference_error_regression_test sprintf_reg_test scanf_io fail_comp\
 	stack_comp_test float_array float_record tfloat_record_test basic_module_test offset\
-	pr6726 undef_regression_test tuple_alloc test_unsupported_primitive module_alias ext_pervasives\
-	test_const_propogate limits_test ext_sys test_unsafe_obj_ffi module_missing_conversion\
+	pr6726 undef_regression_test tuple_alloc test_unsupported_primitive module_alias ext_pervasives_test\
+	test_const_propogate limits_test ext_sys_test test_unsafe_obj_ffi module_missing_conversion\
 	ocaml_proto_test test_unsafe_obj_ffi_ppx ppx_apply_test test_http_server\
 	http_types ignore_test test_index obj_literal_ppx_test obj_literal_ppx\
 	gpr_405_test attr_test uncurry_glob_test nested_obj_test nested_obj_literal\
@@ -54,7 +58,7 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	method_chain recursive_module recursive_module_test simplify_lambda_632o\
 	div_by_zero_test unsafe_this obj_type_test polymorphism_test class_error_message\
 	test_bs_this class_setter_getter gpr496_test local_class_type test_regex ffi_array_test\
-	derive_dyntype derive_type_test nested_include simple_derive_test simple_derive_use\
+	derive_dyntype nested_include \
 	mutual_non_recursive_type external_ppx \
 	optional_ffi_test poly_variant_test \
 	bs_rest_test infer_type_test fs_test module_as_function\
@@ -134,7 +138,7 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	gpr_1484\
 	gpr_1481\
 	custom_error_test\
-	exception_rebound_err\
+	exception_rebound_err_test\
 	js_exception_catch_test\
 	gpr_1503_test\
 	gpr_1501_test\
@@ -174,11 +178,40 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	gpr_1760_test\
 	gpr_1759_test\
 	inner_define\
-	inner_call
-
+	inner_call\
+	default_export_test\
+	gpr_1817_test\
+	gpr_1822_test\
+	bs_unwrap_test\
+	dollar_escape_test\
+	js_nullable_test\
+	gpr_1891_test\
+	gpr_1943_test\
+	gpr_1946_test\
+	adt_optimize_test\
+	mpr_6033_test\
+	polyvar_test\
+	functor_def\
+	functor_inst\
+	functor_app_test\
+	module_alias_test\
+	escape_esmodule\
+	esmodule_ref\
+	miss_colon_test\
+	gpr_1245_test\
+	gpr_2126_test\
+	big_enum\
+	ast_js_mapper_test\
+	ast_js_mapper_poly_test\
+	big_polyvar_test\
+	ast_abstract_test\
+	ast_mapper_defensive_test\
+	ast_mapper_unused_warning_test
 # bs_uncurry_test
 # needs Lam to get rid of Uncurry arity first
-
+# simple_derive_test
+# simple_derive_use
+# derive_type_test 
 
 
 
@@ -189,8 +222,8 @@ $(addsuffix .cmi, $(OTHERS)): ../runtime/js.cmi
 $(addsuffix .cmj, $(OTHERS)): ../runtime/js.cmj
 
 # It is okay to test deprecated API
-COMPFLAGS+=  $(MODULE_FLAGS) -w -40 -warn-error A+8-3-30-26
-COMPFLAGS+=  -bs-no-version-header -absname -bs-no-error-unused-attribute -bs-diagnose -bs-cross-module-opt -bs-package-name  bs-platform
+COMPFLAGS+=  $(MODULE_FLAGS) -w -40 -warn-error A+8-3-30-26+101-102-103-104 
+COMPFLAGS+=  -bs-no-version-header -absname -bs-diagnose -bs-cross-module-opt -bs-package-name  bs-platform -bs-package-output commonjs:jscomp/test
 
 
 $(TESTS): $(CAMLC)
@@ -203,7 +236,7 @@ clean::
 	rm -f  *.annot
 	rm -f $(TESTS)
 	rm -f *.rawlambda *.lam *.lambda *.map
-	rm arith_lexer.ml number_lexer.ml simple_lexer_test.ml
+	rm -f arith_lexer.ml number_lexer.ml simple_lexer_test.ml
 
 .mli.cmi:
 	$(CAMLC) $(INCLUDES) $(COMPFLAGS) -c $<
@@ -214,6 +247,9 @@ clean::
 .ml.cmj:
 	$(CAMLC) $(INCLUDES)  $(COMPFLAGS) -c $<
 
+OCAML_SRC_UTILS=../../vendor/ocaml/utils/
+OCAML_SRC_PARSING=../../vendor/ocaml/parsing/
+OCAML_SRC_TYPING=../../vendor/ocaml/typing/
 
 arith_lexer.ml: arith_lexer.mll
 	$(CAMLLEX) $<
@@ -222,10 +258,10 @@ number_lexer.ml: number_lexer.mll
 simple_lexer_test.ml: simple_lexer_test.mll
 	$(CAMLLEX) $<
 ocaml_parsetree_test.ml: ocaml_parsetree_main.ml
-	$(BSPACK) -bs-main Ocaml_parsetree_main -bs-MD  -I ../../ocaml/parsing/ -I ../../ocaml/utils/ -o $@
+	$(BSPACK) -bs-main Ocaml_parsetree_main -bs-MD  -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_UTILS) -o $@
 
 ocaml_typedtree_test.ml: ocaml_typed_tree_main.ml
-	$(BSPACK) -bs-main Ocaml_typed_tree_main -bs-MD -I ../../ocaml/parsing/ -I ../../ocaml/utils/ -I ../../ocaml/typing/ -o $@
+	$(BSPACK) -bs-main Ocaml_typed_tree_main -bs-MD -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_TYPING) -o $@
 
 -include .depend
 

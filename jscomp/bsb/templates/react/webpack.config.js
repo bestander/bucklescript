@@ -1,12 +1,9 @@
 const path = require('path');
 
 module.exports = {
-  entry: {
-    simple: './lib/js/src/simple/simpleRoot.js',
-    interop: './src/interop/interopRoot.js',
-  },
+  entry: './src/index.bs.js',
   output: {
-    path: path.join(__dirname, "bundledOutputs"),
-    filename: '[name].js',
+    path: path.join(__dirname, "build"),
+    filename: 'index.js',
   },
 };

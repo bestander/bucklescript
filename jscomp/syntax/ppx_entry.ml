@@ -63,8 +63,8 @@ let record_as_js_object = ref false (* otherwise has an attribute *)
 let no_export = ref false 
 
 let () = 
-  Ast_derive_dyn.init  ();
-  Ast_derive_projector.init ()
+  Ast_derive_projector.init ();
+  Ast_derive_js_mapper.init ()
 
 let reset () = 
   record_as_js_object := false ;
@@ -205,7 +205,7 @@ let handle_core_type
     let (+>) attr (typ : Parsetree.core_type) =
       {typ with ptyp_attributes = attr :: typ.ptyp_attributes} in           
     let new_methods =
-      List.fold_right (fun (label, ptyp_attrs, core_type) acc ->
+      Ext_list.fold_right (fun (label, ptyp_attrs, core_type) acc ->
           let get ty name attrs =
             let attrs, core_type =
               match Ast_attributes.process_attributes_rev attrs with
@@ -271,21 +271,64 @@ let rec unsafe_mapper : Ast_mapper.mapper =
             (Ast_comb.to_js_re_type loc)
         | Pexp_extension ({txt = "bs.external" | "external" ; loc }, payload) -> 
           begin match Ast_payload.as_ident payload with 
-          | Some {txt = Lident x}
-            -> Ast_util.handle_external loc x
+            | Some {txt = Lident x}
+              -> Ast_util.handle_external loc x
             (* do we need support [%external gg.xx ] 
-               
+
                {[ Js.Undefined.to_opt (if Js.typeof x == "undefined" then x else Js.Undefined.empty ) ]}
             *)
 
-          | None | Some _ -> 
-            Location.raise_errorf ~loc 
-            "external expects a single identifier"
+            | None | Some _ -> 
+              Location.raise_errorf ~loc 
+                "external expects a single identifier"
           end 
+        | Pexp_extension({txt = "bs.assert" | "assert";loc},payload) 
+          ->
+          (
+            match payload with 
+            | PStr [ {pstr_desc = Pstr_eval( e,_)}] -> 
+
+              let locString = 
+                if loc.loc_ghost then 
+                  "ASSERT FAILURE"
+                else 
+                  let loc_start = loc.loc_start in 
+                  let (file, lnum, cnum) = Location.get_pos_info loc_start in
+                  let enum = 
+                    loc.Location.loc_end.Lexing.pos_cnum -
+                    loc_start.Lexing.pos_cnum + cnum in
+                  Printf.sprintf "File %S, line %d, characters %d-%d"
+                    file lnum cnum enum in   
+              let raiseWithString  =      
+                (Exp.apply ~loc 
+                   (Exp.ident ~loc {loc; txt = 
+                                           Ldot(Ldot (Lident "Js","Exn"),"raiseError")})
+                   ["",
+
+                    Exp.constant (Const_string (locString,None))    
+                   ])
+              in 
+              (match e with
+               | {pexp_desc = Pexp_construct({txt = Lident "false"},None)} -> 
+                   raiseWithString
+               | _ ->    
+                 let e = self.expr self  e in 
+                 Exp.ifthenelse ~loc
+                   (Exp.apply ~loc
+                      (Exp.ident {loc ; txt = Ldot(Lident "Pervasives","not")})
+                      ["", e]
+                   )
+                   raiseWithString
+                   None
+              )
+            | _ -> 
+              Location.raise_errorf 
+                ~loc "expect a boolean expression in the payload"
+          )
         | Pexp_extension
             ({txt = ("bs.node" | "node"); loc},
              payload)
-          ->
+          ->          
           let strip s =
             match s with 
             | "_module" -> "module" 
@@ -301,7 +344,7 @@ let rec unsafe_mapper : Ast_mapper.mapper =
                 Ast_util.handle_external loc (strip name)  in
               let typ =
                 Ast_core_type.lift_option_type  
-                 @@                 
+                @@                 
                 if name = "_module" then
                   Typ.constr ~loc
                     { txt = Ldot (Lident "Node", "node_module") ;
@@ -332,7 +375,7 @@ let rec unsafe_mapper : Ast_mapper.mapper =
           if Ext_string.equal delim Literals.unescaped_js_delimiter then 
             let js_str = Ast_utf8_string.transform loc s in 
             { e with pexp_desc = 
-              Pexp_constant (Const_string (js_str, Some Literals.escaped_j_delimiter))}
+                       Pexp_constant (Const_string (js_str, Some Literals.escaped_j_delimiter))}
           else if Ext_string.equal delim Literals.unescaped_j_delimiter then 
             Ast_utf8_string_interp.transform_interp loc s             
           else e 
@@ -352,15 +395,15 @@ let rec unsafe_mapper : Ast_mapper.mapper =
         | Pexp_extension({txt ; loc} as lid, PTyp typ) 
           when Ext_string.starts_with txt Literals.bs_deriving_dot -> 
           self.expr self @@ 
-          Ast_derive.dispatch_extension lid typ
+          Ast_derive.gen_expression lid typ
 
         (** End rewriting *)
         | Pexp_function cases -> 
           begin match Ast_attributes.process_pexp_fun_attributes_rev e.pexp_attributes with 
-          | `Nothing, _ -> 
-            Ast_mapper.default_mapper.expr self  e 
-          | `Exn, pexp_attributes -> 
-            Ast_util.convertBsErrorFunction loc self  pexp_attributes cases
+            | `Nothing, _ -> 
+              Ast_mapper.default_mapper.expr self  e 
+            | `Exn, pexp_attributes -> 
+              Ast_util.convertBsErrorFunction loc self  pexp_attributes cases
           end
         | Pexp_fun ("", None, pat , body)
           ->
@@ -417,7 +460,7 @@ let rec unsafe_mapper : Ast_mapper.mapper =
                      currently the pattern match is written in a top down style.
                      Another corner case: f##(g a b [@bs])
                   *)
-                  Ast_attributes.warn_unused_attributes attrs ;  
+                  Bs_ast_invariant.warn_unused_attributes attrs ;  
                   {e with pexp_desc = Ast_util.method_apply loc self obj name args}
                 | [("", obj) ;
                    ("", 
@@ -467,12 +510,11 @@ let rec unsafe_mapper : Ast_mapper.mapper =
                 | _ -> Ast_mapper.default_mapper.expr self e 
               end
             | _ -> 
-
-              begin match Ext_list.exclude_with_fact (function 
-                  | {Location.txt = "bs"; _}, _ -> true 
-                  | _ -> false) e.pexp_attributes with 
-              | None, _ -> Ast_mapper.default_mapper.expr self e 
-              | Some _, pexp_attributes -> 
+              begin match 
+                  Ext_list.exclude_with_val
+                    Ast_attributes.is_bs e.pexp_attributes with 
+              | false, _ -> Ast_mapper.default_mapper.expr self e 
+              | true, pexp_attributes -> 
                 {e with pexp_desc = Ast_util.uncurry_fn_apply loc self fn args ;
                         pexp_attributes }
               end
@@ -527,7 +569,7 @@ let rec unsafe_mapper : Ast_mapper.mapper =
                {ctd with
                 pcty_desc = Pcty_signature {
                     pcsig_self ;
-                    pcsig_fields = List.fold_right (handle_class_type_field self)  pcsig_fields []
+                    pcsig_fields = Ext_list.fold_right (handle_class_type_field self)  pcsig_fields []
                   };
                 pcty_attributes                    
                }                    
@@ -548,25 +590,16 @@ let rec unsafe_mapper : Ast_mapper.mapper =
     signature_item =  begin fun (self : Ast_mapper.mapper) (sigi : Parsetree.signature_item) -> 
       match sigi.psig_desc with 
       | Psig_type (_ :: _ as tdcls) -> 
-        begin match Ast_attributes.process_derive_type 
+        begin match Ast_attributes.iter_process_derive_type 
                       (Ext_list.last tdcls).ptype_attributes  with 
-        | {bs_deriving = `Has_deriving actions; explict_nonrec}, ptype_attributes
-          -> Ast_signature.fuse 
-               {sigi with 
-                psig_desc = Psig_type
-                    (
-                      Ext_list.map_last (fun last tdcl -> 
-                          if last then 
-                            self.type_declaration self {tdcl with ptype_attributes}
-                          else 
-                            self.type_declaration self tdcl                            
-                        ) tdcls
-                    )
-               }
-               (self.signature 
-                  self @@ 
-                Ast_derive.type_deriving_signature tdcls actions explict_nonrec)
-        | {bs_deriving = `Nothing }, _ -> 
+        | {bs_deriving = Some actions; explict_nonrec}
+          -> 
+          let loc = sigi.psig_loc in 
+          Ast_signature.fuse ~loc sigi
+            (self.signature 
+               self 
+               (Ast_derive.gen_signature tdcls actions explict_nonrec))
+        | {bs_deriving = None } -> 
           Ast_mapper.default_mapper.signature_item self sigi 
 
         end
@@ -584,12 +617,15 @@ let rec unsafe_mapper : Ast_mapper.mapper =
         let pval_type, pval_prim, pval_attributes = 
           match pval_prim with 
           | [ v ] -> 
-            Ast_external_attributes.handle_attributes_as_string
+            External_process.handle_attributes_as_string
               pval_loc 
               pval_name.txt 
               pval_type 
               pval_attributes v
-          | _ -> Location.raise_errorf "only a single string is allowed in bs external" in
+          | _ -> 
+            Location.raise_errorf 
+              ~loc:pval_loc
+              "only a single string is allowed in bs external" in
         {sigi with 
          psig_desc = 
            Psig_value
@@ -615,24 +651,22 @@ let rec unsafe_mapper : Ast_mapper.mapper =
           -> 
           Ast_util.handle_raw_structure loc payload
         | Pstr_type (_ :: _ as tdcls ) (* [ {ptype_attributes} as tdcl ] *)-> 
-          begin match Ast_attributes.process_derive_type 
+          begin match Ast_attributes.iter_process_derive_type 
                         ((Ext_list.last tdcls).ptype_attributes) with 
-          | {bs_deriving = `Has_deriving actions;
+          | {bs_deriving = Some actions;
              explict_nonrec 
-            }, ptype_attributes -> 
-            Ast_structure.fuse 
-              {str with 
-               pstr_desc =
-                 Pstr_type 
-                   (Ext_list.map_last (fun last tdcl -> 
-                        if last then 
-                          self.type_declaration self {tdcl with ptype_attributes}
-                        else 
-                          self.type_declaration self tdcl) tdcls)
-              }
-              (self.structure self @@ Ast_derive.type_deriving_structure
-                 tdcls actions explict_nonrec )
-          | {bs_deriving = `Nothing}, _  -> 
+            } ->                         
+            let loc = str.pstr_loc in      
+            Ast_structure.fuse ~loc                
+              str 
+              (self.structure self 
+                 (List.map 
+                    (fun action -> 
+                       Ast_derive.gen_structure_signature 
+                         loc
+                         tdcls action explict_nonrec
+                    )    actions))
+          | {bs_deriving = None }  -> 
             Ast_mapper.default_mapper.structure_item self str
           end
         | Pstr_primitive 
@@ -648,12 +682,13 @@ let rec unsafe_mapper : Ast_mapper.mapper =
           let pval_type, pval_prim, pval_attributes = 
             match pval_prim with 
             | [ v] -> 
-              Ast_external_attributes.handle_attributes_as_string
+              External_process.handle_attributes_as_string
                 pval_loc
                 pval_name.txt
                 pval_type pval_attributes v
 
-            | _ -> Location.raise_errorf "only a single string is allowed in bs external" in
+            | _ -> Location.raise_errorf 
+                     ~loc:pval_loc "only a single string is allowed in bs external" in
           {str with 
            pstr_desc = 
              Pstr_primitive
@@ -693,7 +728,7 @@ let signature_config_table :
   (Parsetree.expression option -> unit) String_map.t= 
   String_map.of_list common_actions_table
 
-
+let dummy_unused_attribute : Warnings.t = (Bs_unused_attribute "")
 
 let rewrite_signature : 
   (Parsetree.signature  -> Parsetree.signature) ref = 
@@ -703,13 +738,17 @@ let rewrite_signature :
         | {psig_desc = Psig_attribute ({txt = "bs.config"; loc}, payload); _} :: rest 
           -> 
           begin 
-            Ast_payload.as_config_record_and_process loc payload 
+            Ast_payload.ident_or_record_as_config loc payload 
             |> List.iter (Ast_payload.table_dispatch signature_config_table) ; 
             unsafe_mapper.signature unsafe_mapper rest
           end
         | _ -> 
           unsafe_mapper.signature  unsafe_mapper x in 
-      reset (); result 
+      reset ();
+      (* Keep this check, since the check is not inexpensive*)
+      if Warnings.is_active dummy_unused_attribute then 
+        Bs_ast_invariant.emit_external_warnings.signature Bs_ast_invariant.emit_external_warnings result ;
+      result 
     )
 
 let rewrite_implementation : (Parsetree.structure -> Parsetree.structure) ref = 
@@ -719,7 +758,7 @@ let rewrite_implementation : (Parsetree.structure -> Parsetree.structure) ref =
         | {pstr_desc = Pstr_attribute ({txt = "bs.config"; loc}, payload); _} :: rest 
           -> 
           begin 
-            Ast_payload.as_config_record_and_process loc payload 
+            Ast_payload.ident_or_record_as_config loc payload 
             |> List.iter (Ast_payload.table_dispatch structural_config_table) ; 
             let rest = unsafe_mapper.structure unsafe_mapper rest in
             if !no_export then
@@ -733,5 +772,10 @@ let rewrite_implementation : (Parsetree.structure -> Parsetree.structure) ref =
           end
         | _ -> 
           unsafe_mapper.structure  unsafe_mapper x  in 
-      reset (); result )
+      reset (); 
+      (* Keep this check since it is not inexpensive*)    
+      (if Warnings.is_active dummy_unused_attribute then 
+         Bs_ast_invariant.emit_external_warnings.structure Bs_ast_invariant.emit_external_warnings result);
+      result 
+    )
 

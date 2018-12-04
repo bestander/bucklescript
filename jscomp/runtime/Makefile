@@ -1,6 +1,6 @@
 include ../Makefile.shared
 
-COMPILER=../bin/bsc.exe
+COMPILER=../../lib/bsc.exe
 
 OTHERS= caml_array caml_string caml_bytes\
 	caml_obj caml_int64 \
@@ -30,7 +30,7 @@ $(addsuffix .cmj, $(OTHERS)): caml_builtin_exceptions.cmj  block.cmj js.cmj js_u
 $(addsuffix .cmj, $(OTHERS)) caml_builtin_exceptions.cmj  block.cmj js.cmj js_unsafe.cmj : js_internal.cmi 
 ## since we use ppx
 $(addsuffix .cmi, $(OTHERS)): js.cmi js_unsafe.cmj js_unsafe.cmi js.cmj
-$(addsuffix .cmi, $(OTHERS)) js.cmi js_unsafe.cmj js_unsafe.cmi js.cmj : js_internal.cmi
+$(addsuffix .cmi, $(OTHERS)) js.cmi js_unsafe.cmj js_unsafe.cmi js.cmj js_internal.cmj : js_internal.cmi
 
 
 RUNTIME := $(addsuffix .cmj, $(SOURCE_LIST)) $(addsuffix .cmi, $(SOURCE_LIST))
@@ -39,7 +39,7 @@ BS_COMMON_FLAGS= -absname -no-alias-deps -bs-no-version-header -bs-diagnose -bs-
 
 BS_FLAGS=  $(BS_COMMON_FLAGS) $(BS_PKG_FLAGS)
 
-COMPFLAGS += $(BS_FLAGS) -I ../stdlib -nostdlib -nopervasives -open Pervasives -unsafe -warn-error A -w -40-49 -bin-annot 
+COMPFLAGS += $(BS_FLAGS) -I ../stdlib -nostdlib -nopervasives -open Pervasives -unsafe -warn-error A -w -40-49-103 -bin-annot 
 
 
 $(RUNTIME): $(COMPILER)

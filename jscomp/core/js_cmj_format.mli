@@ -52,23 +52,27 @@
     ]}
 *)
 
+type arity = 
+  | Single of Lam_arity.t
+  | Submodule of Lam_arity.t array
+
 type cmj_value = {
-  arity : Lam_arity.t ;
+  arity : arity ; 
   closed_lambda : Lam.t option ; 
   (* Either constant or closed functor *)
 }
 
 type effect = string option
 
-
-
+type cmj_case = Ext_namespace.file_kind 
 type t = {
   values : cmj_value String_map.t;
   effect : effect;
-  (* goog_package : string option; *)
-  npm_package_path : Js_config.packages_info;
+  npm_package_path : Js_packages_info.t;
+  cmj_case : cmj_case;
 }
 
+val single_na : arity
 val pure_dummy : t
 val no_pure_dummy : t
 
@@ -77,3 +81,4 @@ val from_file : string -> t
 val from_string : string -> t
 
 val to_file : string -> t -> unit
+

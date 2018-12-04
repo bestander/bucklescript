@@ -1372,11 +1372,11 @@ let reverse_in_place a =
 let reverse a =
   let b_len = Array.length a in
   if b_len = 0 then [||] else  
-  let b = Array.copy a in  
-  for i = 0 to  b_len - 1 do
+    let b = Array.copy a in  
+    for i = 0 to  b_len - 1 do
       Array.unsafe_set b i (Array.unsafe_get a (b_len - 1 -i )) 
-  done;
-  b  
+    done;
+    b  
 
 let reverse_of_list =  function
   | [] -> [||]
@@ -1427,13 +1427,13 @@ let map2i f a b =
     Array.mapi (fun i a -> f i  a ( Array.unsafe_get b i )) a 
 
 
- let rec tolist_aux a f  i res =
-    if i < 0 then res else
-      let v = Array.unsafe_get a i in
-      tolist_aux a f  (i - 1)
-        (match f v with
-         | Some v -> v :: res
-         | None -> res) 
+let rec tolist_aux a f  i res =
+  if i < 0 then res else
+    let v = Array.unsafe_get a i in
+    tolist_aux a f  (i - 1)
+      (match f v with
+       | Some v -> v :: res
+       | None -> res) 
 
 let to_list_map f a = 
   tolist_aux a f (Array.length a - 1) []
@@ -1442,32 +1442,65 @@ let to_list_map_acc f a acc =
   tolist_aux a f (Array.length a - 1) acc
 
 
-(* TODO: What would happen if [f] raise, memory leak? *)
 let of_list_map f a = 
   match a with 
   | [] -> [||]
-  | h::tl -> 
-    let hd = f h in 
-    let len = List.length tl + 1 in 
-    let arr = Array.make len hd  in
+  | [a0] -> 
+    let b0 = f a0 in
+    [|b0|]
+  | [a0;a1] -> 
+    let b0 = f a0 in  
+    let b1 = f a1 in 
+    [|b0;b1|]
+  | [a0;a1;a2] -> 
+    let b0 = f a0 in  
+    let b1 = f a1 in 
+    let b2 = f a2 in  
+    [|b0;b1;b2|]
+  | [a0;a1;a2;a3] -> 
+    let b0 = f a0 in  
+    let b1 = f a1 in 
+    let b2 = f a2 in  
+    let b3 = f a3 in 
+    [|b0;b1;b2;b3|]
+  | [a0;a1;a2;a3;a4] -> 
+    let b0 = f a0 in  
+    let b1 = f a1 in 
+    let b2 = f a2 in  
+    let b3 = f a3 in 
+    let b4 = f a4 in 
+    [|b0;b1;b2;b3;b4|]
+
+  | a0::a1::a2::a3::a4::tl -> 
+    let b0 = f a0 in  
+    let b1 = f a1 in 
+    let b2 = f a2 in  
+    let b3 = f a3 in 
+    let b4 = f a4 in 
+    let len = List.length tl + 5 in 
+    let arr = Array.make len b0  in
+    Array.unsafe_set arr 1 b1 ;  
+    Array.unsafe_set arr 2 b2 ;
+    Array.unsafe_set arr 3 b3 ; 
+    Array.unsafe_set arr 4 b4 ; 
     let rec fill i = function
-    | [] -> arr 
-    | hd :: tl -> 
-      Array.unsafe_set arr i (f hd); 
-      fill (i + 1) tl in 
-    fill 1 tl
-  
+      | [] -> arr 
+      | hd :: tl -> 
+        Array.unsafe_set arr i (f hd); 
+        fill (i + 1) tl in 
+    fill 5 tl
+
 (**
-{[
-# rfind_with_index [|1;2;3|] (=) 2;;
-- : int = 1
-# rfind_with_index [|1;2;3|] (=) 1;;
-- : int = 0
-# rfind_with_index [|1;2;3|] (=) 3;;
-- : int = 2
-# rfind_with_index [|1;2;3|] (=) 4;;
-- : int = -1
-]}
+   {[
+     # rfind_with_index [|1;2;3|] (=) 2;;
+     - : int = 1
+               # rfind_with_index [|1;2;3|] (=) 1;;
+     - : int = 0
+               # rfind_with_index [|1;2;3|] (=) 3;;
+     - : int = 2
+               # rfind_with_index [|1;2;3|] (=) 4;;
+     - : int = -1
+   ]}
 *)
 let rfind_with_index arr cmp v = 
   let len = Array.length arr in 
@@ -1522,8 +1555,8 @@ let rec unsafe_loop index len p xs ys  =
     p 
       (Array.unsafe_get xs index)
       (Array.unsafe_get ys index) &&
-      unsafe_loop (succ index) len p xs ys 
-   
+    unsafe_loop (succ index) len p xs ys 
+
 let for_all2_no_exn p xs ys = 
   let len_xs = Array.length xs in 
   let len_ys = Array.length ys in 
@@ -1676,19 +1709,23 @@ module Ext_string : sig
 
 
 
-(** Extension to the standard library [String] module, avoid locale sensitivity *) 
+(** Extension to the standard library [String] module, fixed some bugs like
+    avoiding locale sensitivity *) 
+
+(** default is false *)    
+val split_by : ?keep_empty:bool -> (char -> bool) -> string -> string list
 
 
+(** remove whitespace letters ('\t', '\n', ' ') on both side*)
 val trim : string -> string 
 
-val split_by : ?keep_empty:bool -> (char -> bool) -> string -> string list
-(** default is false *)
 
+(** default is false *)
 val split : ?keep_empty:bool -> string -> char -> string list
-(** default is false *)
 
-val quick_split_by_ws : string -> string list 
 (** split by space chars for quick scripting *)
+val quick_split_by_ws : string -> string list 
+
 
 
 val starts_with : string -> string -> bool
@@ -1702,6 +1739,8 @@ val ends_with_index : string -> string -> int
 val ends_with : string -> string -> bool
 
 (**
+  [ends_with_then_chop name ext]
+  @example:
    {[
      ends_with_then_chop "a.cmj" ".cmj"
      "a"
@@ -1713,10 +1752,16 @@ val ends_with_then_chop : string -> string -> string option
 
 val escaped : string -> string
 
-(** the range is [start, finish) 
+(**
+  [for_all_from  s start p]
+  if [start] is negative, it raises,
+  if [start] is too large, it returns true
 *)
-val for_all_range : 
-  string -> start:int -> finish:int -> (char -> bool) -> bool 
+val for_all_from:
+  string -> 
+  int -> 
+  (char -> bool) -> 
+  bool 
 
 val for_all : (char -> bool) -> string -> bool
 
@@ -1726,6 +1771,10 @@ val repeat : int -> string -> string
 
 val equal : string -> string -> bool
 
+(**
+  [find ~start ~sub s]
+  returns [-1] if not found
+*)
 val find : ?start:int -> sub:string -> string -> int
 
 val contain_substring : string -> string -> bool 
@@ -1734,13 +1783,10 @@ val non_overlap_count : sub:string -> string -> int
 
 val rfind : sub:string -> string -> int
 
+(** [tail_from s 1]
+  return a substring from offset 1 (inclusive)
+*)
 val tail_from : string -> int -> string
-
-val digits_of_str : string -> offset:int -> int -> int
-
-val starts_with_and_number : string -> offset:int -> string -> int
-
-val unsafe_concat_with_length : int -> string -> string list -> string
 
 
 (** returns negative number if not found *)
@@ -1754,15 +1800,10 @@ type check_result =
 val is_valid_source_name :
    string -> check_result
 
-(* TODO handle cases like 
-   '@angular/core'
-   its directory structure is like 
-   {[
-     @angualar
-     |-------- core
-   ]}
-*)
-val is_valid_npm_package_name : string -> bool 
+
+
+
+
 val no_char : string -> char -> int -> int -> bool 
 
 
@@ -1796,6 +1837,9 @@ val single_colon : string
 
 val parent_dir_lit : string
 val current_dir_lit : string
+
+val capitalize_ascii : string -> string
+
 
 end = struct
 #1 "ext_string.ml"
@@ -1890,6 +1934,11 @@ let starts_with s beg =
    !i = beg_len
   )
 
+let rec ends_aux s end_ j k = 
+  if k < 0 then (j + 1)
+  else if String.unsafe_get s j = String.unsafe_get end_ k then 
+    ends_aux s end_ (j - 1) (k - 1)
+  else  -1   
 
 (** return an index which is minus when [s] does not 
     end with [beg]
@@ -1899,12 +1948,7 @@ let ends_with_index s end_ =
   let s_beg = String.length end_ - 1 in
   if s_beg > s_finish then -1
   else
-    let rec aux j k = 
-      if k < 0 then (j + 1)
-      else if String.unsafe_get s j = String.unsafe_get end_ k then 
-        aux (j - 1) (k - 1)
-      else  -1 in 
-    aux s_finish s_beg
+    ends_aux s end_ s_finish s_beg
 
 let ends_with s end_ = ends_with_index s end_ >= 0 
 
@@ -1957,10 +2001,11 @@ let rec unsafe_for_all_range s ~start ~finish p =
   p (String.unsafe_get s start) && 
   unsafe_for_all_range s ~start:(start + 1) ~finish p
 
-let for_all_range s ~start ~finish p = 
+let for_all_from s start  p = 
   let len = String.length s in 
-  if start < 0 || finish >= len then invalid_arg "Ext_string.for_all_range"
-  else unsafe_for_all_range s ~start ~finish p 
+  if start < 0  then invalid_arg "Ext_string.for_all_from"
+  else unsafe_for_all_range s ~start ~finish:(len - 1) p 
+
 
 let for_all (p : char -> bool) s =   
   unsafe_for_all_range s ~start:0  ~finish:(String.length s - 1) p 
@@ -2041,69 +2086,7 @@ let tail_from s x =
   if  x > len then invalid_arg ("Ext_string.tail_from " ^s ^ " : "^ string_of_int x )
   else String.sub s x (len - x)
 
-
-(**
-   {[ 
-     digits_of_str "11_js" 2 == 11     
-   ]}
-*)
-let digits_of_str s ~offset x = 
-  let rec aux i acc s x  = 
-    if i >= x then acc 
-    else aux (i + 1) (10 * acc + Char.code s.[offset + i] - 48 (* Char.code '0' *)) s x in 
-  aux 0 0 s x 
-
-
-
-(*
-   {[
-     starts_with_and_number "js_fn_mk_01" 0 "js_fn_mk_" = 1 ;;
-     starts_with_and_number "js_fn_run_02" 0 "js_fn_mk_" = -1 ;;
-     starts_with_and_number "js_fn_mk_03" 6 "mk_" = 3 ;;
-     starts_with_and_number "js_fn_mk_04" 6 "run_" = -1;;
-     starts_with_and_number "js_fn_run_04" 6 "run_" = 4;;
-     (starts_with_and_number "js_fn_run_04" 6 "run_" = 3) = false ;;
-   ]}
-*)
-let starts_with_and_number s ~offset beg =
-  let beg_len = String.length beg in
-  let s_len = String.length s in
-  let finish_delim = offset + beg_len in 
-
-  if finish_delim >  s_len  then -1 
-  else 
-    let i = ref offset  in
-    while !i <  finish_delim
-          && String.unsafe_get s !i =
-             String.unsafe_get beg (!i - offset) do 
-      incr i 
-    done;
-    if !i = finish_delim then 
-      digits_of_str ~offset:finish_delim s 2 
-    else 
-      -1 
-
 let equal (x : string) y  = x = y
-
-let unsafe_concat_with_length len sep l =
-  match l with 
-  | [] -> ""
-  | hd :: tl -> (* num is positive *)
-    let r = Bytes.create len in
-    let hd_len = String.length hd in 
-    let sep_len = String.length sep in 
-    String.unsafe_blit hd 0 r 0 hd_len;
-    let pos = ref hd_len in
-    List.iter
-      (fun s ->
-         let s_len = String.length s in
-         String.unsafe_blit sep 0 r !pos sep_len;
-         pos := !pos +  sep_len;
-         String.unsafe_blit s 0 r !pos s_len;
-         pos := !pos + s_len)
-      tl;
-    Bytes.unsafe_to_string r
-
 
 let rec rindex_rec s i c =
   if i < 0 then i else
@@ -2133,34 +2116,16 @@ let is_valid_module_file (s : string) =
   | _ -> false 
 
 
-(* https://docs.npmjs.com/files/package.json 
-  Some rules:
-  The name must be less than or equal to 214 characters. This includes the scope for scoped packages.
-  The name can't start with a dot or an underscore.
-  New packages must not have uppercase letters in the name.
-  The name ends up being part of a URL, an argument on the command line, and a folder name. Therefore, the name can't contain any non-URL-safe characters.
-*)
-let is_valid_npm_package_name (s : string) = 
-  let len = String.length s in 
-  len <= 214 && (* magic number forced by npm *)
-  len > 0 &&
-  match String.unsafe_get s 0 with 
-  | 'a' .. 'z' | '@' -> 
-    unsafe_for_all_range s ~start:1 ~finish:(len - 1)
-      (fun x -> 
-         match x with 
-         |  'a'..'z' | '0'..'9' | '_' | '-' -> true
-         | _ -> false )
-  | _ -> false 
+
 
 type check_result = 
   | Good 
   | Invalid_module_name 
   | Suffix_mismatch
-(** 
-   TODO: move to another module 
-   Make {!Ext_filename} not stateful
-*)
+  (** 
+     TODO: move to another module 
+     Make {!Ext_filename} not stateful
+  *)
 let is_valid_source_name name : check_result =
   match check_any_suffix_case_then_chop name [
       ".ml"; 
@@ -2182,9 +2147,9 @@ let rec unsafe_no_char x ch i  last_idx =
 let rec unsafe_no_char_idx x ch i last_idx = 
   if i > last_idx  then -1 
   else 
-    if String.unsafe_get x i <> ch then 
-      unsafe_no_char_idx x ch (i + 1)  last_idx
-    else i
+  if String.unsafe_get x i <> ch then 
+    unsafe_no_char_idx x ch (i + 1)  last_idx
+  else i
 
 let no_char x ch i len  : bool =
   let str_len = String.length x in 
@@ -2218,7 +2183,6 @@ let empty = ""
 
     
 external compare : string -> string -> int = "caml_string_length_based_compare" "noalloc";;
-
 
 let single_space = " "
 let single_colon = ":"
@@ -2269,7 +2233,7 @@ let concat4 a b c d =
   let c_len = String.length c in 
   let d_len = String.length d in 
   let len = a_len + b_len + c_len + d_len in 
-  
+
   let target = Bytes.create len in 
   String.unsafe_blit a 0 target 0 a_len ; 
   String.unsafe_blit b 0 target a_len b_len;
@@ -2285,7 +2249,7 @@ let concat5 a b c d e =
   let d_len = String.length d in 
   let e_len = String.length e in 
   let len = a_len + b_len + c_len + d_len + e_len in 
-  
+
   let target = Bytes.create len in 
   String.unsafe_blit a 0 target 0 a_len ; 
   String.unsafe_blit b 0 target a_len b_len;
@@ -2297,7 +2261,7 @@ let concat5 a b c d e =
 
 
 let inter2 a b = 
-    concat3 a single_space b 
+  concat3 a single_space b 
 
 
 let inter3 a b c = 
@@ -2309,10 +2273,32 @@ let inter3 a b c =
 
 let inter4 a b c d =
   concat_array single_space [| a; b ; c; d|]
-  
-    
+
+
 let parent_dir_lit = ".."    
 let current_dir_lit = "."
+
+
+(* reference {!Bytes.unppercase} *)
+let capitalize_ascii (s : string) : string = 
+  if String.length s = 0 then s 
+  else 
+    begin
+      let c = String.unsafe_get s 0 in 
+      if (c >= 'a' && c <= 'z')
+      || (c >= '\224' && c <= '\246')
+      || (c >= '\248' && c <= '\254') then 
+        let uc = Char.unsafe_chr (Char.code c - 32) in 
+        let bytes = Bytes.of_string s in
+        Bytes.unsafe_set bytes 0 uc;
+        Bytes.unsafe_to_string bytes 
+      else s 
+    end
+
+
+
+
+
 
 end
 module Ounit_array_tests
@@ -2322,6 +2308,11 @@ let ((>::),
     (>:::)) = OUnit.((>::),(>:::))
 
 let (=~) = OUnit.assert_equal
+
+let printer_int_array = fun xs -> 
+    String.concat ","
+    (List.map string_of_int @@ Array.to_list xs )
+
 let suites = 
     __FILE__
     >:::
@@ -2351,9 +2342,15 @@ let suites =
         Ext_array.reverse [||] =~ [||]  
     end     ;
     __LOC__ >:: begin fun _ -> 
-        Ext_array.of_list_map succ [] =~ [||];
-        Ext_array.of_list_map succ [1]  =~ [|2|];
-        Ext_array.of_list_map succ [1;2;3]  =~ [|2;3;4|];
+        let (=~) = OUnit.assert_equal ~printer:printer_int_array in 
+        let k = Ext_array.of_list_map in 
+        k succ [] =~ [||];
+        k succ [1]  =~ [|2|];
+        k succ [1;2;3]  =~ [|2;3;4|];
+        k succ [1;2;3;4]  =~ [|2;3;4;5|];
+        k succ [1;2;3;4;5]  =~ [|2;3;4;5;6|];
+        k succ [1;2;3;4;5;6]  =~ [|2;3;4;5;6;7|];
+        k succ [1;2;3;4;5;6;7]  =~ [|2;3;4;5;6;7;8|];
     end; 
     __LOC__ >:: begin fun _ -> 
         Ext_array.to_list_map_acc
@@ -2909,6 +2906,7 @@ module type S = sig
   val of_sorted_list : elt list ->  t
   val of_sorted_array : elt array -> t 
   val invariant : t -> bool 
+  val print : Format.formatter -> t -> unit 
 end 
 
 end
@@ -3010,13 +3008,14 @@ end = struct
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-# 41
+# 43
 type elt = int 
 let compare_elt = Ext_int.compare 
 type t = elt Set_gen.t
+let print_elt = Format.pp_print_int
 
 
-# 57
+# 67
 let empty = Set_gen.empty 
 let is_empty = Set_gen.is_empty
 let iter = Set_gen.iter
@@ -3158,9 +3157,1013 @@ let invariant t =
   Set_gen.check t ;
   Set_gen.is_ordered compare_elt t          
 
+let print fmt s = 
+  Format.fprintf 
+   fmt   "@[<v>{%a}@]@."
+    (fun fmt s   -> 
+       iter 
+         (fun e -> Format.fprintf fmt "@[<v>%a@],@ " 
+         print_elt e) s
+    )
+    s     
 
 
 
+
+
+end
+module Ext_list : sig 
+#1 "ext_list.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+val map : ('a -> 'b) -> 'a list -> 'b list 
+
+(** [map_last f xs ]
+    will pass [true] to [f] for the last element, 
+    [false] otherwise. 
+    For empty list, it returns empty
+*)
+val map_last : (bool -> 'a -> 'b) -> 'a list -> 'b list
+
+(** [last l]
+    return the last element
+    raise if the list is empty
+*)
+val last : 'a list -> 'a
+
+val append : 'a list -> 'a list -> 'a list 
+
+val map_append :  ('b -> 'a) -> 'b list -> 'a list -> 'a list
+
+val fold_right : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+
+val fold_right2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+
+val map2 : 
+  ('a -> 'b -> 'c) ->
+  'a list ->
+  'b list ->
+  'c list
+
+val fold_left_with_offset : 
+  (int -> 'acc -> 'a -> 'acc) -> 
+  int -> 
+  'acc -> 
+  'a list -> 'acc 
+
+
+(** @unused *)
+val filter_map : ('a -> 'b option) -> 'a list -> 'b list  
+
+(** [exclude p l] is the opposite of [filter p l] *)
+val exclude : ('a -> bool) -> 'a list -> 'a list 
+
+(** [excludes p l]
+    return a tuple [excluded,newl]
+    where [exluded] is true indicates that at least one  
+    element is removed,[newl] is the new list where all [p x] for [x] is false
+
+*)
+val exclude_with_val : ('a -> bool) -> 'a list -> bool * 'a list 
+
+
+val same_length : 'a list -> 'b list -> bool
+
+val init : int -> (int -> 'a) -> 'a list
+
+(** [split_at n l]
+    will split [l] into two lists [a,b], [a] will be of length [n], 
+    otherwise, it will raise
+*)
+val split_at : int -> 'a list -> 'a list * 'a list
+
+
+(** [split_at_last l]
+    It is equivalent to [split_at (List.length l - 1) l ]
+*)
+val split_at_last : 'a list -> 'a list * 'a
+
+val filter_mapi : 
+  (int -> 'a -> 'b option) -> 'a list -> 'b list
+
+val filter_map2 : 
+  ('a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
+
+
+val length_compare : 'a list -> int -> [`Gt | `Eq | `Lt ]
+
+val length_ge : 'a list -> int -> bool
+(**
+
+   {[length xs = length ys + n ]}
+   input n should be positive 
+   TODO: input checking
+*)
+
+val length_larger_than_n : 
+  int -> 'a list -> 'a list -> bool
+
+
+(**
+   [rev_map_append f l1 l2]
+   [map f l1] and reverse it to append [l2]
+   This weird semantics is due to it is the most efficient operation
+   we can do
+*)
+val rev_map_append : ('a -> 'b) -> 'a list -> 'b list -> 'b list
+
+
+val flat_map : 
+  ('a -> 'b list) -> 
+  'a list -> 
+  'b list
+
+val flat_map_append : 
+  ('a -> 'b list) -> 
+  'a list -> 
+  'b list  ->
+  'b list
+
+
+(**
+    [stable_group eq lst]
+    Example:
+    Input:
+   {[
+     stable_group (=) [1;2;3;4;3]
+   ]}
+    Output:
+   {[
+     [[1];[2];[4];[3;3]]
+   ]}
+    TODO: this is O(n^2) behavior 
+    which could be improved later
+*)
+val stable_group : ('a -> 'a -> bool) -> 'a list -> 'a list list 
+
+(** [drop n list]
+    raise when [n] is negative
+    raise when list's length is less than [n]
+*)
+val drop : int -> 'a list -> 'a list 
+
+(** [find_first_not p lst ]
+    if all elements in [lst] pass, return [None] 
+    otherwise return the first element [e] as [Some e] which
+    fails the predicate
+*)
+val find_first_not : ('a -> bool) -> 'a list -> 'a option 
+
+(** [find_opt f l] returns [None] if all return [None],  
+    otherwise returns the first one. 
+*)
+
+val find_opt : ('a -> 'b option) -> 'a list -> 'b option 
+
+
+val rev_iter : ('a -> unit) -> 'a list -> unit 
+
+(** [for_all2_no_exn p xs ys]
+    return [true] if all satisfied,
+    [false] otherwise or length not equal
+*)
+val for_all2_no_exn : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+
+
+
+(** [f] is applied follow the list order *)
+val split_map : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list       
+
+(** [fn] is applied from left to right *)
+val reduce_from_left : 
+  ('a -> 'a -> 'a) -> 'a list -> 'a
+
+val sort_via_array :
+  ('a -> 'a -> int) -> 'a list -> 'a list  
+
+
+
+
+(** [assoc_by_string default key lst]
+    if  [key] is found in the list  return that val,
+    other unbox the [default], 
+    otherwise [assert false ]
+*)
+val assoc_by_string : 
+  'a  option -> string -> (string * 'a) list -> 'a  
+
+val assoc_by_int : 
+  'a  option -> int -> (int * 'a) list -> 'a   
+
+
+val nth_opt : 'a list -> int -> 'a option  
+end = struct
+#1 "ext_list.ml"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+
+
+let rec map f l =
+  match l with
+  | [] ->
+    []
+  | [x1] ->
+    let y1 = f x1 in
+    [y1]
+  | [x1; x2] ->
+    let y1 = f x1 in
+    let y2 = f x2 in
+    [y1; y2]
+  | [x1; x2; x3] ->
+    let y1 = f x1 in
+    let y2 = f x2 in
+    let y3 = f x3 in
+    [y1; y2; y3]
+  | [x1; x2; x3; x4] ->
+    let y1 = f x1 in
+    let y2 = f x2 in
+    let y3 = f x3 in
+    let y4 = f x4 in
+    [y1; y2; y3; y4]
+  | x1::x2::x3::x4::x5::tail ->
+    let y1 = f x1 in
+    let y2 = f x2 in
+    let y3 = f x3 in
+    let y4 = f x4 in
+    let y5 = f x5 in
+    y1::y2::y3::y4::y5::(map f tail)
+
+
+let rec map_last f l =
+  match l with
+  | [] ->
+    []
+  | [x1] ->
+    let y1 = f true x1 in
+    [y1]
+  | [x1; x2] ->
+    let y1 = f false x1 in
+    let y2 = f true x2 in
+    [y1; y2]
+  | [x1; x2; x3] ->
+    let y1 = f false x1 in
+    let y2 = f false x2 in
+    let y3 = f true x3 in
+    [y1; y2; y3]
+  | [x1; x2; x3; x4] ->
+    let y1 = f false x1 in
+    let y2 = f false x2 in
+    let y3 = f false x3 in
+    let y4 = f true x4 in
+    [y1; y2; y3; y4]
+  | x1::x2::x3::x4::tail ->
+    (* make sure that tail is not empty *)    
+    let y1 = f false x1 in
+    let y2 = f false x2 in
+    let y3 = f false x3 in
+    let y4 = f false x4 in
+    y1::y2::y3::y4::(map_last f tail)
+
+let rec last xs =
+  match xs with 
+  | [x] -> x 
+  | _ :: tl -> last tl 
+  | [] -> invalid_arg "Ext_list.last"    
+
+
+
+let rec append_aux l1 l2 = 
+  match l1 with
+  | [] -> l2
+  | [a0] -> a0::l2
+  | [a0;a1] -> a0::a1::l2
+  | [a0;a1;a2] -> a0::a1::a2::l2
+  | [a0;a1;a2;a3] -> a0::a1::a2::a3::l2
+  | [a0;a1;a2;a3;a4] -> a0::a1::a2::a3::a4::l2
+  | a0::a1::a2::a3::a4::rest -> a0::a1::a2::a3::a4::append_aux rest l2
+
+let append l1 l2 =   
+  match l2 with 
+  | [] -> l1 
+  | _ -> append_aux l1 l2  
+
+
+let rec map_append  f l1 l2 =   
+  match l1 with
+  | [] -> l2
+  | [a0] -> f a0::l2
+  | [a0;a1] -> 
+    let b0 = f a0 in 
+    let b1 = f a1 in 
+    b0::b1::l2
+  | [a0;a1;a2] -> 
+    let b0 = f a0 in 
+    let b1 = f a1 in  
+    let b2 = f a2 in 
+    b0::b1::b2::l2
+  | [a0;a1;a2;a3] -> 
+    let b0 = f a0 in 
+    let b1 = f a1 in 
+    let b2 = f a2 in 
+    let b3 = f a3 in 
+    b0::b1::b2::b3::l2
+  | [a0;a1;a2;a3;a4] -> 
+    let b0 = f a0 in 
+    let b1 = f a1 in 
+    let b2 = f a2 in 
+    let b3 = f a3 in 
+    let b4 = f a4 in 
+    b0::b1::b2::b3::b4::l2
+
+  | a0::a1::a2::a3::a4::rest ->
+    let b0 = f a0 in 
+    let b1 = f a1 in 
+    let b2 = f a2 in 
+    let b3 = f a3 in 
+    let b4 = f a4 in 
+    b0::b1::b2::b3::b4::map_append f rest l2 
+
+
+
+let rec fold_right f l acc = 
+  match l with  
+  | [] -> acc 
+  | [a0] -> f a0 acc 
+  | [a0;a1] -> f a0 (f a1 acc)
+  | [a0;a1;a2] -> f a0 (f a1 (f a2 acc))
+  | [a0;a1;a2;a3] -> f a0 (f a1 (f a2 (f a3 acc))) 
+  | [a0;a1;a2;a3;a4] -> 
+    f a0 (f a1 (f a2 (f a3 (f a4 acc))))
+  | a0::a1::a2::a3::a4::rest -> 
+    f a0 (f a1 (f a2 (f a3 (f a4 (fold_right f rest acc)))))  
+
+let rec fold_right2 f l r acc = 
+  match l,r  with  
+  | [],[] -> acc 
+  | [a0],[b0] -> f a0 b0 acc 
+  | [a0;a1],[b0;b1] -> f a0 b0 (f a1 b1 acc)
+  | [a0;a1;a2],[b0;b1;b2] -> f a0 b0 (f a1 b1 (f a2 b2 acc))
+  | [a0;a1;a2;a3],[b0;b1;b2;b3] ->
+    f a0 b0 (f a1 b1 (f a2 b2 (f a3 b3 acc))) 
+  | [a0;a1;a2;a3;a4], [b0;b1;b2;b3;b4] -> 
+    f a0 b0 (f a1 b1 (f a2 b2 (f a3 b3 (f a4 b4 acc))))
+  | a0::a1::a2::a3::a4::arest, b0::b1::b2::b3::b4::brest -> 
+    f a0 b0 (f a1 b1 (f a2 b2 (f a3 b3 (f a4 b4 (fold_right2 f arest brest acc)))))  
+  | _, _ -> invalid_arg "Ext_list.fold_right2"
+
+let rec map2 f l r = 
+  match l,r  with  
+  | [],[] -> []
+  | [a0],[b0] -> [f a0 b0]
+  | [a0;a1],[b0;b1] -> 
+    let c0 = f a0 b0 in 
+    let c1 = f a1 b1 in 
+    [c0; c1]
+  | [a0;a1;a2],[b0;b1;b2] -> 
+    let c0 = f a0 b0 in 
+    let c1 = f a1 b1 in 
+    let c2 = f a2 b2 in 
+    [c0;c1;c2]
+  | [a0;a1;a2;a3],[b0;b1;b2;b3] ->
+    let c0 = f a0 b0 in 
+    let c1 = f a1 b1 in 
+    let c2 = f a2 b2 in 
+    let c3 = f a3 b3 in 
+    [c0;c1;c2;c3]
+  | [a0;a1;a2;a3;a4], [b0;b1;b2;b3;b4] -> 
+    let c0 = f a0 b0 in 
+    let c1 = f a1 b1 in 
+    let c2 = f a2 b2 in 
+    let c3 = f a3 b3 in 
+    let c4 = f a4 b4 in 
+    [c0;c1;c2;c3;c4]
+  | a0::a1::a2::a3::a4::arest, b0::b1::b2::b3::b4::brest -> 
+    let c0 = f a0 b0 in 
+    let c1 = f a1 b1 in 
+    let c2 = f a2 b2 in 
+    let c3 = f a3 b3 in 
+    let c4 = f a4 b4 in 
+    c0::c1::c2::c3::c4::map2 f arest brest
+  | _, _ -> invalid_arg "Ext_list.map2"
+
+let rec fold_left_with_offset f i accu l =
+  match l with
+  | [] -> accu
+  | a::l -> fold_left_with_offset f (succ i) (f i accu a) l
+
+
+let rec filter_map (f: 'a -> 'b option) xs = 
+  match xs with 
+  | [] -> []
+  | y :: ys -> 
+    begin match f y with 
+      | None -> filter_map f ys
+      | Some z -> z :: filter_map f ys
+    end
+
+let rec exclude p xs =   
+  match xs with 
+  | [] ->  []
+  | x::xs -> 
+    if p x then exclude p xs 
+    else x:: exclude p xs  
+
+let rec exclude_with_val p l =
+  match l with 
+  | [] ->  false, l
+  | a0::xs -> 
+    if p a0 then true, exclude p xs 
+    else 
+      match xs with 
+      | [] -> false, l 
+      | a1::rest -> 
+        if p a1 then 
+          true, a0:: exclude p rest 
+        else 
+          let st,rest = exclude_with_val p rest in 
+          if st then 
+            st, a0::a1::rest
+          else st, l 
+
+
+
+let rec same_length xs ys = 
+  match xs, ys with 
+  | [], [] -> true
+  | _::xs, _::ys -> same_length xs ys 
+  | _, _ -> false 
+
+
+let init n f = 
+  match n with 
+  | 0 -> []
+  | 1 -> 
+    let a0 = f 0 in  
+    [a0]
+  | 2 -> 
+    let a0 = f 0 in 
+    let a1 = f 1 in 
+    [a0; a1]
+  | 3 -> 
+    let a0 = f 0 in 
+    let a1 = f 1 in 
+    let a2 = f 2 in 
+    [a0; a1; a2]
+  | 4 -> 
+    let a0 = f 0 in 
+    let a1 = f 1 in 
+    let a2 = f 2 in 
+    let a3 = f 3 in 
+    [a0; a1; a2; a3]
+  | 5 -> 
+    let a0 = f 0 in 
+    let a1 = f 1 in 
+    let a2 = f 2 in 
+    let a3 = f 3 in 
+    let a4 = f 4 in  
+    [a0; a1; a2; a3; a4]
+  | _ ->
+    Array.to_list (Array.init n f)
+
+let rec small_split_at n acc l = 
+  if n <= 0 then List.rev acc , l 
+  else 
+    match l with 
+    | x::xs -> small_split_at (n - 1) (x ::acc) xs 
+    | _ -> invalid_arg "Ext_list.split_at"
+
+let split_at n l = 
+  small_split_at n [] l 
+
+let rec split_at_last_aux acc x = 
+  match x with 
+  | [] -> invalid_arg "Ext_list.split_at_last"
+  | [ x] -> List.rev acc, x
+  | y0::ys -> split_at_last_aux (y0::acc) ys   
+
+let split_at_last (x : 'a list) = 
+  match x with 
+  | [] -> invalid_arg "Ext_list.split_at_last"
+  | [a0] -> 
+    [], a0
+  | [a0;a1] -> 
+    [a0], a1  
+  | [a0;a1;a2] -> 
+    [a0;a1], a2 
+  | [a0;a1;a2;a3] -> 
+    [a0;a1;a2], a3 
+  | [a0;a1;a2;a3;a4] ->
+    [a0;a1;a2;a3], a4 
+  | a0::a1::a2::a3::a4::rest  ->  
+    let rev, last = split_at_last_aux [] rest
+    in 
+    a0::a1::a2::a3::a4::  rev , last
+
+(**
+   can not do loop unroll due to state combination
+*)  
+let  filter_mapi (f: int -> 'a -> 'b option) xs = 
+  let rec aux i xs = 
+    match xs with 
+    | [] -> []
+    | y :: ys -> 
+      begin match f i y with 
+        | None -> aux (i + 1) ys
+        | Some z -> z :: aux (i + 1) ys
+      end in
+  aux 0 xs 
+
+let rec filter_map2 (f: 'a -> 'b -> 'c option) xs ys = 
+  match xs,ys with 
+  | [],[] -> []
+  | u::us, v :: vs -> 
+    begin match f u v with 
+      | None -> filter_map2 f us vs (* idea: rec f us vs instead? *)
+      | Some z -> z :: filter_map2 f us vs
+    end
+  | _ -> invalid_arg "Ext_list.filter_map2"
+
+
+let rec rev_map_append  f l1 l2 =
+  match l1 with
+  | [] -> l2
+  | a :: l -> rev_map_append f l (f a :: l2)
+
+
+let rec rev_append l1 l2 =
+  match l1 with
+    [] -> l2
+  | a :: l -> rev_append l   (a :: l2)
+
+(** It is not worth loop unrolling, 
+    it is already tail-call, and we need to be careful 
+    about evaluation order when unroll
+*)
+let rec flat_map_aux f acc append lx =
+  match lx with
+  | [] -> rev_append acc  append
+  | a0::rest -> flat_map_aux f (rev_append (f a0)  acc ) append rest 
+
+let flat_map f lx =
+  flat_map_aux f [] [] lx
+
+let flat_map_append f lx append  =
+  flat_map_aux f [] append lx  
+
+
+let rec length_compare l n = 
+  if n < 0 then `Gt 
+  else 
+    begin match l with 
+      | _ ::xs -> length_compare xs (n - 1)
+      | [] ->  
+        if n = 0 then `Eq 
+        else `Lt 
+    end
+
+let rec length_ge l n =   
+  if n > 0 then
+    match l with 
+    | _ :: tl -> length_ge tl (n - 1)
+    | [] -> false
+  else true
+(**
+
+   {[length xs = length ys + n ]}
+*)
+let rec length_larger_than_n n xs ys =
+  match xs, ys with 
+  | _, [] -> length_compare xs n = `Eq   
+  | _::xs, _::ys -> 
+    length_larger_than_n n xs ys
+  | [], _ -> false 
+
+
+
+
+let rec group (eq : 'a -> 'a -> bool) lst =
+  match lst with 
+  | [] -> []
+  | x::xs -> 
+    aux eq x (group eq xs )
+
+and aux eq (x : 'a)  (xss : 'a list list) : 'a list list = 
+  match xss with 
+  | [] -> [[x]]
+  | (y0::_ as y)::ys -> (* cannot be empty *) 
+    if eq x y0 then
+      (x::y) :: ys 
+    else
+      y :: aux eq x ys                                 
+  | _ :: _ -> assert false    
+
+let stable_group eq lst =  group eq lst |> List.rev  
+
+let rec drop n h = 
+  if n < 0 then invalid_arg "Ext_list.drop"
+  else
+  if n = 0 then h 
+  else 
+    match h with 
+    | [] ->
+      invalid_arg "Ext_list.drop"
+    | _ :: tl ->   
+      drop (n - 1) tl
+
+let rec find_first_not  p = function
+  | [] -> None
+  | a::l -> 
+    if p a 
+    then find_first_not p l
+    else Some a 
+
+
+let rec rev_iter f l = 
+  match l with
+  | [] -> ()    
+  | [x1] ->
+    f x1 
+  | [x1; x2] ->
+    f x2 ; f x1 
+  | [x1; x2; x3] ->
+    f x3 ; f x2 ; f x1 
+  | [x1; x2; x3; x4] ->
+    f x4; f x3; f x2; f x1 
+  | x1::x2::x3::x4::x5::tail ->
+    rev_iter f tail;
+    f x5; f x4 ; f x3; f x2 ; f x1
+
+
+let rec for_all2_no_exn p l1 l2 = 
+  match (l1, l2) with
+  | ([], []) -> true
+  | (a1::l1, a2::l2) -> p a1 a2 && for_all2_no_exn p l1 l2
+  | (_, _) -> false
+
+
+let rec find_opt p = function
+  | [] -> None
+  | x :: l -> 
+    match  p x with 
+    | Some _ as v  ->  v
+    | None -> find_opt p l 
+
+
+
+let rec split_map f l = 
+  match l with
+  | [] ->
+    [],[]
+  | [x1] ->
+    let a0,b0 = f x1 in
+    [a0],[b0]
+  | [x1; x2] ->
+    let a1,b1 = f x1 in
+    let a2,b2 = f x2 in
+    [a1;a2],[b1;b2]
+  | [x1; x2; x3] ->
+    let a1,b1 = f x1 in
+    let a2,b2 = f x2 in
+    let a3,b3 = f x3 in
+    [a1;a2;a3], [b1;b2;b3]
+  | [x1; x2; x3; x4] ->
+    let a1,b1 = f x1 in
+    let a2,b2 = f x2 in
+    let a3,b3 = f x3 in
+    let a4,b4 = f x4 in
+    [a1;a2;a3;a4], [b1;b2;b3;b4] 
+  | x1::x2::x3::x4::x5::tail ->
+    let a1,b1 = f x1 in
+    let a2,b2 = f x2 in
+    let a3,b3 = f x3 in
+    let a4,b4 = f x4 in
+    let a5,b5 = f x5 in
+    let ass,bss = split_map f tail in 
+    a1::a2::a3::a4::a5::ass,
+    b1::b2::b3::b4::b5::bss
+
+
+let reduce_from_left fn lst = 
+  match lst with 
+  | first :: rest ->  List.fold_left fn first rest 
+  | _ -> invalid_arg "Ext_list.reduce_from_left"
+
+
+let sort_via_array cmp lst =
+  let arr = Array.of_list lst  in
+  Array.sort cmp arr;
+  Array.to_list arr
+
+
+
+
+let rec assoc_by_string def (k : string) lst = 
+  match lst with 
+  | [] -> 
+    begin match def with 
+      | None -> assert false 
+      | Some x -> x end
+  | (k1,v1)::rest -> 
+    if Ext_string.equal k1 k then v1 else 
+      assoc_by_string def k rest 
+
+let rec assoc_by_int def (k : int) lst = 
+  match lst with 
+  | [] -> 
+    begin match def with
+      | None -> assert false 
+      | Some x -> x end
+  | (k1,v1)::rest -> 
+    if k1 = k then v1 else 
+      assoc_by_int def k rest     
+
+
+let rec nth_aux l n =
+  match l with
+  | [] -> None
+  | a::l -> if n = 0 then Some a else nth_aux l (n-1)
+
+let nth_opt l n =
+  if n < 0 then None 
+  else
+    nth_aux l n
+end
+module Ext_pervasives : sig 
+#1 "ext_pervasives.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+
+
+
+
+
+
+(** Extension to standard library [Pervavives] module, safe to open 
+  *)
+
+external reraise: exn -> 'a = "%reraise"
+
+val finally : 'a -> ('a -> 'c) -> ('a -> 'b) -> 'b
+
+val with_file_as_chan : string -> (out_channel -> 'a) -> 'a
+
+val with_file_as_pp : string -> (Format.formatter -> 'a) -> 'a
+
+val is_pos_pow : Int32.t -> int
+
+val failwithf : loc:string -> ('a, unit, string, 'b) format4 -> 'a
+
+val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
+
+val bad_argf : ('a, unit, string, 'b) format4 -> 'a
+
+
+
+val dump : 'a -> string 
+val pp_any : Format.formatter -> 'a -> unit 
+external id : 'a -> 'a = "%identity"
+
+(** Copied from {!Btype.hash_variant}:
+    need sync up and add test case
+ *)
+val hash_variant : string -> int
+
+end = struct
+#1 "ext_pervasives.ml"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+
+
+
+
+external reraise: exn -> 'a = "%reraise"
+
+let finally v action f   = 
+  match f v with
+  | exception e -> 
+      action v ;
+      reraise e 
+  | e ->  action v ; e 
+
+let with_file_as_chan filename f = 
+  finally (open_out_bin filename) close_out f 
+
+let with_file_as_pp filename f = 
+  finally (open_out_bin filename) close_out
+    (fun chan -> 
+      let fmt = Format.formatter_of_out_channel chan in
+      let v = f  fmt in
+      Format.pp_print_flush fmt ();
+      v
+    ) 
+
+
+let  is_pos_pow n = 
+  let module M = struct exception E end in 
+  let rec aux c (n : Int32.t) = 
+    if n <= 0l then -2 
+    else if n = 1l then c 
+    else if Int32.logand n 1l =  0l then   
+      aux (c + 1) (Int32.shift_right n 1 )
+    else raise M.E in 
+  try aux 0 n  with M.E -> -1
+
+let failwithf ~loc fmt = Format.ksprintf (fun s -> failwith (loc ^ s))
+    fmt
+    
+let invalid_argf fmt = Format.ksprintf invalid_arg fmt
+
+let bad_argf fmt = Format.ksprintf (fun x -> raise (Arg.Bad x ) ) fmt
+
+
+let rec dump r =
+  if Obj.is_int r then
+    string_of_int (Obj.magic r : int)
+  else (* Block. *)
+    let rec get_fields acc = function
+      | 0 -> acc
+      | n -> let n = n-1 in get_fields (Obj.field r n :: acc) n
+    in
+    let rec is_list r =
+      if Obj.is_int r then
+        r = Obj.repr 0 (* [] *)
+      else
+        let s = Obj.size r and t = Obj.tag r in
+        t = 0 && s = 2 && is_list (Obj.field r 1) (* h :: t *)
+    in
+    let rec get_list r =
+      if Obj.is_int r then
+        []
+      else
+        let h = Obj.field r 0 and t = get_list (Obj.field r 1) in
+        h :: t
+    in
+    let opaque name =
+      (* XXX In future, print the address of value 'r'.  Not possible
+       * in pure OCaml at the moment.  *)
+      "<" ^ name ^ ">"
+    in
+    let s = Obj.size r and t = Obj.tag r in
+    (* From the tag, determine the type of block. *)
+    match t with
+    | _ when is_list r ->
+      let fields = get_list r in
+      "[" ^ String.concat "; " (Ext_list.map dump fields) ^ "]"
+    | 0 ->
+      let fields = get_fields [] s in
+      "(" ^ String.concat ", " (Ext_list.map dump fields) ^ ")"
+    | x when x = Obj.lazy_tag ->
+      (* Note that [lazy_tag .. forward_tag] are < no_scan_tag.  Not
+         * clear if very large constructed values could have the same
+         * tag. XXX *)
+      opaque "lazy"
+    | x when x = Obj.closure_tag ->
+      opaque "closure"
+    | x when x = Obj.object_tag ->
+      let fields = get_fields [] s in
+      let _clasz, id, slots =
+        match fields with
+        | h::h'::t -> h, h', t
+        | _ -> assert false
+      in
+      (* No information on decoding the class (first field).  So just print
+         * out the ID and the slots. *)
+      "Object #" ^ dump id ^ " (" ^ String.concat ", " (Ext_list.map dump slots) ^ ")"
+    | x when x = Obj.infix_tag ->
+      opaque "infix"
+    | x when x = Obj.forward_tag ->
+      opaque "forward"
+    | x when x < Obj.no_scan_tag ->
+      let fields = get_fields [] s in
+      "Tag" ^ string_of_int t ^
+      " (" ^ String.concat ", " (Ext_list.map dump fields) ^ ")"
+    | x when x = Obj.string_tag ->
+      "\"" ^ String.escaped (Obj.magic r : string) ^ "\""
+    | x when x = Obj.double_tag ->
+      string_of_float (Obj.magic r : float)
+    | x when x = Obj.abstract_tag ->
+      opaque "abstract"
+    | x when x = Obj.custom_tag ->
+      opaque "custom"
+    | x when x = Obj.custom_tag ->
+      opaque "final"
+    | x when x = Obj.double_array_tag ->
+      "[|"^
+      String.concat ";"
+        (Array.to_list (Array.map string_of_float (Obj.magic r : float array))) ^
+      "|]"
+    | _ ->
+      opaque (Printf.sprintf "unknown: tag %d size %d" t s)
+
+let dump v = dump (Obj.repr v)
+
+let pp_any fmt v = 
+  Format.fprintf fmt "@[%s@]"
+  (dump v )
+external id : 'a -> 'a = "%identity"
+
+
+let hash_variant s =
+  let accu = ref 0 in
+  for i = 0 to String.length s - 1 do
+    accu := 223 * !accu + Char.code s.[i]
+  done;
+  (* reduce to 31 bits *)
+  accu := !accu land (1 lsl 31 - 1);
+  (* make it signed for 64 bits architectures *)
+  if !accu > 0x3FFFFFFF then !accu - (1 lsl 31) else !accu
 
 
 end
@@ -3272,12 +4275,13 @@ end = struct
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-# 50
+# 59
 type 'a t = 'a Set_gen.t
 let compare_elt = Pervasives.compare
+let print_elt = Ext_pervasives.pp_any
 
 
-# 57
+# 67
 let empty = Set_gen.empty 
 let is_empty = Set_gen.is_empty
 let iter = Set_gen.iter
@@ -3419,6 +4423,15 @@ let invariant t =
   Set_gen.check t ;
   Set_gen.is_ordered compare_elt t          
 
+let print fmt s = 
+  Format.fprintf 
+   fmt   "@[<v>{%a}@]@."
+    (fun fmt s   -> 
+       iter 
+         (fun e -> Format.fprintf fmt "@[<v>%a@],@ " 
+         print_elt e) s
+    )
+    s     
 
 
 
@@ -3917,6 +4930,7 @@ val suffix_mlast : string
 val suffix_mlast_simple : string
 val suffix_mliast : string
 val suffix_mliast_simple : string
+val suffix_mlmap : string
 val suffix_mll : string
 val suffix_re : string
 val suffix_rei : string 
@@ -3924,22 +4938,21 @@ val suffix_rei : string
 val suffix_d : string
 val suffix_mlastd : string
 val suffix_mliastd : string
-val suffix_js : string
+
 val suffix_mli : string 
 val suffix_cmt : string 
 val suffix_cmti : string 
 
 val commonjs : string 
 val amdjs : string 
-val goog : string 
 val es6 : string 
 val es6_global : string
 val amdjs_global : string 
 val unused_attribute : string 
 val dash_nostdlib : string
 
-val reactjs_jsx_ppx_exe : string 
 val reactjs_jsx_ppx_2_exe : string 
+val reactjs_jsx_ppx_3_exe : string 
 val unescaped_j_delimiter : string 
 val escaped_j_delimiter : string 
 
@@ -3948,6 +4961,10 @@ val unescaped_js_delimiter : string
 val native : string
 val bytecode : string
 val js : string
+
+val node_sep : string 
+val node_parent : string 
+val node_current : string 
 
 end = struct
 #1 "literals.ml"
@@ -4045,6 +5062,7 @@ let suffix_ml = ".ml"
 let suffix_mli = ".mli"
 let suffix_re = ".re"
 let suffix_rei = ".rei"
+let suffix_mlmap = ".mlmap"
 
 let suffix_cmt = ".cmt" 
 let suffix_cmti = ".cmti" 
@@ -4055,19 +5073,18 @@ let suffix_mliast_simple = ".mliast_simple"
 let suffix_d = ".d"
 let suffix_mlastd = ".mlast.d"
 let suffix_mliastd = ".mliast.d"
-let suffix_js = ".js"
+
 
 let commonjs = "commonjs" 
 let amdjs = "amdjs"
-let goog = "goog"
 let es6 = "es6"
 let es6_global = "es6-global"
 let amdjs_global = "amdjs-global"
 let unused_attribute = "Unused attribute " 
 let dash_nostdlib = "-nostdlib"
 
-let reactjs_jsx_ppx_exe  = "reactjs_jsx_ppx.exe"
 let reactjs_jsx_ppx_2_exe = "reactjs_jsx_ppx_2.exe"
+let reactjs_jsx_ppx_3_exe  = "reactjs_jsx_ppx_3.exe"
 let unescaped_j_delimiter = "j"
 let unescaped_js_delimiter = "js"
 let escaped_j_delimiter =  "*j" (* not user level syntax allowed *)
@@ -4075,6 +5092,14 @@ let escaped_j_delimiter =  "*j" (* not user level syntax allowed *)
 let native = "native"
 let bytecode = "bytecode"
 let js = "js"
+
+
+
+(** Used when produce node compatible paths *)
+let node_sep = "/"
+let node_parent = ".."
+let node_current = "."
+
 
 end
 module Ounit_cmd_util : sig 
@@ -4092,7 +5117,7 @@ val perform : string -> string array -> output
 val perform_bsc : string array -> output 
 
 
-val bsc_eval : string -> output 
+ val bsc_check_eval : string -> output  
 
 val debug_output : output -> unit 
 end = struct
@@ -4106,7 +5131,7 @@ let rec unsafe_root_dir_aux cwd  =
 
 let project_root = unsafe_root_dir_aux (Sys.getcwd ())
 let jscomp = project_root // "jscomp"
-let bsc_bin = jscomp // "bin" 
+let bsc_bin = project_root // "lib" 
 
 let bsc_exe = bsc_bin // "bsc.exe"
 let runtime_dir = jscomp // "runtime"
@@ -4201,7 +5226,7 @@ let perform_bsc args =
          stdlib_dir
        |] args)
 
-let bsc_eval str = 
+let bsc_check_eval str = 
   perform_bsc [|"-bs-eval"; str|]        
 
   let debug_output o = 
@@ -4232,33 +5257,9 @@ let (=~) = OUnit.assert_equal
     let in_chan = Unix.in_channel_of_descr readme *)
 
 
-let react = {|
-type u 
-
-external a : u = "react" [@@bs.module]
-
-external b : unit -> int = "bool" [@@bs.module "react"]
-
-let v = a
-let h = b ()
-
-|}        
-let foo_react = {|
-type bla
-
-
-external foo : bla = "foo.react" [@@bs.module]
-
-external bar : unit -> bla  = "bar" [@@bs.val] [@@bs.module "foo.react"]
-
-let c = foo 
-
-let d = bar ()
-
-|}
 
 let perform_bsc = Ounit_cmd_util.perform_bsc
-let bsc_eval = Ounit_cmd_util.bsc_eval
+let bsc_check_eval = Ounit_cmd_util.bsc_check_eval 
 
 
 let suites = 
@@ -4272,96 +5273,82 @@ let suites =
       (* Printf.printf "\n*>%s" v_output.stderr ; *)
     end; 
     __LOC__ >:: begin fun _ -> 
-      let simple_quote = 
+      let v_output = 
         perform_bsc  [| "-bs-eval"; {|let str = "'a'" |}|] in 
-      OUnit.assert_bool __LOC__ (simple_quote.exit_code = 0)
+      OUnit.assert_bool __LOC__ (v_output.exit_code = 0)
     end;
     __LOC__ >:: begin fun _ -> 
       let should_be_warning = 
-        bsc_eval  {|let bla4 foo x y= foo##(method1 x y [@bs]) |} in 
+        bsc_check_eval  {|let bla4 foo x y= foo##(method1 x y [@bs]) |} in 
       (* debug_output should_be_warning; *)
       OUnit.assert_bool __LOC__ (Ext_string.contain_substring
-                                   should_be_warning.stderr Literals.unused_attribute)
+                                   should_be_warning.stderr "Unused")
     end;
+     __LOC__ >:: begin fun _ ->    
+      let should_be_warning = 
+        bsc_check_eval  {| external mk : int -> ([`a|`b [@bs.string]]) = "" [@@bs.val] |} in 
+        OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring
+                                   should_be_warning.stderr "Unused")
+     end;
     __LOC__ >:: begin fun _ -> 
-      let dedupe_require = 
-        bsc_eval (react ^ foo_react) in 
-      OUnit.assert_bool __LOC__ (Ext_string.non_overlap_count
-                                   dedupe_require.stdout ~sub:"require" = 2
-                                )     
-    end;
-    __LOC__ >:: begin fun _ -> 
-      let dedupe_require = 
-        bsc_eval react in 
-      OUnit.assert_bool __LOC__ (Ext_string.non_overlap_count
-                                   dedupe_require.stdout ~sub:"require" = 1
-                                )     
-    end;
-    __LOC__ >:: begin fun _ -> 
-      let dedupe_require = 
-        bsc_eval foo_react in 
-      OUnit.assert_bool __LOC__ (Ext_string.non_overlap_count
-                                   dedupe_require.stdout ~sub:"require" = 1
-                                )     
-    end;
-    __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
 external ff : 
     resp -> (_ [@bs.as "x"]) -> int -> unit = 
     "x" [@@bs.set]      
       |} in 
       OUnit.assert_bool __LOC__ 
-      (Ext_string.contain_substring should_err.stderr
-      "Ill defined"
-      )
+        (Ext_string.contain_substring should_err.stderr
+           "Ill defined"
+        )
     end;
 
     __LOC__ >:: begin fun _ -> 
-(** used in return value 
-    This should fail, we did not 
-    support uncurry return value yet
-*)
-    let should_err = bsc_eval {|
+      (** used in return value 
+          This should fail, we did not 
+          support uncurry return value yet
+      *)
+      let should_err = bsc_check_eval {|
     external v3 :
     int -> int -> (int -> int -> int [@bs.uncurry])
     = ""[@@bs.val]
 
     |} in 
-    (* Ounit_cmd_util.debug_output should_err;*)
-    OUnit.assert_bool __LOC__
-    (Ext_string.contain_substring 
-    should_err.stderr "bs.uncurry")
+      (* Ounit_cmd_util.debug_output should_err;*)
+      OUnit.assert_bool __LOC__
+        (Ext_string.contain_substring 
+           should_err.stderr "bs.uncurry")
     end ;
 
     __LOC__ >:: begin fun _ -> 
-    let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
     external v4 :  
     (int -> int -> int [@bs.uncurry]) = ""
     [@@bs.val]
 
     |} in 
-    (* Ounit_cmd_util.debug_output should_err ; *)
-    OUnit.assert_bool __LOC__
-    (Ext_string.contain_substring 
-    should_err.stderr "bs.uncurry")
-  end ;
+      (* Ounit_cmd_util.debug_output should_err ; *)
+      OUnit.assert_bool __LOC__
+        (Ext_string.contain_substring 
+           should_err.stderr "bs.uncurry")
+    end ;
 
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
       {js| \uFFF|js}
       |} in 
       OUnit.assert_bool __LOC__ (not @@ Ext_string.is_empty should_err.stderr)
     end;
 
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
       external mk : int -> ([`a|`b] [@bs.string]) = "" [@@bs.val]
       |} in 
       OUnit.assert_bool __LOC__ (not @@ Ext_string.is_empty should_err.stderr)
     end;
-    
+
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
       external mk : int -> ([`a|`b] ) = "" [@@bs.val]
       |} in 
       OUnit.assert_bool __LOC__ ( Ext_string.is_empty should_err.stderr)
@@ -4372,7 +5359,7 @@ external ff :
     end;
 
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
       type t 
       external mk : int -> (_ [@bs.as {json| { x : 3 } |json}]) ->  t = "" [@@bs.val]
       |} in 
@@ -4380,7 +5367,7 @@ external ff :
     end
     ;
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
       type t 
       external mk : int -> (_ [@bs.as {json| { "x" : 3 } |json}]) ->  t = "" [@@bs.val]
       |} in 
@@ -4389,7 +5376,7 @@ external ff :
     ;
     (* #1510 *)
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
        let should_fail = fun [@bs.this] (Some x) y u -> y + u 
       |} in 
       OUnit.assert_bool __LOC__ 
@@ -4397,7 +5384,7 @@ external ff :
     end;
 
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
        let should_fail = fun [@bs.this] (Some x as v) y u -> y + u 
       |} in 
       (* Ounit_cmd_util.debug_output should_err; *)
@@ -4406,7 +5393,7 @@ external ff :
     end;
 
     __LOC__ >:: begin fun _ -> 
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
      external f : string -> unit -> unit = "x.y" [@@bs.send]
      |} in 
       OUnit.assert_bool __LOC__ 
@@ -4417,7 +5404,7 @@ external ff :
 
 
     __LOC__ >:: begin fun _ ->
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
           external f : int = "%identity"
 |} in
       OUnit.assert_bool __LOC__
@@ -4425,21 +5412,21 @@ external ff :
     end;
 
     __LOC__ >:: begin fun _ ->
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
           external f : int -> int = "%identity"
 |} in
       OUnit.assert_bool __LOC__
-         (Ext_string.is_empty should_err.stderr)
+        (Ext_string.is_empty should_err.stderr)
     end;
     __LOC__ >:: begin fun _ ->
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
           external f : int -> int -> int = "%identity"
 |} in
       OUnit.assert_bool __LOC__
-         (not (Ext_string.is_empty should_err.stderr))
+        (not (Ext_string.is_empty should_err.stderr))
     end;
     __LOC__ >:: begin fun _ ->
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
           external f : (int -> int) -> int = "%identity"
 |} in
       OUnit.assert_bool __LOC__
@@ -4448,14 +5435,46 @@ external ff :
     end;
 
     __LOC__ >:: begin fun _ ->
-      let should_err = bsc_eval {|
+      let should_err = bsc_check_eval {|
           external f : int -> (int-> int) = "%identity"
 |} in
       OUnit.assert_bool __LOC__
         (not (Ext_string.is_empty should_err.stderr))
 
     end;
-
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external foo_bar :
+    (_ [@bs.as "foo"]) ->
+    string ->
+    string = "bar"
+  [@@bs.send]
+    |} in 
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr "Ill defined attribute")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+      let bla4 foo x y = foo##(method1 x y [@bs])
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external mk : int -> 
+  (
+    [`a|`b] 
+     [@bs.string] 
+  ) = "" [@@bs.val]       
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end
     (* __LOC__ >:: begin fun _ ->  *)
     (*   let should_infer = perform_bsc [| "-i"; "-bs-eval"|] {| *)
     (*      let  f = fun [@bs] x -> let (a,b) = x in a + b  *)
@@ -4491,7 +5510,7 @@ let (=~) = OUnit.assert_equal
 
 
 
-let bsc_eval = Ounit_cmd_util.bsc_eval
+let bsc_eval = Ounit_cmd_util.bsc_check_eval
 
 let debug_output = Ounit_cmd_util.debug_output
 
@@ -4525,11 +5544,38 @@ let output = bsc_eval {|
         |} in
         OUnit.assert_bool __LOC__
             (Ext_string.contain_substring output.stderr "hi_should_error")        
+        end;
+
+        __LOC__ >:: begin fun _ ->
+          (**
+             Each [@bs.unwrap] variant constructor requires an argument
+          *)
+          let output =
+            bsc_eval {|
+              external err :
+              ?hi_should_error:([`a of int | `b] [@bs.unwrap]) -> unit -> unit = "" [@@bs.val]
+            |}
+          in
+          OUnit.assert_bool __LOC__
+            (Ext_string.contain_substring output.stderr "bs.unwrap")
+        end;
+
+        __LOC__ >:: begin fun _ ->
+          (**
+             [@bs.unwrap] args are not supported in [@@bs.obj] functions
+          *)
+          let output =
+            bsc_eval {|
+              external err :
+              ?hi_should_error:([`a of int] [@bs.unwrap]) -> unit -> _ = "" [@@bs.obj]
+            |}
+          in
+          OUnit.assert_bool __LOC__
+            (Ext_string.contain_substring output.stderr "hi_should_error")
         end
 
-        
-
     ]
+
 end
 module Ext_util : sig 
 #1 "ext_util.mli"
@@ -6387,7 +7433,7 @@ module Ext_ident : sig
 
 (** A wrapper around [Ident] module in compiler-libs*)
 
-val is_js : Ident.t -> bool
+ val is_js : Ident.t -> bool 
 
 val is_js_object : Ident.t -> bool
 
@@ -6396,27 +7442,25 @@ val create_js : string -> Ident.t
 
 val create : string -> Ident.t
 
-(* val create_js_module : string -> Ident.t  *)
-
-val make_js_object : Ident.t -> unit
+ val make_js_object : Ident.t -> unit 
 
 val reset : unit -> unit
 
-val gen_js :  ?name:string -> unit -> Ident.t
+val create_tmp :  ?name:string -> unit -> Ident.t
 
-val make_unused : unit -> Ident.t
+val make_unused : unit -> Ident.t 
 
-val is_unused_ident : Ident.t -> bool 
+
 
 (**
-   if name is not converted, the reference should be equal
+   Invariant: if name is not converted, the reference should be equal
 *)
-val convert : bool -> string -> string
-val property_no_need_convert : string -> bool 
+val convert : string -> string
+
 
 val undefined : Ident.t 
 val is_js_or_global : Ident.t -> bool
-val nil : Ident.t
+ val nil : Ident.t 
 
 
 val compare : Ident.t -> Ident.t -> int
@@ -6460,11 +7504,11 @@ let js_flag = 0b1_000 (* check with ocaml compiler *)
 (* let js_module_flag = 0b10_000 (\* javascript external modules *\) *)
 (* TODO:
     check name conflicts with javascript conventions
-    {[
-    Ext_ident.convert "^";;
-    - : string = "$caret"
-    ]}
- *)
+   {[
+     Ext_ident.convert "^";;
+     - : string = "$caret"
+   ]}
+*)
 let js_object_flag = 0b100_000 (* javascript object flags *)
 
 let is_js (i : Ident.t) = 
@@ -6479,44 +7523,47 @@ let is_js_object (i : Ident.t) =
 
 let make_js_object (i : Ident.t) = 
   i.flags <- i.flags lor js_object_flag 
-      
+
 (* It's a js function hard coded by js api, so when printing,
    it should preserve the name 
- *)
+*)
 let create_js (name : string) : Ident.t  = 
   { name = name; flags = js_flag ; stamp = 0}
+
+let create = Ident.create
+
+(* FIXME: no need for `$' operator *)
+let create_tmp ?(name=Literals.tmp) () = create name 
+
 
 let js_module_table : Ident.t String_hashtbl.t = String_hashtbl.create 31 
 
 (* This is for a js exeternal module, we can change it when printing
    for example
    {[
-   var React$1 = require('react');
-   React$1.render(..)
+     var React$1 = require('react');
+     React$1.render(..)
    ]}
 
    Given a name, if duplicated, they should  have the same id
- *)
+*)
 let create_js_module (name : string) : Ident.t = 
   let name = 
-    String.concat "" @@ List.map (String.capitalize ) @@ 
+    String.concat "" @@ Ext_list.map (Ext_string.capitalize_ascii ) @@ 
     Ext_string.split name '-' in
   (* TODO: if we do such transformation, we should avoid       collision for example:
       react-dom 
       react--dom
       check collision later
-   *)
+  *)
   match String_hashtbl.find_exn js_module_table name  with 
   | exception Not_found -> 
-      let ans = Ident.create name in
-      (* let ans = { v with flags = js_module_flag} in  *)
-      String_hashtbl.add js_module_table name ans;
-      ans
+    let ans = Ident.create name in
+    (* let ans = { v with flags = js_module_flag} in  *)
+    String_hashtbl.add js_module_table name ans;
+    ans
   | v -> (* v *) Ident.rename v  
 
-let create = Ident.create
-
-let gen_js ?(name="$js") () = create name 
 
 let reserved_words = 
   [|
@@ -6562,55 +7609,55 @@ let reserved_words =
 
     (* also reserved in ECMAScript 6 *)
     "await";
-   
-   "event";
-   "location";
-   "window";
-   "document";
-   "eval";
-   "navigator";
-   (* "self"; *)
-   
-   "Array";
-   "Date";
-   "Math";
-   "JSON";
-   "Object";
-   "RegExp";
-   "String";
-   "Boolean";
-   "Number";
 
-   "Map"; (* es6*)
-   "Set";
+    "event";
+    "location";
+    "window";
+    "document";
+    "eval";
+    "navigator";
+    (* "self"; *)
 
-   "Infinity";
-   "isFinite";
-   
-   "ActiveXObject";
-   "XMLHttpRequest";
-   "XDomainRequest";
-   
-   "DOMException";
-   "Error";
-   "SyntaxError";
-   "arguments";
-   
-   "decodeURI";
-   "decodeURIComponent";
-   "encodeURI";
-   "encodeURIComponent";
-   "escape";
-   "unescape";
+    "Array";
+    "Date";
+    "Math";
+    "JSON";
+    "Object";
+    "RegExp";
+    "String";
+    "Boolean";
+    "Number";
 
-   "isNaN";
-   "parseFloat";
-   "parseInt";
-   
-   (** reserved for commonjs and NodeJS globals*)   
-   "require";
-   "exports";
-   "module";
+    "Map"; (* es6*)
+    "Set";
+
+    "Infinity";
+    "isFinite";
+
+    "ActiveXObject";
+    "XMLHttpRequest";
+    "XDomainRequest";
+
+    "DOMException";
+    "Error";
+    "SyntaxError";
+    "arguments";
+
+    "decodeURI";
+    "decodeURIComponent";
+    "encodeURI";
+    "encodeURIComponent";
+    "escape";
+    "unescape";
+
+    "isNaN";
+    "parseFloat";
+    "parseInt";
+
+    (** reserved for commonjs and NodeJS globals*)   
+    "require";
+    "exports";
+    "module";
     "clearImmediate";
     "clearInterval";
     "clearTimeout";
@@ -6622,7 +7669,8 @@ let reserved_words =
     "setInterval";
     "setTimeout";
     "__dirname";
-    "__filename"
+    "__filename";
+    "__esModule"
   |]
 
 let reserved_map = 
@@ -6635,56 +7683,92 @@ let reserved_map =
 
 
 
+exception Not_normal_letter of int 
+let name_mangle name = 
 
+  let len = String.length name  in
+  try
+    for i  = 0 to len - 1 do 
+      match String.unsafe_get name i with 
+      | 'a' .. 'z' | 'A' .. 'Z'
+      | '0' .. '9' | '_' | '$'
+        -> ()
+      | _ -> raise (Not_normal_letter i)
+    done;
+    name (* Normal letter *)
+  with 
+  | Not_normal_letter 0 ->
 
+    let buffer = Buffer.create len in 
+    for j = 0 to  len - 1 do 
+      let c = String.unsafe_get name j in
+      match c with 
+      | '*' -> Buffer.add_string buffer "$star"
+      | '\'' -> Buffer.add_string buffer "$prime"
+      | '!' -> Buffer.add_string buffer "$bang"
+      | '>' -> Buffer.add_string buffer "$great"
+      | '<' -> Buffer.add_string buffer "$less"
+      | '=' -> Buffer.add_string buffer "$eq"
+      | '+' -> Buffer.add_string buffer "$plus"
+      | '-' -> Buffer.add_string buffer "$neg"
+      | '@' -> Buffer.add_string buffer "$at"
+      | '^' -> Buffer.add_string buffer "$caret"
+      | '/' -> Buffer.add_string buffer "$slash"
+      | '|' -> Buffer.add_string buffer "$pipe"
+      | '.' -> Buffer.add_string buffer "$dot"
+      | '%' -> Buffer.add_string buffer "$percent"
+      | '~' -> Buffer.add_string buffer "$tilde"
+      | '#' -> Buffer.add_string buffer "$hash"
+      | ':' -> Buffer.add_string buffer "$colon"
+      | 'a'..'z' | 'A'..'Z'| '_' 
+      | '$'
+      | '0'..'9'-> Buffer.add_char buffer  c
+      | _ -> Buffer.add_string buffer "$unknown"
+    done; Buffer.contents buffer
+  | Not_normal_letter i -> 
+    String.sub name 0 i ^
+    (let buffer = Buffer.create len in 
+     for j = i to  len - 1 do 
+       let c = String.unsafe_get name j in
+       match c with 
+       | '*' -> Buffer.add_string buffer "$star"
+       | '\'' -> Buffer.add_string buffer "$prime"
+       | '!' -> Buffer.add_string buffer "$bang"
+       | '>' -> Buffer.add_string buffer "$great"
+       | '<' -> Buffer.add_string buffer "$less"
+       | '=' -> Buffer.add_string buffer "$eq"
+       | '+' -> Buffer.add_string buffer "$plus"
+       | '-' -> Buffer.add_string buffer "$" 
+        (* Note ocaml compiler also has [self-] *)
+       | '@' -> Buffer.add_string buffer "$at"
+       | '^' -> Buffer.add_string buffer "$caret"
+       | '/' -> Buffer.add_string buffer "$slash"
+       | '|' -> Buffer.add_string buffer "$pipe"
+       | '.' -> Buffer.add_string buffer "$dot"
+       | '%' -> Buffer.add_string buffer "$percent"
+       | '~' -> Buffer.add_string buffer "$tilde"
+       | '#' -> Buffer.add_string buffer "$hash"
+       | ':' -> Buffer.add_string buffer "$colon"
+       | '$' -> Buffer.add_string buffer "$dollar"
+       | 'a'..'z' | 'A'..'Z'| '_'        
+       | '0'..'9'-> Buffer.add_char buffer  c
+       | _ -> Buffer.add_string buffer "$unknown"
+     done; Buffer.contents buffer)
 (* TODO:
     check name conflicts with javascript conventions
-    {[
-    Ext_ident.convert "^";;
-    - : string = "$caret"
-    ]}
- *)
-let convert keyword (name : string) = 
-   if keyword && String_hash_set.mem reserved_map name  then "$$" ^ name 
-   else 
-     let module E = struct exception Not_normal_letter of int end in
-     let len = String.length name  in
-     try
-       for i  = 0 to len - 1 do 
-         match String.unsafe_get name i with 
-         | 'a' .. 'z' | 'A' .. 'Z'
-         | '0' .. '9' | '_' | '$' -> ()
-         | _ -> raise (E.Not_normal_letter i)
-       done;
-       name
-     with E.Not_normal_letter i ->
-       String.sub name 0 i ^ 
-       (let buffer = Buffer.create len in 
-        for j = i to  len - 1 do 
-          let c = String.unsafe_get name j in
-          match c with 
-          | '*' -> Buffer.add_string buffer "$star"
-          | '\'' -> Buffer.add_string buffer "$prime"
-          | '!' -> Buffer.add_string buffer "$bang"
-          | '>' -> Buffer.add_string buffer "$great"
-          | '<' -> Buffer.add_string buffer "$less"
-          | '=' -> Buffer.add_string buffer "$eq"
-          | '+' -> Buffer.add_string buffer "$plus"
-          | '-' -> Buffer.add_string buffer "$neg"
-          | '@' -> Buffer.add_string buffer "$at"
-          | '^' -> Buffer.add_string buffer "$caret"
-          | '/' -> Buffer.add_string buffer "$slash"
-          | '|' -> Buffer.add_string buffer "$pipe"
-          | '.' -> Buffer.add_string buffer "$dot"
-          | '%' -> Buffer.add_string buffer "$percent"
-          | '~' -> Buffer.add_string buffer "$tilde"
-          | '#' -> Buffer.add_string buffer "$hash"
-          | 'a'..'z' | 'A'..'Z'| '_'|'$' |'0'..'9'-> Buffer.add_char buffer  c
-          | _ -> Buffer.add_string buffer "$unknown"
-        done; Buffer.contents buffer)
+   {[
+     Ext_ident.convert "^";;
+     - : string = "$caret"
+   ]}
+   [convert name] if [name] is a js keyword,add "$$"
+   otherwise do the name mangling to make sure ocaml identifier it is 
+   a valid js identifier
+*)
+let convert (name : string) = 
+  if  String_hash_set.mem reserved_map name  then "$$" ^ name 
+  else name_mangle name 
 
-let property_no_need_convert s = 
-  s == convert false s 
+(** keyword could be used in property *)
 
 (* It is currently made a persistent ident to avoid fresh ids 
     which would result in different signature files
@@ -6692,7 +7776,7 @@ let property_no_need_convert s =
 *)
 let make_unused () = create "_"
 
-let is_unused_ident i = Ident.name i = "_"
+
 
 let reset () = 
   String_hashtbl.clear js_module_table
@@ -6704,17 +7788,17 @@ let nil = create_js "null"
 (* Has to be total order, [x < y] 
    and [x > y] should be consistent
    flags are not relevant here 
- *)
+*)
 let compare (x : Ident.t ) ( y : Ident.t) = 
   let u = x.stamp - y.stamp in
   if u = 0 then 
-     Ext_string.compare x.name y.name 
+    Ext_string.compare x.name y.name 
   else u 
 
 let equal ( x : Ident.t) ( y : Ident.t) = 
   if x.stamp <> 0 then x.stamp = y.stamp
   else y.stamp = 0 && x.name = y.name
-   
+
 
 end
 module Hash_set_ident_mask : sig 
@@ -8613,6 +9697,18 @@ type t = Lexing.position = {
     pos_cnum : int
 }
 
+(** [offset pos newpos]
+    return a new position
+    here [newpos] is zero based, the use case is that
+    at position [pos], we get a string and Lexing from that string,
+    therefore, we get a [newpos] and we need rebase it on top of 
+    [pos]
+*)
+val offset : t -> t -> t 
+
+val lexbuf_from_channel_with_fname:
+    in_channel -> string -> 
+    Lexing.lexbuf
 
 val print : Format.formatter -> t -> unit 
 end = struct
@@ -8649,13 +9745,35 @@ type t = Lexing.position = {
     pos_cnum : int
 }
 
+let offset (x : t) (y:t) =
+  {
+    x with 
+    pos_lnum =
+       x.pos_lnum + y.pos_lnum - 1;
+    pos_cnum = 
+      x.pos_cnum + y.pos_cnum;
+    pos_bol = 
+      if y.pos_lnum = 1 then 
+        x.pos_bol
+      else x.pos_cnum + y.pos_bol
+  }
 
-let print fmt (pos : t) = 
-  Format.fprintf fmt "(%d,%d)" pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+let print fmt (pos : t) =
+  Format.fprintf fmt "(line %d, column %d)" pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
 
 
 
-
+let lexbuf_from_channel_with_fname ic fname = 
+  let x = Lexing.from_function (fun buf n -> input ic buf 0 n) in 
+  let pos : t = {
+    pos_fname = fname ; 
+    pos_lnum = 1; 
+    pos_bol = 0;
+    pos_cnum = 0 (* copied from zero_pos*)
+  } in 
+  x.lex_start_p <- pos;
+  x.lex_curr_p <- pos ; 
+  x
 
 
 end
@@ -8698,6 +9816,7 @@ type callback =
     `Str of (string -> unit) 
   | `Str_loc of (string -> Lexing.position -> unit)
   | `Flo of (string -> unit )
+  | `Flo_loc of (string -> Lexing.position -> unit )
   | `Bool of (bool -> unit )
   | `Obj of (Ext_json_types.t String_map.t -> unit)
   | `Arr of (Ext_json_types.t array -> unit )
@@ -8719,6 +9838,7 @@ val query : path -> Ext_json_types.t ->  status
 val loc_of : Ext_json_types.t -> Ext_position.t
 
 val equal : Ext_json_types.t -> Ext_json_types.t -> bool 
+
 end = struct
 #1 "ext_json.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -8750,6 +9870,7 @@ type callback =
     `Str of (string -> unit) 
   | `Str_loc of (string -> Lexing.position -> unit)
   | `Flo of (string -> unit )
+  | `Flo_loc of (string -> Lexing.position -> unit )
   | `Bool of (bool -> unit )
   | `Obj of (Ext_json_types.t String_map.t -> unit)
   | `Arr of (Ext_json_types.t array -> unit )
@@ -8778,6 +9899,7 @@ let test   ?(fail=(fun () -> ())) key
     | True _, `Bool cb -> cb true
     | False _, `Bool cb  -> cb false 
     | Flo {flo = s} , `Flo cb  -> cb s 
+    | Flo {flo = s; loc} , `Flo_loc cb  -> cb s loc
     | Obj {map = b} , `Obj cb -> cb b 
     | Arr {content}, `Arr cb -> cb content 
     | Arr {content; loc_start ; loc_end}, `Arr_loc cb -> 
@@ -9084,16 +10206,16 @@ module Ext_json_parse : sig
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-type error_info
+type error
 
-exception Error of error_info
+val report_error : Format.formatter -> error -> unit 
 
-val pp_error : Format.formatter -> error_info -> unit 
+exception Error of Lexing.position * Lexing.position * error
 
-val parse_json : Lexing.lexbuf -> Ext_json_types.t 
 val parse_json_from_string : string -> Ext_json_types.t 
 
-val parse_json_from_chan : in_channel -> Ext_json_types.t 
+val parse_json_from_chan :
+  string ->  in_channel -> Ext_json_types.t 
 
 val parse_json_from_file  : string -> Ext_json_types.t
 
@@ -9115,7 +10237,7 @@ type error =
   | Expect_eof 
   (* | Trailing_comma_in_obj *)
   (* | Trailing_comma_in_array *)
-exception Error of error * Lexing.position * Lexing.position;;
+
 
 let fprintf  = Format.fprintf
 let report_error ppf = function
@@ -9146,28 +10268,20 @@ let report_error ppf = function
     -> fprintf ppf "Unterminated_comment"
          
 
-type  error_info  = 
-  { error : error ;
-    loc_start : Lexing.position; 
-    loc_end :Lexing.position;
-  }
-
-let pp_error fmt {error; loc_start ; loc_end } = 
-  Format.fprintf fmt "@[%a:@ %a@ -@ %a)@]" 
-    report_error error
-    Ext_position.print loc_start
-    Ext_position.print loc_end
-
-exception Error of error_info
-
+exception Error of Lexing.position * Lexing.position * error
 
 
 let () = 
   Printexc.register_printer
     (function x -> 
      match x with 
-     | Error error_info -> 
-       Some (Format.asprintf "%a" pp_error error_info)
+     | Error (loc_start,loc_end,error) -> 
+       Some (Format.asprintf 
+          "@[%a:@ %a@ -@ %a)@]" 
+          report_error  error
+          Ext_position.print loc_start
+          Ext_position.print loc_end
+       )
 
      | _ -> None
     )
@@ -9191,9 +10305,7 @@ type token =
   | True   
   
 let error  (lexbuf : Lexing.lexbuf) e = 
-  raise (Error { error =  e; 
-                 loc_start =  lexbuf.lex_start_p; 
-                 loc_end = lexbuf.lex_curr_p})
+  raise (Error (lexbuf.lex_start_p, lexbuf.lex_curr_p, e))
 
 
 let lexeme_len (x : Lexing.lexbuf) =
@@ -9232,7 +10344,7 @@ let hex_code c1 c2 =
 
 let lf = '\010'
 
-# 134 "ext/ext_json_parse.ml"
+# 124 "ext/ext_json_parse.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base = 
    "\000\000\239\255\240\255\241\255\000\000\025\000\011\000\244\255\
@@ -9420,80 +10532,80 @@ let rec lex_json buf lexbuf =
 and __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 152 "ext/ext_json_parse.mll"
+# 142 "ext/ext_json_parse.mll"
           ( lex_json buf lexbuf)
-# 324 "ext/ext_json_parse.ml"
+# 314 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 153 "ext/ext_json_parse.mll"
+# 143 "ext/ext_json_parse.mll"
                    ( 
     update_loc lexbuf 0;
     lex_json buf  lexbuf
   )
-# 332 "ext/ext_json_parse.ml"
+# 322 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 157 "ext/ext_json_parse.mll"
+# 147 "ext/ext_json_parse.mll"
                 ( comment buf lexbuf)
-# 337 "ext/ext_json_parse.ml"
+# 327 "ext/ext_json_parse.ml"
 
   | 3 ->
-# 158 "ext/ext_json_parse.mll"
+# 148 "ext/ext_json_parse.mll"
          ( True)
-# 342 "ext/ext_json_parse.ml"
+# 332 "ext/ext_json_parse.ml"
 
   | 4 ->
-# 159 "ext/ext_json_parse.mll"
+# 149 "ext/ext_json_parse.mll"
           (False)
-# 347 "ext/ext_json_parse.ml"
+# 337 "ext/ext_json_parse.ml"
 
   | 5 ->
-# 160 "ext/ext_json_parse.mll"
+# 150 "ext/ext_json_parse.mll"
          (Null)
-# 352 "ext/ext_json_parse.ml"
+# 342 "ext/ext_json_parse.ml"
 
   | 6 ->
-# 161 "ext/ext_json_parse.mll"
+# 151 "ext/ext_json_parse.mll"
        (Lbracket)
-# 357 "ext/ext_json_parse.ml"
+# 347 "ext/ext_json_parse.ml"
 
   | 7 ->
-# 162 "ext/ext_json_parse.mll"
+# 152 "ext/ext_json_parse.mll"
        (Rbracket)
-# 362 "ext/ext_json_parse.ml"
+# 352 "ext/ext_json_parse.ml"
 
   | 8 ->
-# 163 "ext/ext_json_parse.mll"
+# 153 "ext/ext_json_parse.mll"
        (Lbrace)
-# 367 "ext/ext_json_parse.ml"
+# 357 "ext/ext_json_parse.ml"
 
   | 9 ->
-# 164 "ext/ext_json_parse.mll"
+# 154 "ext/ext_json_parse.mll"
        (Rbrace)
-# 372 "ext/ext_json_parse.ml"
+# 362 "ext/ext_json_parse.ml"
 
   | 10 ->
-# 165 "ext/ext_json_parse.mll"
+# 155 "ext/ext_json_parse.mll"
        (Comma)
-# 377 "ext/ext_json_parse.ml"
+# 367 "ext/ext_json_parse.ml"
 
   | 11 ->
-# 166 "ext/ext_json_parse.mll"
+# 156 "ext/ext_json_parse.mll"
         (Colon)
-# 382 "ext/ext_json_parse.ml"
+# 372 "ext/ext_json_parse.ml"
 
   | 12 ->
-# 167 "ext/ext_json_parse.mll"
+# 157 "ext/ext_json_parse.mll"
                       (lex_json buf lexbuf)
-# 387 "ext/ext_json_parse.ml"
+# 377 "ext/ext_json_parse.ml"
 
   | 13 ->
-# 169 "ext/ext_json_parse.mll"
+# 159 "ext/ext_json_parse.mll"
          ( Number (Lexing.lexeme lexbuf))
-# 392 "ext/ext_json_parse.ml"
+# 382 "ext/ext_json_parse.ml"
 
   | 14 ->
-# 171 "ext/ext_json_parse.mll"
+# 161 "ext/ext_json_parse.mll"
       (
   let pos = Lexing.lexeme_start_p lexbuf in
   scan_string buf pos lexbuf;
@@ -9501,22 +10613,22 @@ and __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state =
   Buffer.clear buf ;
   String content 
 )
-# 403 "ext/ext_json_parse.ml"
+# 393 "ext/ext_json_parse.ml"
 
   | 15 ->
-# 178 "ext/ext_json_parse.mll"
+# 168 "ext/ext_json_parse.mll"
        (Eof )
-# 408 "ext/ext_json_parse.ml"
+# 398 "ext/ext_json_parse.ml"
 
   | 16 ->
 let
-# 179 "ext/ext_json_parse.mll"
+# 169 "ext/ext_json_parse.mll"
        c
-# 414 "ext/ext_json_parse.ml"
+# 404 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf lexbuf.Lexing.lex_start_pos in
-# 179 "ext/ext_json_parse.mll"
+# 169 "ext/ext_json_parse.mll"
           ( error lexbuf (Illegal_character c ))
-# 418 "ext/ext_json_parse.ml"
+# 408 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state
@@ -9526,19 +10638,19 @@ and comment buf lexbuf =
 and __ocaml_lex_comment_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 181 "ext/ext_json_parse.mll"
+# 171 "ext/ext_json_parse.mll"
               (lex_json buf lexbuf)
-# 430 "ext/ext_json_parse.ml"
+# 420 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 182 "ext/ext_json_parse.mll"
+# 172 "ext/ext_json_parse.mll"
      (comment buf lexbuf)
-# 435 "ext/ext_json_parse.ml"
+# 425 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 183 "ext/ext_json_parse.mll"
+# 173 "ext/ext_json_parse.mll"
        (error lexbuf Unterminated_comment)
-# 440 "ext/ext_json_parse.ml"
+# 430 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_comment_rec buf lexbuf __ocaml_lex_state
@@ -9548,64 +10660,64 @@ and scan_string buf start lexbuf =
 and __ocaml_lex_scan_string_rec buf start lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 187 "ext/ext_json_parse.mll"
+# 177 "ext/ext_json_parse.mll"
       ( () )
-# 452 "ext/ext_json_parse.ml"
+# 442 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 189 "ext/ext_json_parse.mll"
+# 179 "ext/ext_json_parse.mll"
   (
         let len = lexeme_len lexbuf - 2 in
         update_loc lexbuf len;
 
         scan_string buf start lexbuf
       )
-# 462 "ext/ext_json_parse.ml"
+# 452 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 196 "ext/ext_json_parse.mll"
+# 186 "ext/ext_json_parse.mll"
       (
         let len = lexeme_len lexbuf - 3 in
         update_loc lexbuf len;
         scan_string buf start lexbuf
       )
-# 471 "ext/ext_json_parse.ml"
+# 461 "ext/ext_json_parse.ml"
 
   | 3 ->
 let
-# 201 "ext/ext_json_parse.mll"
+# 191 "ext/ext_json_parse.mll"
                                                c
-# 477 "ext/ext_json_parse.ml"
+# 467 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 202 "ext/ext_json_parse.mll"
+# 192 "ext/ext_json_parse.mll"
       (
         Buffer.add_char buf (char_for_backslash c);
         scan_string buf start lexbuf
       )
-# 484 "ext/ext_json_parse.ml"
+# 474 "ext/ext_json_parse.ml"
 
   | 4 ->
 let
-# 206 "ext/ext_json_parse.mll"
+# 196 "ext/ext_json_parse.mll"
                  c1
-# 490 "ext/ext_json_parse.ml"
+# 480 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1)
 and
-# 206 "ext/ext_json_parse.mll"
+# 196 "ext/ext_json_parse.mll"
                                c2
-# 495 "ext/ext_json_parse.ml"
+# 485 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 2)
 and
-# 206 "ext/ext_json_parse.mll"
+# 196 "ext/ext_json_parse.mll"
                                              c3
-# 500 "ext/ext_json_parse.ml"
+# 490 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 3)
 and
-# 206 "ext/ext_json_parse.mll"
+# 196 "ext/ext_json_parse.mll"
                                                     s
-# 505 "ext/ext_json_parse.ml"
+# 495 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos (lexbuf.Lexing.lex_start_pos + 4) in
-# 207 "ext/ext_json_parse.mll"
+# 197 "ext/ext_json_parse.mll"
       (
         let v = dec_code c1 c2 c3 in
         if v > 255 then
@@ -9614,55 +10726,55 @@ and
 
         scan_string buf start lexbuf
       )
-# 516 "ext/ext_json_parse.ml"
+# 506 "ext/ext_json_parse.ml"
 
   | 5 ->
 let
-# 215 "ext/ext_json_parse.mll"
+# 205 "ext/ext_json_parse.mll"
                         c1
-# 522 "ext/ext_json_parse.ml"
+# 512 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 2)
 and
-# 215 "ext/ext_json_parse.mll"
+# 205 "ext/ext_json_parse.mll"
                                          c2
-# 527 "ext/ext_json_parse.ml"
+# 517 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 3) in
-# 216 "ext/ext_json_parse.mll"
+# 206 "ext/ext_json_parse.mll"
       (
         let v = hex_code c1 c2 in
         Buffer.add_char buf (Char.chr v);
 
         scan_string buf start lexbuf
       )
-# 536 "ext/ext_json_parse.ml"
+# 526 "ext/ext_json_parse.ml"
 
   | 6 ->
 let
-# 222 "ext/ext_json_parse.mll"
+# 212 "ext/ext_json_parse.mll"
              c
-# 542 "ext/ext_json_parse.ml"
+# 532 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 223 "ext/ext_json_parse.mll"
+# 213 "ext/ext_json_parse.mll"
       (
         Buffer.add_char buf '\\';
         Buffer.add_char buf c;
 
         scan_string buf start lexbuf
       )
-# 551 "ext/ext_json_parse.ml"
+# 541 "ext/ext_json_parse.ml"
 
   | 7 ->
-# 230 "ext/ext_json_parse.mll"
+# 220 "ext/ext_json_parse.mll"
       (
         update_loc lexbuf 0;
         Buffer.add_char buf lf;
 
         scan_string buf start lexbuf
       )
-# 561 "ext/ext_json_parse.ml"
+# 551 "ext/ext_json_parse.ml"
 
   | 8 ->
-# 237 "ext/ext_json_parse.mll"
+# 227 "ext/ext_json_parse.mll"
       (
         let ofs = lexbuf.lex_start_pos in
         let len = lexbuf.lex_curr_pos - ofs in
@@ -9670,21 +10782,21 @@ let
 
         scan_string buf start lexbuf
       )
-# 572 "ext/ext_json_parse.ml"
+# 562 "ext/ext_json_parse.ml"
 
   | 9 ->
-# 245 "ext/ext_json_parse.mll"
+# 235 "ext/ext_json_parse.mll"
       (
         error lexbuf Unterminated_string
       )
-# 579 "ext/ext_json_parse.ml"
+# 569 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_scan_string_rec buf start lexbuf __ocaml_lex_state
 
 ;;
 
-# 249 "ext/ext_json_parse.mll"
+# 239 "ext/ext_json_parse.mll"
  
 
 
@@ -9777,13 +10889,17 @@ let rec parse_json lexbuf =
 let parse_json_from_string s = 
   parse_json (Lexing.from_string s )
 
-let parse_json_from_chan in_chan = 
-  let lexbuf = Lexing.from_channel in_chan in 
+let parse_json_from_chan fname in_chan = 
+  let lexbuf = 
+    Ext_position.lexbuf_from_channel_with_fname
+    in_chan fname in 
   parse_json lexbuf 
 
 let parse_json_from_file s = 
   let in_chan = open_in s in 
-  let lexbuf = Lexing.from_channel in_chan in 
+  let lexbuf = 
+    Ext_position.lexbuf_from_channel_with_fname
+    in_chan s in 
   match parse_json lexbuf with 
   | exception e -> close_in in_chan ; raise e
   | v  -> close_in in_chan;  v
@@ -9792,240 +10908,7 @@ let parse_json_from_file s =
 
 
 
-# 694 "ext/ext_json_parse.ml"
-
-end
-module Ext_pervasives : sig 
-#1 "ext_pervasives.mli"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * In addition to the permissions granted to you by the LGPL, you may combine
- * or link a "work that uses the Library" with a publicly distributed version
- * of this file to produce a combined library or application, then distribute
- * that combined work under the terms of your choosing, with no requirement
- * to comply with the obligations normally placed on you by section 4 of the
- * LGPL version 3 (or the corresponding section of a later version of the LGPL
- * should you choose to use a later version).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
-
-
-
-
-
-
-
-
-(** Extension to standard library [Pervavives] module, safe to open 
-  *)
-
-external reraise: exn -> 'a = "%reraise"
-
-val finally : 'a -> ('a -> 'c) -> ('a -> 'b) -> 'b
-
-val with_file_as_chan : string -> (out_channel -> 'a) -> 'a
-
-val with_file_as_pp : string -> (Format.formatter -> 'a) -> 'a
-
-val is_pos_pow : Int32.t -> int
-
-val failwithf : loc:string -> ('a, unit, string, 'b) format4 -> 'a
-
-val invalid_argf : ('a, unit, string, 'b) format4 -> 'a
-
-val bad_argf : ('a, unit, string, 'b) format4 -> 'a
-
-
-
-val dump : 'a -> string 
-val pp_any : Format.formatter -> 'a -> unit 
-external id : 'a -> 'a = "%identity"
-
-(** Copied from {!Btype.hash_variant}:
-    need sync up and add test case
- *)
-val hash_variant : string -> int
-
-end = struct
-#1 "ext_pervasives.ml"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * In addition to the permissions granted to you by the LGPL, you may combine
- * or link a "work that uses the Library" with a publicly distributed version
- * of this file to produce a combined library or application, then distribute
- * that combined work under the terms of your choosing, with no requirement
- * to comply with the obligations normally placed on you by section 4 of the
- * LGPL version 3 (or the corresponding section of a later version of the LGPL
- * should you choose to use a later version).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
-
-
-
-
-
-
-external reraise: exn -> 'a = "%reraise"
-
-let finally v action f   = 
-  match f v with
-  | exception e -> 
-      action v ;
-      reraise e 
-  | e ->  action v ; e 
-
-let with_file_as_chan filename f = 
-  finally (open_out_bin filename) close_out f 
-
-let with_file_as_pp filename f = 
-  finally (open_out_bin filename) close_out
-    (fun chan -> 
-      let fmt = Format.formatter_of_out_channel chan in
-      let v = f  fmt in
-      Format.pp_print_flush fmt ();
-      v
-    ) 
-
-
-let  is_pos_pow n = 
-  let module M = struct exception E end in 
-  let rec aux c (n : Int32.t) = 
-    if n <= 0l then -2 
-    else if n = 1l then c 
-    else if Int32.logand n 1l =  0l then   
-      aux (c + 1) (Int32.shift_right n 1 )
-    else raise M.E in 
-  try aux 0 n  with M.E -> -1
-
-let failwithf ~loc fmt = Format.ksprintf (fun s -> failwith (loc ^ s))
-    fmt
-    
-let invalid_argf fmt = Format.ksprintf invalid_arg fmt
-
-let bad_argf fmt = Format.ksprintf (fun x -> raise (Arg.Bad x ) ) fmt
-
-
-let rec dump r =
-  if Obj.is_int r then
-    string_of_int (Obj.magic r : int)
-  else (* Block. *)
-    let rec get_fields acc = function
-      | 0 -> acc
-      | n -> let n = n-1 in get_fields (Obj.field r n :: acc) n
-    in
-    let rec is_list r =
-      if Obj.is_int r then
-        r = Obj.repr 0 (* [] *)
-      else
-        let s = Obj.size r and t = Obj.tag r in
-        t = 0 && s = 2 && is_list (Obj.field r 1) (* h :: t *)
-    in
-    let rec get_list r =
-      if Obj.is_int r then
-        []
-      else
-        let h = Obj.field r 0 and t = get_list (Obj.field r 1) in
-        h :: t
-    in
-    let opaque name =
-      (* XXX In future, print the address of value 'r'.  Not possible
-       * in pure OCaml at the moment.  *)
-      "<" ^ name ^ ">"
-    in
-    let s = Obj.size r and t = Obj.tag r in
-    (* From the tag, determine the type of block. *)
-    match t with
-    | _ when is_list r ->
-      let fields = get_list r in
-      "[" ^ String.concat "; " (List.map dump fields) ^ "]"
-    | 0 ->
-      let fields = get_fields [] s in
-      "(" ^ String.concat ", " (List.map dump fields) ^ ")"
-    | x when x = Obj.lazy_tag ->
-      (* Note that [lazy_tag .. forward_tag] are < no_scan_tag.  Not
-         * clear if very large constructed values could have the same
-         * tag. XXX *)
-      opaque "lazy"
-    | x when x = Obj.closure_tag ->
-      opaque "closure"
-    | x when x = Obj.object_tag ->
-      let fields = get_fields [] s in
-      let _clasz, id, slots =
-        match fields with
-        | h::h'::t -> h, h', t
-        | _ -> assert false
-      in
-      (* No information on decoding the class (first field).  So just print
-         * out the ID and the slots. *)
-      "Object #" ^ dump id ^ " (" ^ String.concat ", " (List.map dump slots) ^ ")"
-    | x when x = Obj.infix_tag ->
-      opaque "infix"
-    | x when x = Obj.forward_tag ->
-      opaque "forward"
-    | x when x < Obj.no_scan_tag ->
-      let fields = get_fields [] s in
-      "Tag" ^ string_of_int t ^
-      " (" ^ String.concat ", " (List.map dump fields) ^ ")"
-    | x when x = Obj.string_tag ->
-      "\"" ^ String.escaped (Obj.magic r : string) ^ "\""
-    | x when x = Obj.double_tag ->
-      string_of_float (Obj.magic r : float)
-    | x when x = Obj.abstract_tag ->
-      opaque "abstract"
-    | x when x = Obj.custom_tag ->
-      opaque "custom"
-    | x when x = Obj.custom_tag ->
-      opaque "final"
-    | x when x = Obj.double_array_tag ->
-      "[|"^
-      String.concat ";"
-        (Array.to_list (Array.map string_of_float (Obj.magic r : float array))) ^
-      "|]"
-    | _ ->
-      opaque (Printf.sprintf "unknown: tag %d size %d" t s)
-
-let dump v = dump (Obj.repr v)
-
-let pp_any fmt v = 
-  Format.fprintf fmt "@[%s@]"
-  (dump v )
-external id : 'a -> 'a = "%identity"
-
-
-let hash_variant s =
-  let accu = ref 0 in
-  for i = 0 to String.length s - 1 do
-    accu := 223 * !accu + Char.code s.[i]
-  done;
-  (* reduce to 31 bits *)
-  accu := !accu land (1 lsl 31 - 1);
-  (* make it signed for 64 bits architectures *)
-  if !accu > 0x3FFFFFFF then !accu - (1 lsl 31) else !accu
-
+# 688 "ext/ext_json_parse.ml"
 
 end
 module Ounit_json_tests
@@ -10168,577 +11051,6 @@ let suites =
   ]
 
 end
-module Ext_list : sig 
-#1 "ext_list.mli"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * In addition to the permissions granted to you by the LGPL, you may combine
- * or link a "work that uses the Library" with a publicly distributed version
- * of this file to produce a combined library or application, then distribute
- * that combined work under the terms of your choosing, with no requirement
- * to comply with the obligations normally placed on you by section 4 of the
- * LGPL version 3 (or the corresponding section of a later version of the LGPL
- * should you choose to use a later version).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
-
-
-
-
-
-
-
-
-(** Extension to the standard library [List] module *)
-    
-(** TODO some function are no efficiently implemented. *) 
-
-val filter_map : ('a -> 'b option) -> 'a list -> 'b list 
-
-val excludes : ('a -> bool) -> 'a list -> bool * 'a list
-val exclude_with_fact : ('a -> bool) -> 'a list -> 'a option * 'a list
-val exclude_with_fact2 : 
-  ('a -> bool) -> ('a -> bool) -> 'a list -> 'a option * 'a option * 'a list
-val same_length : 'a list -> 'b list -> bool
-
-val init : int -> (int -> 'a) -> 'a list
-
-val take : int -> 'a list -> 'a list * 'a list
-val try_take : int -> 'a list -> 'a list * int * 'a list 
-
-val exclude_tail : 'a list -> 'a * 'a list
-
-val length_compare : 'a list -> int -> [`Gt | `Eq | `Lt ]
-
-(**
-
-  {[length xs = length ys + n ]}
-  input n should be positive 
-  TODO: input checking
-*)
-
-val length_larger_than_n : 
-  int -> 'a list -> 'a list -> bool
-
-val filter_map2 : ('a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
-
-val filter_map2i : (int -> 'a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
-
-val filter_mapi : (int -> 'a -> 'b option) -> 'a list -> 'b list
-
-val flat_map2 : ('a -> 'b -> 'c list) -> 'a list -> 'b list -> 'c list
-
-val flat_map_acc : ('a -> 'b list) -> 'b list -> 'a list ->  'b list
-val flat_map : ('a -> 'b list) -> 'a list -> 'b list
-
-
-(** for the last element the first element will be passed [true] *)
-
-val fold_right2_last : (bool -> 'a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
-
-val map_last : (bool -> 'a -> 'b) -> 'a list -> 'b list
-
-val stable_group : ('a -> 'a -> bool) -> 'a list -> 'a list list
-
-val drop : int -> 'a list -> 'a list 
-
-val for_all_ret : ('a -> bool) -> 'a list -> 'a option
-
-val for_all_opt : ('a -> 'b option) -> 'a list -> 'b option
-(** [for_all_opt f l] returns [None] if all return [None],  
-    otherwise returns the first one. 
- *)
-
-val fold : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
-(** same as [List.fold_left]. 
-    Provide an api so that list can be easily swapped by other containers  
- *)
-
-val rev_map_append : ('a -> 'b) -> 'a list -> 'b list -> 'b list
-
-val rev_map_acc : 'a list -> ('b -> 'a) -> 'b list -> 'a list
-
-val map_acc : 'a list -> ('b -> 'a) -> 'b list -> 'a list
-
-val rev_iter : ('a -> unit) -> 'a list -> unit
-
-val for_all2_no_exn : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
-
-val find_opt : ('a -> 'b option) -> 'a list -> 'b option
-
-(** [f] is applied follow the list order *)
-val split_map : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list       
-
-
-val reduce_from_right : ('a -> 'a -> 'a) -> 'a list -> 'a
-
-(** [fn] is applied from left to right *)
-val reduce_from_left : ('a -> 'a -> 'a) -> 'a list -> 'a
-
-
-type 'a t = 'a list ref
-
-val create_ref_empty : unit -> 'a t
-
-val ref_top : 'a t -> 'a 
-
-val ref_empty : 'a t -> bool
-
-val ref_push : 'a -> 'a t -> unit
-
-val ref_pop : 'a t -> 'a
-
-val rev_except_last : 'a list -> 'a list * 'a
-
-val sort_via_array :
-  ('a -> 'a -> int) -> 'a list -> 'a list
-
-val last : 'a list -> 'a
-
-
-(** When [key] is not found unbox the default, 
-  if it is found return that, otherwise [assert false ]
- *)
-val assoc_by_string : 
-  'a  option -> string -> (string * 'a) list -> 'a 
-
-val assoc_by_int : 
-  'a  option -> int -> (int * 'a) list -> 'a   
-end = struct
-#1 "ext_list.ml"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * In addition to the permissions granted to you by the LGPL, you may combine
- * or link a "work that uses the Library" with a publicly distributed version
- * of this file to produce a combined library or application, then distribute
- * that combined work under the terms of your choosing, with no requirement
- * to comply with the obligations normally placed on you by section 4 of the
- * LGPL version 3 (or the corresponding section of a later version of the LGPL
- * should you choose to use a later version).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
-
-
-
-
-
-
-
-
-let rec filter_map (f: 'a -> 'b option) xs = 
-  match xs with 
-  | [] -> []
-  | y :: ys -> 
-    begin match f y with 
-      | None -> filter_map f ys
-      | Some z -> z :: filter_map f ys
-    end
-
-let excludes (p : 'a -> bool ) l : bool * 'a list=
-  let excluded = ref false in 
-  let rec aux accu = function
-    | [] -> List.rev accu
-    | x :: l -> 
-      if p x then 
-        begin 
-          excluded := true ;
-          aux accu l
-        end
-      else aux (x :: accu) l in
-  let v = aux [] l in 
-  if !excluded then true, v else false,l
-
-let exclude_with_fact p l =
-  let excluded = ref None in 
-  let rec aux accu = function
-    | [] -> List.rev accu
-    | x :: l -> 
-      if p x then 
-        begin 
-          excluded := Some x ;
-          aux accu l
-        end
-      else aux (x :: accu) l in
-  let v = aux [] l in 
-  !excluded , if !excluded <> None then v else l 
-
-
-(** Make sure [p2 x] and [p1 x] will not hold at the same time *)
-let exclude_with_fact2 p1 p2 l =
-  let excluded1 = ref None in 
-  let excluded2 = ref None in 
-  let rec aux accu = function
-    | [] -> List.rev accu
-    | x :: l -> 
-      if p1 x then 
-        begin 
-          excluded1 := Some x ;
-          aux accu l
-        end
-      else if p2 x then 
-        begin 
-          excluded2 := Some x ; 
-          aux accu l 
-        end
-      else aux (x :: accu) l in
-  let v = aux [] l in 
-  !excluded1, !excluded2 , if !excluded1 <> None && !excluded2 <> None then v else l 
-
-
-
-let rec same_length xs ys = 
-  match xs, ys with 
-  | [], [] -> true
-  | _::xs, _::ys -> same_length xs ys 
-  | _, _ -> false 
-
-let  filter_mapi (f: int -> 'a -> 'b option) xs = 
-  let rec aux i xs = 
-    match xs with 
-    | [] -> []
-    | y :: ys -> 
-      begin match f i y with 
-        | None -> aux (i + 1) ys
-        | Some z -> z :: aux (i + 1) ys
-      end in
-  aux 0 xs 
-
-let rec filter_map2 (f: 'a -> 'b -> 'c option) xs ys = 
-  match xs,ys with 
-  | [],[] -> []
-  | u::us, v :: vs -> 
-    begin match f u v with 
-      | None -> filter_map2 f us vs (* idea: rec f us vs instead? *)
-      | Some z -> z :: filter_map2 f us vs
-    end
-  | _ -> invalid_arg "Ext_list.filter_map2"
-
-let filter_map2i (f: int ->  'a -> 'b -> 'c option) xs ys = 
-  let rec aux i xs ys = 
-    match xs,ys with 
-    | [],[] -> []
-    | u::us, v :: vs -> 
-      begin match f i u v with 
-        | None -> aux (i + 1) us vs (* idea: rec f us vs instead? *)
-        | Some z -> z :: aux (i + 1) us vs
-      end
-    | _ -> invalid_arg "Ext_list.filter_map2i" in
-  aux 0 xs ys
-
-let rec rev_map_append  f l1 l2 =
-  match l1 with
-  | [] -> l2
-  | a :: l -> rev_map_append f l (f a :: l2)
-
-let flat_map2 f lx ly = 
-  let rec aux acc lx ly = 
-    match lx, ly with 
-    | [], [] 
-      -> List.rev acc
-    | x::xs, y::ys 
-      ->  aux (List.rev_append (f x y) acc) xs ys
-    | _, _ -> invalid_arg "Ext_list.flat_map2" in
-  aux [] lx ly
-
-let rec flat_map_aux f acc append lx =
-  match lx with
-  | [] -> List.rev_append acc append
-  | y::ys -> flat_map_aux f (List.rev_append ( f y)  acc ) append ys 
-
-let flat_map f lx =
-  flat_map_aux f [] [] lx
-
-let flat_map_acc f append lx = flat_map_aux f [] append lx  
-
-let rec map2_last f l1 l2 =
-  match (l1, l2) with
-  | ([], []) -> []
-  | [u], [v] -> [f true u v ]
-  | (a1::l1, a2::l2) -> let r = f false  a1 a2 in r :: map2_last f l1 l2
-  | (_, _) -> invalid_arg "List.map2_last"
-
-let rec map_last f l1 =
-  match l1 with
-  | [] -> []
-  | [u]-> [f true u ]
-  | a1::l1 -> let r = f false  a1 in r :: map_last f l1
-
-
-let rec fold_right2_last f l1 l2 accu  = 
-  match (l1, l2) with
-  | ([], []) -> accu
-  | [last1], [last2] -> f true  last1 last2 accu
-  | (a1::l1, a2::l2) -> f false a1 a2 (fold_right2_last f l1 l2 accu)
-  | (_, _) -> invalid_arg "List.fold_right2"
-
-
-let init n f = 
-  Array.to_list (Array.init n f)
-
-let take n l = 
-  let arr = Array.of_list l in 
-  let arr_length =  Array.length arr in
-  if arr_length  < n then invalid_arg "Ext_list.take"
-  else (Array.to_list (Array.sub arr 0 n ), 
-        Array.to_list (Array.sub arr n (arr_length - n)))
-
-let try_take n l = 
-  let arr = Array.of_list l in 
-  let arr_length =  Array.length arr in
-  if arr_length  <= n then 
-    l,  arr_length, []
-  else Array.to_list (Array.sub arr 0 n ), n, (Array.to_list (Array.sub arr n (arr_length - n)))
-
-
-let rec length_compare l n = 
-  if n < 0 then `Gt 
-  else 
-  begin match l with 
-    | _ ::xs -> length_compare xs (n - 1)
-    | [] ->  
-      if n = 0 then `Eq 
-      else `Lt 
-  end
-(**
-
-  {[length xs = length ys + n ]}
-*)
-let rec length_larger_than_n n xs ys =
-  match xs, ys with 
-  | _, [] -> length_compare xs n = `Eq   
-  | _::xs, _::ys -> 
-    length_larger_than_n n xs ys
-  | [], _ -> false 
-  
-
-
-let exclude_tail (x : 'a list) = 
-  let rec aux acc x = 
-    match x with 
-    | [] -> invalid_arg "Ext_list.exclude_tail"
-    | [ x ] ->  x, List.rev acc
-    | y0::ys -> aux (y0::acc) ys in
-  aux [] x
-
-(* For small list, only need partial equality 
-   {[
-     group (=) [1;2;3;4;3]
-     ;;
-     - : int list list = [[3; 3]; [4]; [2]; [1]]
-                         # group (=) [];;
-     - : 'a list list = []
-   ]}
-*)
-let rec group (cmp : 'a -> 'a -> bool) (lst : 'a list) : 'a list list =
-  match lst with 
-  | [] -> []
-  | x::xs -> 
-    aux cmp x (group cmp xs )
-
-and aux cmp (x : 'a)  (xss : 'a list list) : 'a list list = 
-  match xss with 
-  | [] -> [[x]]
-  | y::ys -> 
-    if cmp x (List.hd y) (* cannot be null*) then
-      (x::y) :: ys 
-    else
-      y :: aux cmp x ys                                 
-
-let stable_group cmp lst =  group cmp lst |> List.rev 
-
-let rec drop n h = 
-  if n < 0 then invalid_arg "Ext_list.drop"
-  else if n = 0 then h 
-  else if h = [] then invalid_arg "Ext_list.drop"
-  else 
-    drop (n - 1) (List.tl h)
-
-let rec for_all_ret  p = function
-  | [] -> None
-  | a::l -> 
-    if p a 
-    then for_all_ret p l
-    else Some a 
-
-let rec for_all_opt  p = function
-  | [] -> None
-  | a::l -> 
-    match p a with
-    | None -> for_all_opt p l
-    | v -> v 
-
-let fold f l init = 
-  List.fold_left (fun acc i -> f  i init) init l 
-
-let rev_map_acc  acc f l = 
-  let rec rmap_f accu = function
-    | [] -> accu
-    | a::l -> rmap_f (f a :: accu) l
-  in
-  rmap_f acc l
-
-let rec map_acc acc f l =   
-  match l with 
-  | [] -> acc 
-  | h::hs -> f h :: map_acc  acc  f hs 
-
-
-
-let rec rev_iter f xs =
-  match xs with    
-  | [] -> ()
-  | y :: ys -> 
-    rev_iter f ys ;
-    f y      
-
-let rec for_all2_no_exn p l1 l2 = 
-  match (l1, l2) with
-  | ([], []) -> true
-  | (a1::l1, a2::l2) -> p a1 a2 && for_all2_no_exn p l1 l2
-  | (_, _) -> false
-
-
-let rec find_no_exn p = function
-  | [] -> None
-  | x :: l -> if p x then Some x else find_no_exn p l
-
-
-let rec find_opt p = function
-  | [] -> None
-  | x :: l -> 
-    match  p x with 
-    | Some _ as v  ->  v
-    | None -> find_opt p l
-
-
-let split_map 
-    ( f : 'a -> ('b * 'c)) (xs : 'a list ) : 'b list  * 'c list = 
-  let rec aux bs cs xs =
-    match xs with 
-    | [] -> List.rev bs, List.rev cs 
-    | u::us -> 
-      let b,c =  f u in aux (b::bs) (c ::cs) us in 
-
-  aux [] [] xs 
-
-
-(*
-   {[
-     reduce_from_right (-) [1;2;3];;
-     - : int = 2
-               # reduce_from_right (-) [1;2;3; 4];;
-     - : int = -2
-                # reduce_from_right (-) [1];;
-     - : int = 1
-               # reduce_from_right (-) [1;2;3; 4; 5];;
-     - : int = 3
-   ]} 
-*)
-let reduce_from_right fn lst = 
-  begin match List.rev lst with
-    | last :: rest -> 
-      List.fold_left  (fun x y -> fn y x) last rest 
-    | _ -> invalid_arg "Ext_list.reduce" 
-  end
-let reduce_from_left fn lst = 
-  match lst with 
-  | first :: rest ->  List.fold_left fn first rest 
-  | _ -> invalid_arg "Ext_list.reduce_from_left"
-
-
-type 'a t = 'a list ref
-
-let create_ref_empty () = ref []
-
-let ref_top x = 
-  match !x with 
-  | y::_ -> y 
-  | _ -> invalid_arg "Ext_list.ref_top"
-
-let ref_empty x = 
-  match !x with [] -> true | _ -> false 
-
-let ref_push x refs = 
-  refs := x :: !refs
-
-let ref_pop refs = 
-  match !refs with 
-  | [] -> invalid_arg "Ext_list.ref_pop"
-  | x::rest -> 
-    refs := rest ; 
-    x     
-
-let rev_except_last xs =
-  let rec aux acc xs =
-    match xs with
-    | [ ] -> invalid_arg "Ext_list.rev_except_last"
-    | [ x ] -> acc ,x
-    | x :: xs -> aux (x::acc) xs in
-  aux [] xs   
-
-let sort_via_array cmp lst =
-  let arr = Array.of_list lst  in
-  Array.sort cmp arr;
-  Array.to_list arr
-
-let rec last xs =
-  match xs with 
-  | [x] -> x 
-  | _ :: tl -> last tl 
-  | [] -> invalid_arg "Ext_list.last"
-
-
-let rec assoc_by_string def (k : string) lst = 
-  match lst with 
-  | [] -> 
-    begin match def with 
-    | None -> assert false 
-    | Some x -> x end
-  | (k1,v1)::rest -> 
-    if Ext_string.equal k1 k then v1 else 
-    assoc_by_string def k rest 
-
-let rec assoc_by_int def (k : int) lst = 
-  match lst with 
-  | [] -> 
-    begin match def with
-    | None -> assert false 
-    | Some x -> x end
-  | (k1,v1)::rest -> 
-    if k1 = k then v1 else 
-    assoc_by_int def k rest     
-
-(** `modulo [1;2;3;4] [1;2;3]` => [1;2;3], Some [4] `
-  modulo [1;2;3] [1;2;3;4] => [1;2;3] None 
-  modulo [1;2;3] [1;2;3] => [1;2;3] Some []
- *)
-
-
-end
 module Ounit_list_test
 = struct
 #1 "ounit_list_test.ml"
@@ -10746,6 +11058,10 @@ let ((>::),
      (>:::)) = OUnit.((>::),(>:::))
 
 let (=~) = OUnit.assert_equal
+let printer_int_list = fun xs -> Format.asprintf "%a" 
+      (Format.pp_print_list  Format.pp_print_int
+      ~pp_sep:Format.pp_print_space 
+      ) xs 
 let suites = 
   __FILE__
   >:::
@@ -10756,30 +11072,82 @@ let suites =
     end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_equal
-        (Ext_list.flat_map_acc (fun x -> [x;x]) [3;4] [1;2]) [1;1;2;2;3;4] 
+        (Ext_list.flat_map_append 
+          (fun x -> [x;x])  [1;2] [3;4]) [1;1;2;2;3;4] 
     end;
+    __LOC__ >:: begin fun _ -> 
+    
+     let (=~)  = OUnit.assert_equal ~printer:printer_int_list in 
+     (Ext_list.flat_map (fun x -> [succ x ]) []) =~ [];
+     (Ext_list.flat_map (fun x -> [x;succ x ]) [1]) =~ [1;2];
+     (Ext_list.flat_map (fun x -> [x;succ x ]) [1;2]) =~ [1;2;2;3];
+     (Ext_list.flat_map (fun x -> [x;succ x ]) [1;2;3]) =~ [1;2;2;3;3;4]
+    end
+    ;
+    __LOC__ >:: begin fun _ ->
+      OUnit.assert_equal 
+      (Ext_list.stable_group (=)
+        [1;2;3;4;3]
+      )
+      ([[1];[2];[4];[3;3]])
+    end
+    ;
+    __LOC__ >:: begin fun _ -> 
+      let (=~)  = OUnit.assert_equal ~printer:printer_int_list in 
+      let f b _v = if b then 1 else 0 in 
+      Ext_list.map_last f [] =~ [];
+      Ext_list.map_last f [0] =~ [1];
+      Ext_list.map_last f [0;0] =~ [0;1];
+      Ext_list.map_last f [0;0;0] =~ [0;0;1];
+      Ext_list.map_last f [0;0;0;0] =~ [0;0;0;1];
+      Ext_list.map_last f [0;0;0;0;0] =~ [0;0;0;0;1];
+      Ext_list.map_last f [0;0;0;0;0;0] =~ [0;0;0;0;0;1];
+      Ext_list.map_last f [0;0;0;0;0;0;0] =~ [0;0;0;0;0;0;1];
+    end
+    ;
     __LOC__ >:: begin fun _ ->
       OUnit.assert_equal (
-        Ext_list.flat_map_acc (fun x -> if x mod 2 = 0 then [true] else [])
-          [false;false] [1;2]
+        Ext_list.flat_map_append 
+          (fun x -> if x mod 2 = 0 then [true] else [])
+          [1;2] [false;false] 
       )  [true;false;false]
     end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_equal (
-        Ext_list.map_acc ["1";"2";"3"] (fun x -> string_of_int x) [0;1;2] 
+        Ext_list.map_append  
+          (fun x -> string_of_int x) 
+          [0;1;2] 
+          ["1";"2";"3"]
 
       )
         ["0";"1";"2"; "1";"2";"3"]
     end;
 
     __LOC__ >:: begin fun _ -> 
-      let (a,b) = Ext_list.take 3 [1;2;3;4;5;6] in 
+      let (a,b) = Ext_list.split_at 3 [1;2;3;4;5;6] in 
       OUnit.assert_equal (a,b)
         ([1;2;3],[4;5;6]);
-      OUnit.assert_equal (Ext_list.take 1 [1])
-      ([1],[])  
+      OUnit.assert_equal (Ext_list.split_at 1 [1])
+        ([1],[])  ;
+      OUnit.assert_equal (Ext_list.split_at 2 [1;2;3])
+        ([1;2],[3])  
     end;
-
+    __LOC__ >:: begin fun _ -> 
+      let printer = fun (a,b) -> 
+        Format.asprintf "([%a],%d)"
+          (Format.pp_print_list Format.pp_print_int ) a  
+          b 
+      in 
+      let (=~) = OUnit.assert_equal ~printer in 
+      (Ext_list.split_at_last [1;2;3])
+      =~ ([1;2],3);
+      (Ext_list.split_at_last [1;2;3;4;5;6;7;8])
+      =~
+      ([1;2;3;4;5;6;7],8);
+      (Ext_list.split_at_last [1;2;3;4;5;6;7;])
+      =~
+      ([1;2;3;4;5;6],7)
+    end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_equal (Ext_list.assoc_by_int None 1 [2,"x"; 3,"y"; 1, "z"]) "z"
     end;
@@ -10789,25 +11157,62 @@ let suites =
     end ;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_equal
-       (Ext_list.length_compare [0;0;0] 3) `Eq ;
+        (Ext_list.length_compare [0;0;0] 3) `Eq ;
       OUnit.assert_equal
-       (Ext_list.length_compare [0;0;0] 1) `Gt ;   
-     OUnit.assert_equal
-       (Ext_list.length_compare [0;0;0] 4) `Lt ;   
-     OUnit.assert_equal
-       (Ext_list.length_compare [] (-1)) `Gt ;   
+        (Ext_list.length_compare [0;0;0] 1) `Gt ;   
       OUnit.assert_equal
-       (Ext_list.length_compare [] (0)) `Eq ;          
+        (Ext_list.length_compare [0;0;0] 4) `Lt ;   
+      OUnit.assert_equal
+        (Ext_list.length_compare [] (-1)) `Gt ;   
+      OUnit.assert_equal
+        (Ext_list.length_compare [] (0)) `Eq ;          
     end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ 
-      (Ext_list.length_larger_than_n 1 [1;2] [1]);
+        (Ext_list.length_larger_than_n 1 [1;2] [1]);
       OUnit.assert_bool __LOC__ 
-      (Ext_list.length_larger_than_n 0 [1;2] [1;2]);
-            OUnit.assert_bool __LOC__ 
-      (Ext_list.length_larger_than_n 2 [1;2] [])
+        (Ext_list.length_larger_than_n 0 [1;2] [1;2]);
+      OUnit.assert_bool __LOC__ 
+        (Ext_list.length_larger_than_n 2 [1;2] [])
 
-    end
+    end;
+
+    __LOC__ >:: begin fun _ ->
+      OUnit.assert_bool __LOC__
+        (Ext_list.length_ge [1;2;3] 3 );
+      OUnit.assert_bool __LOC__
+        (Ext_list.length_ge [] 0 );
+      OUnit.assert_bool __LOC__
+        (not (Ext_list.length_ge [] 1 ));
+
+    end;
+
+    __LOC__ >:: begin fun _ ->
+      let (=~) = OUnit.assert_equal ~printer:(
+          (
+            Format.asprintf "%a"
+              (fun fmt (b,l) ->
+                 Format.fprintf fmt "(%b,%a)" b 
+                   (Format.pp_print_list
+                      ~pp_sep:(fun fmt () -> 
+                          Format.pp_print_space fmt ()
+                        )
+                      Format.pp_print_int
+                   ) l
+
+              ) 
+          ) 
+
+        ) in 
+
+      let f = Ext_list.exclude_with_val  in 
+      f  (fun x -> x = 1) [1;2;3] =~ (true,[2;3]);
+      f (fun x -> x = 4) [1;2;3] =~ (false, [1;2;3]);
+      f (fun x -> x = 2) [1;2;3;2] =~ (true, [1;3]);
+      f (fun x -> x = 2) [1;2;2;3;2] =~ (true, [1;3]);
+      f (fun x -> x = 2) [2;2;2] =~ (true, []);
+      f (fun x -> x = 3) [2;2;2] =~ (false, [2;2;2])
+    end ;
 
   ]
 end
@@ -11182,9 +11587,9 @@ let suites =
   ]
 
 end
-module Ext_filename : sig 
-#1 "ext_filename.mli"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+module Ext_path : sig 
+#1 "ext_path.mli"
+(* Copyright (C) 2017 Authors of BuckleScript
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11208,100 +11613,79 @@ module Ext_filename : sig
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-
-
-
-
-(* TODO:
-   Change the module name, this code is not really an extension of the standard 
-    library but rather specific to JS Module name convention. 
-*)
-
-type t = 
-  [ `File of string 
-  | `Dir of string ]
-
-val combine : string -> string -> string 
-val path_as_directory : string -> string
-
-(** An extension module to calculate relative path follow node/npm style. 
-    TODO : this short name will have to change upon renaming the file.
- *)
-
-(** Js_output is node style, which means 
-    separator is only '/'
-
-    if the path contains 'node_modules', 
-    [node_relative_path] will discard its prefix and 
-    just treat it as a library instead
- *)
-
-val node_relative_path : bool -> t -> [`File of string] -> string
-
-val chop_extension : ?loc:string -> string -> string
+type t 
 
 
 
 
 
+(**
+   [combine path1 path2]
+   1. add some simplifications when concatenating
+   2. when [path2] is absolute, return [path2]
+*)  
+val combine : 
+  string -> 
+  string -> 
+  string    
 
-val cwd : string Lazy.t
-
-(* It is lazy so that it will not hit errors when in script mode *)
-val package_dir : string Lazy.t
 
 
+val chop_extension : ?loc:string -> string -> string 
 
-val module_name_of_file : string -> string
 
 val chop_extension_if_any : string -> string
 
-val absolute_path : string -> string
-
-val module_name_of_file_if_any : string -> string
-
-(**
-   1. add some simplifications when concatenating
-   2. when the second one is absolute, drop the first one
-*)
-val combine : string -> string -> string
-
-val normalize_absolute_path : string -> string
-
-(** 
-TODO: could be highly optimized
-if [from] and [to] resolve to the same path, a zero-length string is returned 
-Given that two paths are directory
-
-A typical use case is 
-{[
-Filename.concat 
-  (rel_normalized_absolute_path cwd (Filename.dirname a))
-  (Filename.basename a)
-]}
-*)
-val rel_normalized_absolute_path : string -> string -> string 
-
-
+val chop_all_extensions_if_any : 
+  string -> string 
 
 (**
-{[
-get_extension "a.txt" = ".txt"
-get_extension "a" = ""
-]}
+   {[
+     get_extension "a.txt" = ".txt"
+       get_extension "a" = ""
+   ]}
 *)
 val get_extension : string -> string
 
-val simple_convert_node_path_to_os_path : string -> string
 
-(* Note  we have to output uncapitalized file Name, 
-  or at least be consistent, since by reading cmi file on Case insensitive OS, we don't really know it is `list.cmi` or `List.cmi`, so that `require (./list.js)` or `require(./List.js)`
-  relevant issues: #1609, #913 
+
+
+val node_rebase_file :
+  from:string -> 
+  to_:string ->
+  string -> 
+  string 
+
+(** 
+   TODO: could be highly optimized
+   if [from] and [to] resolve to the same path, a zero-length string is returned 
+   Given that two paths are directory
+
+   A typical use case is 
+   {[
+     Filename.concat 
+       (rel_normalized_absolute_path cwd (Filename.dirname a))
+       (Filename.basename a)
+   ]}
 *)
-val output_js_basename :  string -> string 
+val rel_normalized_absolute_path : from:string -> string -> string 
+
+
+val normalize_absolute_path : string -> string 
+
+val absolute_path : string Lazy.t -> string -> string
+
+(** [concat dirname filename]
+    The same as {!Filename.concat} except a tiny optimization 
+    for current directory simplification
+*)
+val concat : string -> string -> string 
+
+val check_suffix_case : 
+  string -> string -> bool
 end = struct
-#1 "ext_filename.ml"
-(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+#1 "ext_path.ml"
+(* Copyright (C) 2017 Authors of BuckleScript
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11325,76 +11709,15 @@ end = struct
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-
-
-
-
-
-
-
-(** Used when produce node compatible paths *)
-let node_sep = "/"
-let node_parent = ".."
-let node_current = "."
-
 type t = 
-  [ `File of string 
-  | `Dir of string ]
-
-let cwd = lazy (Sys.getcwd ())
-
-let (//) = Filename.concat 
-
-let combine path1 path2 =
-  if path1 = "" then
-    path2
-  else if path2 = "" then path1
-  else 
-  if Filename.is_relative path2 then
-    path1// path2 
-  else
-    path2
-
-(* Note that [.//] is the same as [./] *)
-let path_as_directory x =
-  if x = "" then x
-  else
-  if Ext_string.ends_with x  Filename.dir_sep then
-    x 
-  else 
-    x ^ Filename.dir_sep
-
-let absolute_path s = 
-  let process s = 
-    let s = 
-      if Filename.is_relative s then
-        Lazy.force cwd // s 
-      else s in
-    (* Now simplify . and .. components *)
-    let rec aux s =
-      let base,dir  = Filename.basename s, Filename.dirname s  in
-      if dir = s then dir
-      else if base = Filename.current_dir_name then aux dir
-      else if base = Filename.parent_dir_name then Filename.dirname (aux dir)
-      else aux dir // base
-    in aux s  in 
-  process s 
-
-
-let chop_extension ?(loc="") name =
-  try Filename.chop_extension name 
-  with Invalid_argument _ -> 
-    Ext_pervasives.invalid_argf 
-      "Filename.chop_extension ( %s : %s )"  loc name
-
-let chop_extension_if_any fname =
-  try Filename.chop_extension fname with Invalid_argument _ -> fname
+  | File of string 
+  | Dir of string 
 
 
 
 
 
-let os_path_separator_char = String.unsafe_get Filename.dir_sep 0 
+let sep_char = String.unsafe_get Filename.dir_sep 0 
 
 
 (** example
@@ -11417,128 +11740,95 @@ let os_path_separator_char = String.unsafe_get Filename.dir_sep 0
       /c/d
     ]}
 *)
-let relative_path file_or_dir_1 file_or_dir_2 = 
-  let sep_char = os_path_separator_char in
+let node_relative_path 
+    ~from:(file_or_dir_2 : t )
+    (file_or_dir_1 : t) 
+  = 
   let relevant_dir1 = 
-    (match file_or_dir_1 with 
-     | `Dir x -> x 
-     | `File file1 ->  Filename.dirname file1) in
+    match file_or_dir_1 with 
+    | Dir x -> x 
+    | File file1 ->  Filename.dirname file1 in
   let relevant_dir2 = 
-    (match file_or_dir_2 with 
-     |`Dir x -> x 
-     |`File file2 -> Filename.dirname file2 ) in
+    match file_or_dir_2 with 
+    | Dir x -> x 
+    | File file2 -> Filename.dirname file2  in
   let dir1 = Ext_string.split relevant_dir1 sep_char   in
   let dir2 = Ext_string.split relevant_dir2 sep_char  in
   let rec go (dir1 : string list) (dir2 : string list) = 
     match dir1, dir2 with 
+    | "." :: xs, ys -> go xs ys 
+    | xs , "." :: ys -> go xs ys 
     | x::xs , y :: ys when x = y
       -> go xs ys 
-    | _, _
-      -> 
-      List.map (fun _ -> node_parent) dir2 @ dir1 
+    | _, _ -> 
+      Ext_list.map_append (fun _ ->  Literals.node_parent) dir2  dir1 
   in
   match go dir1 dir2 with
-  | (x :: _ ) as ys when x = node_parent -> 
-    String.concat node_sep ys
+  | (x :: _ ) as ys when x = Literals.node_parent -> 
+    String.concat Literals.node_sep ys
   | ys -> 
-    String.concat node_sep  @@ node_current :: ys
+    String.concat Literals.node_sep  
+    @@ Literals.node_current :: ys
 
 
-(** path2: a/b 
-    path1: a 
-    result:  ./b 
-    TODO: [Filename.concat] with care
+let node_concat ~dir base =
+  dir ^ Literals.node_sep ^ base 
 
-    [file1] is currently compilation file 
-    [file2] is the dependency
+let node_rebase_file ~from ~to_ file = 
+  
+  node_concat
+    ~dir:(
+      if from = to_ then Literals.node_current
+      else node_relative_path ~from:(Dir from) (Dir to_)) 
+    file
     
-    TODO: this is a hackish function: FIXME
+    
+(***
+   {[
+     Filename.concat "." "";;
+     "./"
+   ]}
 *)
-let node_relative_path node_modules_shorten (file1 : t) 
-    (`File file2 as dep_file : [`File of string]) = 
-  let v = Ext_string.find  file2 ~sub:Literals.node_modules in 
-  let len = String.length file2 in 
-  if node_modules_shorten && v >= 0 then
-    
-    let rec skip  i =       
-      if i >= len then
-        Ext_pervasives.failwithf ~loc:__LOC__ "invalid path: %s"  file2
-      else 
-        (* https://en.wikipedia.org/wiki/Path_(computing))
-           most path separator are a single char 
-        *)
-        let curr_char = String.unsafe_get file2 i  in 
-        if curr_char = os_path_separator_char || curr_char = '.' then 
-          skip (i + 1) 
-        else i
-        (*
-          TODO: we need do more than this suppose user 
-          input can be
-           {[
-             "xxxghsoghos/ghsoghso/node_modules/../buckle-stdlib/list.js"
-           ]}
-           This seems weird though
-        *)
-    in 
-    Ext_string.tail_from file2
-      (skip (v + Literals.node_modules_length)) 
-  else 
-    relative_path 
-      (  match dep_file with 
-         | `File x -> `File (absolute_path x)
-         | `Dir x -> `Dir (absolute_path x))
-
-      (match file1 with 
-       | `File x -> `File (absolute_path x)
-       | `Dir x -> `Dir(absolute_path x))
-    ^ node_sep ^
-    (* chop_extension_if_any *) (Filename.basename file2)
-
-
-
-(* Input must be absolute directory *)
-let rec find_root_filename ~cwd filename   = 
-  if Sys.file_exists (cwd // filename) then cwd
-  else 
-    let cwd' = Filename.dirname cwd in 
-    if String.length cwd' < String.length cwd then  
-      find_root_filename ~cwd:cwd'  filename 
+let combine path1 path2 =  
+  if Filename.is_relative path2 then
+    if Ext_string.is_empty path2 then 
+      path1
     else 
-      Ext_pervasives.failwithf 
-        ~loc:__LOC__
-        "%s not found from %s" filename cwd
+    if path1 = Filename.current_dir_name then 
+      path2
+    else
+    if path2 = Filename.current_dir_name 
+    then path1
+    else
+      Filename.concat path1 path2 
+  else
+    path2
 
 
-let find_package_json_dir cwd  = 
-  find_root_filename ~cwd  Literals.bsconfig_json
+let chop_extension ?(loc="") name =
+  try Filename.chop_extension name 
+  with Invalid_argument _ -> 
+    Ext_pervasives.invalid_argf 
+      "Filename.chop_extension ( %s : %s )"  loc name
 
-let package_dir = lazy (find_package_json_dir (Lazy.force cwd))
+let chop_extension_if_any fname =
+  try Filename.chop_extension fname with Invalid_argument _ -> fname
 
+let rec chop_all_extensions_if_any fname =
+  match Filename.chop_extension fname with 
+  | x -> chop_all_extensions_if_any x 
+  | exception _ -> fname
 
-
-let module_name_of_file file =
-  String.capitalize 
-    (Filename.chop_extension @@ Filename.basename file)  
-
-let module_name_of_file_if_any file = 
-  String.capitalize 
-    (chop_extension_if_any @@ Filename.basename file)  
-
-
-(** For win32 or case insensitve OS 
-    [".cmj"] is the same as [".CMJ"]
-*)
-(* let has_exact_suffix_then_chop fname suf =  *)
-
-let combine p1 p2 = 
-  if p1 = "" || p1 = Filename.current_dir_name then p2 else 
-  if p2 = "" || p2 = Filename.current_dir_name then p1 
-  else 
-  if Filename.is_relative p2 then 
-    Filename.concat p1 p2 
-  else p2 
+let get_extension x =
+  let pos = Ext_string.rindex_neg x '.' in 
+  if pos < 0 then ""
+  else Ext_string.tail_from x pos 
 
 
+let (//) x y =
+  if x = Filename.current_dir_name then y
+  else if y = Filename.current_dir_name then x 
+  else Filename.concat x y 
 
 (**
    {[
@@ -11580,11 +11870,16 @@ let split_aux p =
 
 
 
+
+
 (** 
    TODO: optimization
    if [from] and [to] resolve to the same path, a zero-length string is returned 
+
+   This function is useed in [es6-global] and 
+   [amdjs-global] format and tailored for `rollup`
 *)
-let rel_normalized_absolute_path from to_ =
+let rel_normalized_absolute_path ~from to_ =
   let root1, paths1 = split_aux from in 
   let root2, paths2 = split_aux to_ in 
   if root1 <> root2 then root2
@@ -11593,6 +11888,8 @@ let rel_normalized_absolute_path from to_ =
       match xss, yss with 
       | x::xs, y::ys -> 
         if Ext_string.equal x  y then go xs ys 
+        else if x = Filename.current_dir_name then go xs yss 
+        else if y = Filename.current_dir_name then go xss ys
         else 
           let start = 
             List.fold_left (fun acc _ -> acc // Ext_string.parent_dir_lit )
@@ -11603,7 +11900,17 @@ let rel_normalized_absolute_path from to_ =
       | x::xs, [] ->
         List.fold_left (fun acc _ -> acc // Ext_string.parent_dir_lit )
           Ext_string.parent_dir_lit xs in
-    go paths1 paths2
+    let v =  go paths1 paths2  in 
+
+    if Ext_string.is_empty v then  Literals.node_current
+    else 
+    if
+      v = "."
+      || v = ".."
+      || Ext_string.starts_with v "./"  
+      || Ext_string.starts_with v "../" 
+    then v 
+    else "./" ^ v 
 
 (*TODO: could be hgighly optimized later 
   {[
@@ -11652,21 +11959,38 @@ let normalize_absolute_path x =
   | last :: rest -> go last rest 
 
 
-let get_extension x =
-  let pos = Ext_string.rindex_neg x '.' in 
-  if pos < 0 then ""
-  else Ext_string.tail_from x pos 
 
 
-let simple_convert_node_path_to_os_path =
-  if Sys.unix then fun x -> x 
-  else if Sys.win32 || Sys.cygwin then 
-    Ext_string.replace_slash_backward 
-  else failwith ("Unknown OS : " ^ Sys.os_type)
+let absolute_path cwd s = 
+  let process s = 
+    let s = 
+      if Filename.is_relative s then
+        Lazy.force cwd // s 
+      else s in
+    (* Now simplify . and .. components *)
+    let rec aux s =
+      let base,dir  = Filename.basename s, Filename.dirname s  in
+      if dir = s then dir
+      else if base = Filename.current_dir_name then aux dir
+      else if base = Filename.parent_dir_name then Filename.dirname (aux dir)
+      else aux dir // base
+    in aux s  in 
+  process s 
 
 
-let output_js_basename s = 
-  String.uncapitalize s ^ Literals.suffix_js
+let absolute cwd s =   
+  match s with 
+  | File x -> File (absolute_path cwd x )
+  | Dir x -> Dir (absolute_path cwd x)
+
+let concat dirname filename =
+  if filename = Filename.current_dir_name then dirname
+  else if dirname = Filename.current_dir_name then filename
+  else Filename.concat dirname filename
+  
+
+let check_suffix_case =
+  Ext_string.ends_with
 end
 module Ounit_path_tests
 = struct
@@ -11675,9 +11999,11 @@ let ((>::),
      (>:::)) = OUnit.((>::),(>:::))
 
 
-let normalize = Ext_filename.normalize_absolute_path
+let normalize = Ext_path.normalize_absolute_path
 let (=~) x y = 
-  OUnit.assert_equal ~cmp:(fun x y ->   Ext_string.equal x y ) x y
+  OUnit.assert_equal 
+  ~printer:(fun x -> x)
+  ~cmp:(fun x y ->   Ext_string.equal x y ) x y
 
 let suites = 
   __FILE__ 
@@ -11720,32 +12046,32 @@ let suites =
     end;
 
     __LOC__ >:: begin fun _ -> 
-    let aux a b result = 
-        
-         Ext_filename.rel_normalized_absolute_path
-        a b =~ result ; 
-        
-        Ext_filename.rel_normalized_absolute_path
-        (String.sub a 0 (String.length a - 1)) 
-        b  =~ result ;
-        
-        Ext_filename.rel_normalized_absolute_path
-        a
-        (String.sub b 0 (String.length b - 1))  =~ result
-        ;
-        
+      let aux a b result = 
 
-        Ext_filename.rel_normalized_absolute_path
-        (String.sub a 0 (String.length a - 1 ))
-        (String.sub b 0 (String.length b - 1))
+        Ext_path.rel_normalized_absolute_path
+          ~from:a b =~ result ; 
+
+        Ext_path.rel_normalized_absolute_path
+          ~from:(String.sub a 0 (String.length a - 1)) 
+          b  =~ result ;
+
+        Ext_path.rel_normalized_absolute_path
+          ~from:a
+          (String.sub b 0 (String.length b - 1))  =~ result
+        ;
+
+
+        Ext_path.rel_normalized_absolute_path
+          ~from:(String.sub a 0 (String.length a - 1 ))
+          (String.sub b 0 (String.length b - 1))
         =~ result  
-       in   
+      in   
       aux
         "/a/b/c/"
-        "/a/b/c/d/"  "d";
+        "/a/b/c/d/"  "./d";
       aux
         "/a/b/c/"
-        "/a/b/c/d/e/f/" "d/e/f" ;
+        "/a/b/c/d/e/f/" "./d/e/f" ;
       aux
         "/a/b/c/d/"
         "/a/b/c/"  ".."  ;
@@ -11755,30 +12081,64 @@ let suites =
       aux
         "/a/b/c/d/"
         "/a/"  "../../.."  ;  
-       aux
+      aux
         "/a/b/c/d/"
         "//"  "../../../.."  ;  
-     
-     
+
+
     end;
     (* This is still correct just not optimal depends 
-      on user's perspective *)
+       on user's perspective *)
     __LOC__ >:: begin fun _ -> 
-      Ext_filename.rel_normalized_absolute_path 
-        "/a/b/c/d"
+      Ext_path.rel_normalized_absolute_path 
+        ~from:"/a/b/c/d"
         "/x/y" =~ "../../../../x/y"  
 
     end;
-    
+
+    (* used in module system: [es6-global] and [amdjs-global] *)    
     __LOC__ >:: begin fun _ -> 
-    Ext_filename.rel_normalized_absolute_path
-    "/usr/local/lib/node_modules/"
-    "//" =~ "../../../..";
-    Ext_filename.rel_normalized_absolute_path
-    "/usr/local/lib/node_modules/"
-    "/" =~ "../../../.."
+      Ext_path.rel_normalized_absolute_path
+        ~from:"/usr/local/lib/node_modules/"
+        "//" =~ "../../../..";
+      Ext_path.rel_normalized_absolute_path
+        ~from:"/usr/local/lib/node_modules/"
+        "/" =~ "../../../..";
+      Ext_path.rel_normalized_absolute_path
+        ~from:"./"
+        "./node_modules/xx/./xx.js" =~ "./node_modules/xx/xx.js";
+      Ext_path.rel_normalized_absolute_path
+        ~from:"././"
+        "./node_modules/xx/./xx.js" =~ "./node_modules/xx/xx.js"        
     end;
-    
+
+     __LOC__ >:: begin fun _ -> 
+      Ext_path.node_rebase_file
+        ~to_:( "lib/js/src/a")
+        ~from:( "lib/js/src") "b" =~ "./a/b" ;
+      Ext_path.node_rebase_file
+        ~to_:( "lib/js/src/")
+        ~from:( "lib/js/src") "b" =~ "./b" ;          
+      Ext_path.node_rebase_file
+        ~to_:( "lib/js/src")
+        ~from:("lib/js/src/a") "b" =~ "../b";
+      Ext_path.node_rebase_file
+        ~to_:( "lib/js/src/a")
+        ~from:("lib/js/") "b" =~ "./src/a/b" ;
+      Ext_path.node_rebase_file
+        ~to_:("lib/js/./src/a") 
+        ~from:("lib/js/src/a/") "b"
+        =~ "./b";
+
+      Ext_path.node_rebase_file
+        ~to_:"lib/js/src/a"
+        ~from: "lib/js/src/a/" "b"
+      =~ "./b";
+      Ext_path.node_rebase_file
+        ~to_:"lib/js/src/a/"
+        ~from:"lib/js/src/a/" "b"
+      =~ "./b"
+    end     
   ]
 
 end
@@ -13518,6 +13878,380 @@ let suites =
         end;
     ]
 end
+module Ext_modulename : sig 
+#1 "ext_modulename.mli"
+(* Copyright (C) 2017 Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+
+
+val module_name_of_file : string -> string
+
+
+val module_name_of_file_if_any : string -> string
+
+(** [modulename, upper]
+  if [upper = true] then it means it is indeed uppercase
+*)
+val module_name_of_file_if_any_with_upper : string -> string * bool
+
+
+(** Given an JS bundle name, generate a meaningful
+  bounded module name
+*)
+val js_id_name_of_hint_name : string -> string 
+end = struct
+#1 "ext_modulename.ml"
+(* Copyright (C) 2017 Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+let module_name_of_file file =
+  Ext_string.capitalize_ascii 
+    (Filename.chop_extension @@ Filename.basename file)  
+
+let module_name_of_file_if_any file = 
+  let v = Ext_path.chop_extension_if_any @@ Filename.basename file in
+  Ext_string.capitalize_ascii v 
+
+let module_name_of_file_if_any_with_upper file = 
+  let v = Ext_path.chop_extension_if_any @@ Filename.basename file in
+  let res = Ext_string.capitalize_ascii v in 
+  res, res == v 
+
+
+
+
+let good_hint_name module_name offset =
+  let len = String.length module_name in 
+  len > offset && 
+  (function | 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false) 
+    (String.unsafe_get module_name offset) &&
+  Ext_string.for_all_from module_name (offset + 1) 
+    (function 
+      | 'a' .. 'z' 
+      | 'A' .. 'Z' 
+      | '0' .. '9' 
+      | '_' 
+         -> true
+      | _ -> false)
+
+let rec collect_start buf s off len = 
+  if off >= len then ()
+  else 
+    let next = succ off in 
+    match String.unsafe_get  s off with     
+    | 'a' .. 'z' as c -> 
+      Buffer.add_char buf (Char.uppercase c) ;
+      collect_next buf s next len
+    | 'A' .. 'Z' as c -> 
+      Buffer.add_char buf c ;
+      collect_next buf s next len
+    | _ -> collect_start buf s next len
+and collect_next buf s off len = 
+  if off >= len then ()  
+  else 
+    let next = off + 1 in 
+    match String.unsafe_get s off with 
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '_'
+    as c ->
+      Buffer.add_char buf c ;
+      collect_next buf s next len 
+    | '.'
+    | '-' -> 
+      collect_start buf s next len      
+    | _ -> 
+      collect_next buf s next len 
+
+(** This is for a js exeternal module, we can change it when printing
+   for example
+   {[
+     var React$1 = require('react');
+     React$1.render(..)
+   ]}
+   Given a name, if duplicated, they should  have the same id
+*)
+let js_id_name_of_hint_name module_name =       
+  let i = Ext_string.rindex_neg module_name '/' in 
+  if i >= 0 then
+    let offset = succ i in 
+    if good_hint_name module_name offset then 
+      Ext_string.capitalize_ascii
+        (Ext_string.tail_from module_name offset)
+    else 
+      let str_len = String.length module_name in 
+      let buf = Buffer.create str_len in 
+      collect_start buf module_name offset str_len ;
+      let res = Buffer.contents buf in 
+      if Ext_string.is_empty res then 
+        Ext_string.capitalize_ascii module_name
+      else res 
+  else 
+  if good_hint_name module_name 0 then
+    Ext_string.capitalize_ascii module_name
+  else 
+    let str_len = (String.length module_name) in 
+    let buf = Buffer.create str_len in 
+    collect_start buf module_name 0 str_len ;
+    let res = Buffer.contents buf in 
+    if Ext_string.is_empty res then module_name
+    else res   
+
+end
+module Ext_namespace : sig 
+#1 "ext_namespace.mli"
+(* Copyright (C) 2017- Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+(** [make ~ns "a" ]
+    A typical example would return "a-Ns"
+    Note the namespace comes from the output of [namespace_of_package_name]
+*)
+val make : ns:string -> string -> string 
+
+val try_split_module_name :
+  string -> (string * string ) option
+
+(** [ends_with_bs_suffix_then_chop filename]
+  is used to help we have dangling modules
+*)
+val ends_with_bs_suffix_then_chop : 
+  string -> string option   
+
+
+(* Note  we have to output uncapitalized file Name, 
+   or at least be consistent, since by reading cmi file on Case insensitive OS, we don't really know it is `list.cmi` or `List.cmi`, so that `require (./list.js)` or `require(./List.js)`
+   relevant issues: #1609, #913  
+
+   #1933 when removing ns suffix, don't pass the bound
+   of basename
+*)
+val js_name_of_basename :  
+  bool ->
+  string -> string 
+
+type file_kind = 
+  | Upper_js
+  | Upper_bs
+  | Little_js 
+  | Little_bs 
+  (** [js_name_of_modulename ~little A-Ns]
+  *)
+val js_name_of_modulename : file_kind -> string -> string
+
+(* TODO handle cases like 
+   '@angular/core'
+   its directory structure is like 
+   {[
+     @angular
+     |-------- core
+   ]}
+*)
+val is_valid_npm_package_name : string -> bool 
+
+val namespace_of_package_name : string -> string
+
+end = struct
+#1 "ext_namespace.ml"
+
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+(* Note the build system should check the validity of filenames
+   espeically, it should not contain '-'
+*)
+let ns_sep_char = '-'
+let ns_sep = "-"
+
+let make ~ns cunit  = 
+  cunit ^ ns_sep ^ ns
+
+let path_char = Filename.dir_sep.[0]
+
+let rec rindex_rec s i  =
+  if i < 0 then i else
+    let char = String.unsafe_get s i in
+    if char = path_char then -1 
+    else if char = ns_sep_char then i 
+    else
+      rindex_rec s (i - 1) 
+
+let remove_ns_suffix name =
+  let i = rindex_rec name (String.length name - 1)  in 
+  if i < 0 then name 
+  else String.sub name 0 i 
+
+let try_split_module_name name = 
+  let len = String.length name in 
+  let i = rindex_rec name (len - 1)  in 
+  if i < 0 then None 
+  else 
+    Some (String.sub name (i+1) (len - i - 1),
+          String.sub name 0 i )
+type file_kind = 
+  | Upper_js
+  | Upper_bs
+  | Little_js 
+  | Little_bs
+
+let suffix_js = ".js"  
+let bs_suffix_js = ".bs.js"
+
+let ends_with_bs_suffix_then_chop s = 
+  Ext_string.ends_with_then_chop s bs_suffix_js
+  
+let js_name_of_basename bs_suffix s =   
+  remove_ns_suffix  s ^ 
+  (if bs_suffix then bs_suffix_js else  suffix_js )
+
+let js_name_of_modulename little s = 
+  match little with 
+  | Little_js -> 
+    remove_ns_suffix (String.uncapitalize s) ^ suffix_js
+  | Little_bs -> 
+    remove_ns_suffix (String.uncapitalize s) ^ bs_suffix_js
+  | Upper_js ->
+    remove_ns_suffix s ^ suffix_js
+  | Upper_bs -> 
+    remove_ns_suffix s ^ bs_suffix_js
+
+(* https://docs.npmjs.com/files/package.json 
+   Some rules:
+   The name must be less than or equal to 214 characters. This includes the scope for scoped packages.
+   The name can't start with a dot or an underscore.
+   New packages must not have uppercase letters in the name.
+   The name ends up being part of a URL, an argument on the command line, and a folder name. Therefore, the name can't contain any non-URL-safe characters.
+*)
+let is_valid_npm_package_name (s : string) = 
+  let len = String.length s in 
+  len <= 214 && (* magic number forced by npm *)
+  len > 0 &&
+  match String.unsafe_get s 0 with 
+  | 'a' .. 'z' | '@' -> 
+    Ext_string.for_all_from s 1 
+      (fun x -> 
+         match x with 
+         |  'a'..'z' | '0'..'9' | '_' | '-' -> true
+         | _ -> false )
+  | _ -> false 
+
+
+let namespace_of_package_name (s : string) : string = 
+  let len = String.length s in 
+  let buf = Buffer.create len in 
+  let add capital ch = 
+    Buffer.add_char buf 
+      (if capital then 
+         (Char.uppercase ch)
+       else ch) in    
+  let rec aux capital off len =     
+    if off >= len then ()
+    else 
+      let ch = String.unsafe_get s off in
+      match ch with 
+      | 'a' .. 'z' 
+      | 'A' .. 'Z' 
+      | '0' .. '9'
+        ->
+        add capital ch ; 
+        aux false (off + 1) len 
+      | '-' -> 
+        aux true (off + 1) len 
+      | _ -> aux capital (off+1) len
+  in 
+  aux true 0 len ;
+  Buffer.contents buf 
+
+end
 module Ounit_data_random
 = struct
 #1 "ounit_data_random.ml"
@@ -13539,7 +14273,7 @@ let ((>::),
 
 let (=~) = OUnit.assert_equal    
 
-
+let printer_string = fun x -> x 
 
 
 let suites = 
@@ -13563,25 +14297,15 @@ let suites =
 
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__
-        (Ext_string.for_all_range "xABc"~start:1
-           ~finish:2 (function 'A' .. 'Z' -> true | _ -> false));
+        (not (Ext_string.for_all_from "xABc"1
+                (function 'A' .. 'Z' -> true | _ -> false)));
       OUnit.assert_bool __LOC__
-        (not (Ext_string.for_all_range "xABc"~start:1
-                ~finish:3(function 'A' .. 'Z' -> true | _ -> false)));
+        ( (Ext_string.for_all_from "xABC" 1
+             (function 'A' .. 'Z' -> true | _ -> false)));
       OUnit.assert_bool __LOC__
-        ( (Ext_string.for_all_range "xABc"~start:1
-             ~finish:2 (function 'A' .. 'Z' -> true | _ -> false)));
-      OUnit.assert_bool __LOC__
-        ( (Ext_string.for_all_range "xABc"~start:1
-             ~finish:1 (function 'A' .. 'Z' -> true | _ -> false)));
-      OUnit.assert_bool __LOC__
-        ( (Ext_string.for_all_range "xABc"~start:1
-             ~finish:0 (function 'A' .. 'Z' -> true | _ -> false)));    
-      OUnit.assert_raise_any       
-        (fun _ ->  (Ext_string.for_all_range "xABc"~start:1
-                      ~finish:4 (function 'A' .. 'Z' -> true | _ -> false)));    
-
-    end;
+        ( (Ext_string.for_all_from "xABC" 1_000
+             (function 'A' .. 'Z' -> true | _ -> false)));             
+    end; 
 
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ @@
@@ -13599,13 +14323,13 @@ let suites =
     end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ @@
-      List.for_all Ext_string.is_valid_npm_package_name
-      ["x"; "@angualr"; "test"; "hi-x"; "hi-"]
+      List.for_all Ext_namespace.is_valid_npm_package_name
+        ["x"; "@angualr"; "test"; "hi-x"; "hi-"]
       ;
       OUnit.assert_bool __LOC__ @@
       List.for_all 
-      (fun x -> not (Ext_string.is_valid_npm_package_name x))
-      ["x "; "x'"; "Test"; "hI"]
+        (fun x -> not (Ext_namespace.is_valid_npm_package_name x))
+        ["x "; "x'"; "Test"; "hI"]
       ;
     end;
     __LOC__ >:: begin fun _ -> 
@@ -13641,17 +14365,25 @@ let suites =
       Ext_string.starts_with "abb" "abbc" =~ false;
     end;
     __LOC__ >:: begin fun _ -> 
+      let (=~) = OUnit.assert_equal ~printer:(fun x -> string_of_bool x ) in 
+      let k = Ext_string.ends_with in 
+      k "xx.ml" ".ml" =~ true;
+      k "xx.bs.js" ".js" =~ true ;
+      k "xx" ".x" =~false;
+      k "xx" "" =~true
+    end;  
+    __LOC__ >:: begin fun _ -> 
       Ext_string.ends_with_then_chop "xx.ml"  ".ml" =~ Some "xx";
       Ext_string.ends_with_then_chop "xx.ml" ".mll" =~ None
     end;
-    __LOC__ >:: begin fun _ -> 
-      Ext_string.starts_with_and_number "js_fn_mk_01" ~offset:0 "js_fn_mk_" =~ 1 ;
-      Ext_string.starts_with_and_number "js_fn_run_02" ~offset:0 "js_fn_mk_" =~ -1 ;
-      Ext_string.starts_with_and_number "js_fn_mk_03" ~offset:6 "mk_" =~ 3 ;
-      Ext_string.starts_with_and_number "js_fn_mk_04" ~offset:6 "run_" =~ -1;
-      Ext_string.starts_with_and_number "js_fn_run_04" ~offset:6 "run_" =~ 4;
-      Ext_string.(starts_with_and_number "js_fn_run_04" ~offset:6 "run_" = 3) =~ false 
-    end;
+    (* __LOC__ >:: begin fun _ -> 
+       Ext_string.starts_with_and_number "js_fn_mk_01" ~offset:0 "js_fn_mk_" =~ 1 ;
+       Ext_string.starts_with_and_number "js_fn_run_02" ~offset:0 "js_fn_mk_" =~ -1 ;
+       Ext_string.starts_with_and_number "js_fn_mk_03" ~offset:6 "mk_" =~ 3 ;
+       Ext_string.starts_with_and_number "js_fn_mk_04" ~offset:6 "run_" =~ -1;
+       Ext_string.starts_with_and_number "js_fn_run_04" ~offset:6 "run_" =~ 4;
+       Ext_string.(starts_with_and_number "js_fn_run_04" ~offset:6 "run_" = 3) =~ false 
+       end; *)
     __LOC__ >:: begin fun _ -> 
       Ext_string.for_all (function '_' -> true | _ -> false)
         "____" =~ true;
@@ -13664,9 +14396,9 @@ let suites =
       Ext_string.tail_from "ghsogh" 1 =~ "hsogh";
       Ext_string.tail_from "ghsogh" 0 =~ "ghsogh"
     end;
-    __LOC__ >:: begin fun _ -> 
-      Ext_string.digits_of_str "11_js" ~offset:0 2 =~ 11 
-    end;
+    (* __LOC__ >:: begin fun _ -> 
+       Ext_string.digits_of_str "11_js" ~offset:0 2 =~ 11 
+       end; *)
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ 
         (Ext_string.replace_backward_slash "a:\\b\\d" = 
@@ -13754,12 +14486,12 @@ let suites =
         (Ext_string.equal
            (Ext_string.concat3 "a0" "a11" "") "a0a11"
         );
- 
+
       OUnit.assert_bool __LOC__ 
         (Ext_string.equal
            (Ext_string.concat4 "a0" "a1" "a2" "a3") "a0a1a2a3"
         );
-     OUnit.assert_bool __LOC__ 
+      OUnit.assert_bool __LOC__ 
         (Ext_string.equal
            (Ext_string.concat4 "a0" "a11" "" "a33") "a0a11a33"
         );   
@@ -13809,7 +14541,7 @@ let suites =
            (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"; "a2"|])
            "a0 a1 a2"
         );   
-       OUnit.assert_bool __LOC__
+      OUnit.assert_bool __LOC__
         (Ext_string.equal 
            (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"; "a2";"a3"|])
            "a0 a1 a2 a3"
@@ -13829,8 +14561,84 @@ let suites =
            (Ext_string.concat_array Ext_string.single_space [|"0";"a1"; "2";"3";"d"; ""; "e"|])
            "0 a1 2 3 d  e"
         );        
-  
-    end
+
+    end;
+
+    __LOC__ >:: begin fun _ ->
+      Ext_namespace.namespace_of_package_name "bs-json"
+      =~ "BsJson"
+    end;
+    __LOC__ >:: begin fun _ ->
+      Ext_namespace.namespace_of_package_name
+        "reason-react"
+      =~ "ReasonReact";
+      Ext_namespace.namespace_of_package_name
+        "reason"
+      =~ "Reason"
+    end;
+    __LOC__ >:: begin fun _ -> 
+      Ext_namespace.js_name_of_basename false "a-b"
+      =~ "a.js";
+      Ext_namespace.js_name_of_basename false "a-"
+      =~ "a.js";
+      Ext_namespace.js_name_of_basename false "a--"
+      =~ "a-.js";
+      Ext_namespace.js_name_of_basename false "AA-b"
+      =~ "AA.js";
+      Ext_namespace.js_name_of_modulename 
+        Little_js "AA-b"
+      =~ "aA.js";
+      Ext_namespace.js_name_of_modulename 
+        Upper_js "AA-b"
+      =~ "AA.js";
+      Ext_namespace.js_name_of_modulename 
+        Upper_bs "AA-b"
+      =~ "AA.bs.js";
+    end;
+    __LOC__ >:: begin   fun _ -> 
+      let (=~) = OUnit.assert_equal ~printer:(fun x -> 
+          match x with 
+          | None -> ""
+          | Some (a,b) -> a ^","^ b
+        ) in  
+      Ext_namespace.try_split_module_name "Js-X" =~ Some ("X","Js");
+      Ext_namespace.try_split_module_name "Js_X" =~ None
+    end;
+    __LOC__ >:: begin fun _ ->
+      let (=~) = OUnit.assert_equal ~printer:(fun x -> x) in  
+      let f = Ext_string.capitalize_ascii in
+      f "x" =~ "X";
+      f "X" =~ "X";
+      f "" =~ "";
+      f "abc" =~ "Abc";
+      f "_bc" =~ "_bc";
+      let v = "bc" in
+      f v =~ "Bc";
+      v =~ "bc"
+    end;
+    __LOC__ >:: begin fun _ -> 
+      let (=~) = OUnit.assert_equal ~printer:printer_string in 
+      Ext_path.chop_all_extensions_if_any "a.bs.js" =~ "a" ; 
+      Ext_path.chop_all_extensions_if_any "a.js" =~ "a";
+      Ext_path.chop_all_extensions_if_any "a" =~ "a";
+      Ext_path.chop_all_extensions_if_any "a.x.bs.js" =~ "a"
+    end;
+    let (=~) = OUnit.assert_equal ~printer:(fun x -> x) in 
+    __LOC__ >:: begin fun _ ->
+      let k = Ext_modulename.js_id_name_of_hint_name in 
+      k "xx" =~ "Xx";
+      k "react-dom" =~ "ReactDom";
+      k "a/b/react-dom" =~ "ReactDom";
+      k "a/b" =~ "B";
+      k "a/" =~ "A/" ; (*TODO: warning?*)
+      k "#moduleid" =~ "Moduleid";
+      k "@bundle" =~ "Bundle";
+      k "xx#bc" =~ "Xxbc";
+      k "hi@myproj" =~ "Himyproj";
+      k "ab/c/xx.b.js" =~ "XxBJs"; (* improve it in the future*)
+      k "c/d/a--b"=~ "AB";
+      k "c/d/ac--" =~ "Ac"
+    end 
   ]
 
 end
@@ -14046,6 +14854,8 @@ val escaped : char -> string
 
 
 val valid_hex : char -> bool
+
+val is_lower_case : char -> bool
 end = struct
 #1 "ext_char.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -14115,6 +14925,13 @@ let valid_hex x =
     | 'a' .. 'f'
     | 'A' .. 'F' -> true
     | _ -> false 
+
+
+
+let is_lower_case c =
+  (c >= 'a' && c <= 'z')
+  || (c >= '\224' && c <= '\246')
+  || (c >= '\248' && c <= '\254')    
 end
 module Ast_utf8_string : sig 
 #1 "ast_utf8_string.mli"
@@ -14616,7 +15433,7 @@ let valid_identifier s =
   if s_len = 0 then false 
   else
     valid_lead_identifier_char s.[0] &&
-    Ext_string.for_all_range s ~start:0 ~finish:(s_len - 1) valid_identifier_char
+    Ext_string.for_all_from s 1  valid_identifier_char
 
       
 let is_space x = 
@@ -14982,7 +15799,7 @@ let (==~) a b =
   OUnit.assert_equal
     (Ast_utf8_string_interp.transform_test a
      |> List.filter (fun x -> not @@ Ast_utf8_string_interp.empty_segment x)
-     |> List.map (fun 
+     |> Ext_list.map (fun 
       ({start = {offset = a}; finish = {offset = b}; kind ; content }
        : Ast_utf8_string_interp.segment) -> 
       a,b,kind,content
@@ -14994,7 +15811,7 @@ let (==*) a b =
   let segments = 
     Ast_utf8_string_interp.transform_test a
      |> List.filter (fun x -> not @@ Ast_utf8_string_interp.empty_segment x)
-     |> List.map (fun 
+     |> Ext_list.map (fun 
       ({start = {lnum=la; offset = a}; finish = {lnum = lb; offset = b}; kind ; content } 
         : Ast_utf8_string_interp.segment) -> 
       la,a,lb,b,kind,content
@@ -16550,7 +17367,7 @@ let suites =
       let v = Int_vec.of_list lst in 
       OUnit.assert_equal 
         (Int_vec.map_into_list (fun x -> x + 1) v)
-        (List.map (fun x -> x + 1) lst)  
+        (Ext_list.map (fun x -> x + 1) lst)  
     end;
     __LOC__ >:: begin fun _ ->
       let v = Int_vec.make 4 in 

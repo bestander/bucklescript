@@ -81,10 +81,9 @@ type primitive =
   | Pjs_call of
     (* Location.t *  [loc] is passed down *)
     string *  (* prim_name *)
-    Ast_arg.kind list * (* arg_types *)
-    (* Ast_external_attributes.return_wrapper *) (* result_type *)
-    Ast_ffi_types.ffi  (* ffi *)
-  | Pjs_object_create of Ast_ffi_types.obj_create
+    External_arg_spec.t list * (* arg_types *)
+    External_ffi_types.attr  (* ffi *)
+  | Pjs_object_create of External_ffi_types.obj_create
 
   | Praise 
   | Psequand | Psequor | Pnot
@@ -327,7 +326,10 @@ val for_ :
 
 
 
-(** In this pass we also synchronized aliases so that 
+(** 
+  [convert exports lam]
+  it also collect [exit_map] and a collection of potential depended modules [may_depends]
+  In this pass we also synchronized aliases so that 
     {[
       let a1 = a0 in 
       let a2 = a1 in 

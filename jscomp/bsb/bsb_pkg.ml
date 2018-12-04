@@ -1,4 +1,28 @@
 
+(* Copyright (C) 2017- Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
 let (//) = Filename.concat
 
 
@@ -9,9 +33,9 @@ let (//) = Filename.concat
 *)
 let  resolve_bs_package  
     ~cwd
-    name = 
+    pkg = 
   let marker = Literals.bsconfig_json in 
-  let sub_path = name // marker  in
+  let sub_path = pkg // marker  in
   let rec aux  cwd  = 
     let abs_marker =  cwd // Literals.node_modules // sub_path in 
     if Sys.file_exists abs_marker then (* Some *) (Filename.dirname abs_marker)
@@ -29,16 +53,16 @@ let  resolve_bs_package
             Filename.dirname abs_marker
           else
             begin 
-              Format.fprintf Format.err_formatter 
-                "@{<error>Package not found: resolving package %s in %s  @}@." name cwd ;             
-              Bsb_exception.error (Package_not_found (name, None))
+              Bsb_log.error
+                "@{<error>Package not found: resolving package %s in %s  @}@." pkg cwd ;             
+              Bsb_exception.package_not_found ~pkg ~json:None
             end
         with 
           Not_found -> 
           begin 
-            Format.fprintf Format.err_formatter 
-              "@{<error>Package not found: resolving package %s in %s  @}@." name cwd ;             
-            Bsb_exception.error (Package_not_found (name,None))
+            Bsb_log.error
+              "@{<error>Package not found: resolving package %s in %s  @}@." pkg cwd ;             
+            Bsb_exception.package_not_found ~pkg ~json:None
           end
   in
   aux cwd 
@@ -51,7 +75,7 @@ let resolve_bs_package ~cwd package =
   match String_hashtbl.find_opt cache package with 
   | None -> 
     let result = resolve_bs_package ~cwd package in 
-    Format.fprintf Format.std_formatter "@{<info>Package@} %s -> %s@." package result ; 
+    Bsb_log.info "@{<info>Package@} %s -> %s@." package result ; 
     String_hashtbl.add cache package result ;
     result 
   | Some x 
@@ -59,10 +83,12 @@ let resolve_bs_package ~cwd package =
     let result = resolve_bs_package ~cwd package in 
     if result <> x then 
       begin 
-        Format.fprintf Format.err_formatter  
+        Bsb_log.warn
           "@{<warning>Duplicated package:@} %s %s (chosen) vs %s in %s @." package x result cwd;
       end;
     x
+
+
 
 (** The package does not need to be a bspackage 
   example:

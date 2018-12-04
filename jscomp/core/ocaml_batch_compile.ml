@@ -39,24 +39,25 @@ let process_result ppf  main_file ast_table result =
       result ;
   Ast_extract.build_lazy_queue ppf result ast_table
     Js_implementation.after_parsing_impl
-       Js_implementation.after_parsing_sig 
+    Js_implementation.after_parsing_sig 
   ;
   if not (!Clflags.compile_only) then
     Sys.command
       ("node " ^
-        Ext_filename.output_js_basename (Filename.chop_extension main_file)
-         )
+        Ext_namespace.js_name_of_basename 
+        !Js_config.bs_suffix (Filename.chop_extension main_file)
+      )
   else 0
 
 type task = 
-  | Main of string
-  | Eval of string 
+  | Bsc_task_main of string
+  | Bsc_task_eval of string 
   (* currently we just output JS file, 
      it is compilicated to run via node.
      1. Create a temporary file, it has to be in the same directory?
      2. Via `node -e`, we need a module to do shell escaping properly
   *)
-  | None
+  | Bsc_task_none
 
 
 let print_if ppf flag printer arg =
@@ -80,11 +81,11 @@ let batch_compile ppf search_dirs files main_file =
     end        
   ;
   begin match main_file with
-    | Main main_file -> 
-      let main_module = (Ext_filename.module_name_of_file main_file) in
+    | Bsc_task_main main_file -> 
+      let main_module = (Ext_modulename.module_name_of_file main_file) in
       let ast_table, result =
         Ast_extract.collect_from_main ppf 
-          ~extra_dirs:(List.map
+          ~extra_dirs:(Ext_list.map
                          (fun x -> 
                             ({ dir = x ; excludes = [] } : Ast_extract.dir_spec)) search_dirs)
           Ocaml_parse.lazy_parse_implementation
@@ -100,31 +101,31 @@ let batch_compile ppf search_dirs files main_file =
          bsc -I xx -I yy -bs-main Module_name
       *)
       process_result ppf main_file ast_table result     
-    | None ->  0
-    | Eval s ->
+    | Bsc_task_none ->  0
+    | Bsc_task_eval s ->
       Ext_ref.protect_list 
         [Clflags.dont_write_files , true ; 
          Clflags.annotations, false;
          Clflags.binary_annotations, false;
          Js_config.dump_js, true ;
         ]  (fun _ -> 
-          Ocaml_parse.parse_implementation_from_string s 
-          (* FIXME: Note in theory, the order of applying our built in ppx 
-             and apply third party ppx should not matter, but in practice  
-             it may.
-             We should make it more consistent. 
-             Thirdy party ppx may be buggy to drop annotations.
-             If we always put our ppx in the beginning, it will be more robust, 
-             however, the current implementation (in the batch compilation mode) 
-             seems to apply our ppx after all ppx transformations
-          *)
-          |> Pparse.apply_rewriters_str ~tool_name:Js_config.tool_name
-          |> print_if ppf Clflags.dump_parsetree Printast.implementation
-          |> print_if ppf Clflags.dump_source Pprintast.structure
-          |> Js_implementation.after_parsing_impl ppf "//<toplevel>//" "Bs_internal_eval" 
+            Ocaml_parse.parse_implementation_from_string s 
+            (* FIXME: Note in theory, the order of applying our built in ppx 
+               and apply third party ppx should not matter, but in practice  
+               it may.
+               We should make it more consistent. 
+               Thirdy party ppx may be buggy to drop annotations.
+               If we always put our ppx in the beginning, it will be more robust, 
+               however, the current implementation (in the batch compilation mode) 
+               seems to apply our ppx after all ppx transformations
+            *)
+            |> Pparse.apply_rewriters_str ~tool_name:Js_config.tool_name
+            |> print_if ppf Clflags.dump_parsetree Printast.implementation
+            |> print_if ppf Clflags.dump_source Pprintast.structure
+            |> Js_implementation.after_parsing_impl ppf "//<toplevel>//" "Bs_internal_eval" 
           ); 0
   end
 
 
 
-                    
+

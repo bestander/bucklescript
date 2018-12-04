@@ -39,13 +39,15 @@
      *  }
 *)
 let () = 
+  Clflags.bs_only := true;
+  Oprint.out_ident := Outcome_printer_ns.out_ident;
   Clflags.assume_no_mli := Clflags.Mli_non_exists;
   Bs_conditional_initial.setup_env ();
   Clflags.dont_write_files := true;
   Clflags.unsafe_string := false;
   Clflags.record_event_when_debug := false
 
-let implementation impl ppf  str  =
+let implementation prefix impl ppf  str  =
   let modulename = "Test" in
   (* let env = !Toploop.toplevel_env in *)
   (* Compmisc.init_path false; *)
@@ -56,7 +58,8 @@ let implementation impl ppf  str  =
   let finalenv = ref Env.empty in
   let types_signature = ref [] in
   try 
-  impl (Lexing.from_string str )
+  impl (Lexing.from_string 
+    (if prefix then "[@@@bs.config{no_export}]\n#1 \"repl.ml\"\n"  ^ str else str ))
   |> !Ppx_entry.rewrite_implementation
   |> (fun x -> 
       let (a,b,c,signature) = Typemod.type_implementation_more modulename modulename modulename env x in
@@ -67,12 +70,12 @@ let implementation impl ppf  str  =
   |>  Translmod.transl_implementation modulename
   |> (* Printlambda.lambda ppf *) (fun lam -> 
       let buffer = Buffer.create 1000 in 
-      let () = Js_dump.(pp_deps_program
+      let () = Js_dump_program.pp_deps_program
                           ~output_prefix:"" (* does not matter here *)
                           NodeJS
-                          (Lam_compile_group.compile ~filename:"" "" 
+                          (Lam_compile_main.compile ~filename:"" "" 
                              !finalenv !types_signature lam)
-                          (Ext_pp.from_buffer buffer)) in
+                          (Ext_pp.from_buffer buffer) in
       let v = Buffer.contents buffer in 
       Format.fprintf ppf {| { "js_code" : %S }|} v )
   with 
@@ -107,9 +110,11 @@ let string_of_fmt (f : Format.formatter -> 'a -> unit) v =
     Format.pp_print_flush fmt () in
   Buffer.contents buf 
 
-let compile  impl : string -> string = string_of_fmt (implementation  impl )
+let compile  impl : string -> string = string_of_fmt (implementation  false impl )
 (** TODO: add `[@@bs.config{no_export}]\n# 1 "repl.ml"`*)
-let shake_compile impl : string -> string = string_of_fmt (implementation impl )
+let shake_compile impl : string -> string = 
+  string_of_fmt (implementation true impl )
+
 
 
 (** *)
@@ -131,7 +136,17 @@ module Js = struct
   type js_string
   external string : string -> js_string t = "caml_js_from_string"
   external to_string : js_string t -> string = "caml_js_to_string"
+  external create_file : js_string t -> js_string t -> unit = "caml_create_file"
+  external to_bytestring : js_string t -> string = "caml_js_to_byte_string"
 end
+
+
+let load_module cmi_path cmi_content cmj_name cmj_content =
+  Js.create_file cmi_path cmi_content;
+  Js_cmj_datasets.data_sets :=
+    String_map.add
+      cmj_name (lazy (Js_cmj_format.from_string cmj_content))
+      !Js_cmj_datasets.data_sets
 
 
 let export (field : string) v = 
@@ -145,7 +160,7 @@ let dir_directory d =
 
 
 let () = 
-  dir_directory "/cmis"
+  dir_directory "/static/cmis"
 
 
 
@@ -163,6 +178,15 @@ let make_compiler name impl =
                       (fun _ code ->
                          Js.string (shake_compile impl (Js.to_string code)));
                     "version", Js.Unsafe.inject (Js.string (Bs_version.version));
+                    "load_module",
+                    inject @@
+                    Js.wrap_meth_callback
+                      (fun _ cmi_path cmi_content cmj_name cmj_content ->
+                        let cmj_bytestring = Js.to_bytestring cmj_content in
+                        (* HACK: force string tag to ASCII (9) to avoid
+                         * UTF-8 encoding *)
+                        Js.Unsafe.set cmj_bytestring "t" 9;
+                        load_module cmi_path cmi_content (Js.to_string cmj_name) cmj_bytestring);
                   |]))
 let () = make_compiler "ocaml" Parse.implementation
 

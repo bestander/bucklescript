@@ -130,7 +130,7 @@ let make_block ?comment tag tag_info es mutable_flag : t =
       List.mapi (fun i (e : t) -> merge_outer_comment des.(i) e) es
     (* TODO: may overriden its previous comments *)
     | Blk_module (Some des) 
-      ->  List.map2  merge_outer_comment 
+      ->  Ext_list.map2  merge_outer_comment 
             des es
     | _ -> es 
   in
@@ -388,7 +388,7 @@ let array_length ?comment (e : t) : t =
 let string_length ?comment (e : t) : t =
   match e.expression_desc with 
   | Str(_,v) -> int ?comment (Int32.of_int (String.length v)) 
-    (* No optimization for {j||j}*)
+  (* No optimization for {j||j}*)
   | _ -> { expression_desc = Length (e, String) ; comment }
 
 let bytes_length ?comment (e : t) : t = 
@@ -520,7 +520,7 @@ let bool v = if  v then caml_true else caml_false
 *)
 let rec triple_equal ?comment (e0 : t) (e1 : t ) : t = 
   match e0.expression_desc, e1.expression_desc with
-  | Var (Id ({name = "undefined"|"null"; } as id)), 
+  | Var (Id ({name = "undefined"|"null"} as id)), 
     (Char_of_int _ | Char_to_int _ 
     | Bool _ | Number _ | Typeof _ | Int_of_boolean _ 
     | Fun _ | Array _ | Caml_block _ )
@@ -788,7 +788,7 @@ let rec econd ?comment (b : t) (t : t) (f : t) : t =
   (*   econd ?comment { b with expression_desc = Bin (And , b0,b1)} t f *)
   | _ -> 
     let b  = ocaml_boolean_under_condition b in 
-    (* if b' != b then *)
+    (* if b' <> b then *)
     (*   econd ?comment b' t f  *)
     (* else  *)
     if Js_analyzer.eq_expression t f then
@@ -891,11 +891,11 @@ let public_method_call meth_name obj label cache args =
   let len = List.length args in 
   (* econd (int_equal (tag obj ) obj_int_tag_literal) *)
   if len <= 7 then          
-    runtime_call Js_config.caml_oo_curry 
+    runtime_call Js_runtime_modules.caml_oo_curry 
       ("js" ^ string_of_int (len + 1) )
       (label:: ( int cache) :: obj::args)
   else 
-    runtime_call Js_config.caml_oo_curry "js"
+    runtime_call Js_runtime_modules.caml_oo_curry "js"
       [label; 
        int cache;
        obj ;  
@@ -935,10 +935,6 @@ let public_method_call meth_name obj label cache args =
 let set_tag ?comment e tag : t = 
   seq {expression_desc = Caml_block_set_tag (e,tag); comment } unit 
 
-let set_length ?comment e tag : t = 
-  seq {expression_desc = Caml_block_set_length (e,tag); comment } unit 
-let obj_length ?comment e : t = 
-  {expression_desc = Length (e, Caml_block); comment }
 
 (* Note that [lsr] or [bor] are js semantics *)
 let rec int32_bor ?comment (e1 : J.expression) (e2 : J.expression) : J.expression = 
@@ -993,6 +989,10 @@ let uint32 ?comment n : J.expression =
 let string_comp cmp ?comment  e0 e1 = 
   bool_of_boolean @@ bin ?comment cmp e0 e1
 
+let set_length ?comment e tag : t = 
+  seq {expression_desc = Caml_block_set_length (e,tag); comment } unit 
+let obj_length ?comment e : t = 
+  to_int32 {expression_desc = Length (e, Caml_block); comment }
 
 let rec int_comp (cmp : Lambda.comparison) ?comment  (e0 : t) (e1 : t) = 
   match cmp, e0.expression_desc, e1.expression_desc with
@@ -1174,7 +1174,7 @@ let int32_div ~checked ?comment
     end
   | _, _ -> 
     if checked  then 
-      runtime_call Js_config.int32 "div" [e1; e2]
+      runtime_call Js_runtime_modules.int32 "div" [e1; e2]
     else to_int32 (float_div ?comment e1 e2)
 
 
@@ -1188,7 +1188,7 @@ let int32_mod ~checked ?comment e1 (e2 : t) : J.expression =
 
   | _ -> 
     if checked then 
-      runtime_call Js_config.int32 "mod_" [e1;e2]
+      runtime_call Js_runtime_modules.int32 "mod_" [e1;e2]
     else 
       { comment ; 
         expression_desc = Bin (Mod, e1,e2)
@@ -1229,9 +1229,9 @@ let int32_mul ?comment
     if i >= 0 then 
       int32_lsl e (small_int i)
     else 
-      runtime_call ?comment Js_config.int32 Literals.imul [e1;e2]
+      runtime_call ?comment Js_runtime_modules.int32 Literals.imul [e1;e2]
   | _ -> 
-    runtime_call ?comment Js_config.int32 Literals.imul [e1;e2]
+    runtime_call ?comment Js_runtime_modules.int32 Literals.imul [e1;e2]
 
 let unchecked_int32_mul ?comment e1 e2 : J.expression = 
   { comment ; 
@@ -1285,8 +1285,9 @@ let of_block ?comment ?e block : t =
              begin match e with 
                | None -> block 
                | Some e -> 
-                 block @ [{J.statement_desc = Return {return_value = e } ;
-                           comment}]
+                 Ext_list.append block  
+                   [{J.statement_desc = Return {return_value = e } ;
+                     comment}]
              end
             , Js_fun_env.empty 0)
     } []
@@ -1300,23 +1301,33 @@ let js_bool ?comment x : t =
 
 let is_undef ?comment x = triple_equal ?comment x undefined
 
-
+let is_null_undefined ?comment (x: t) : t = 
+  match x.expression_desc with 
+  | Var (Id ({name = "undefined" | "null"} as id))
+    when Ext_ident.is_js id 
+    -> caml_true
+  | Number _ | Array _ | Caml_block _ -> caml_false
+  | _ -> 
+    bool_of_boolean
+      { comment ; 
+        expression_desc = Is_null_undefined_to_boolean x 
+      }
 let not_implemented ?comment (s : string) : t =  
   runtime_call
-    Js_config.missing_polyfill
+    Js_runtime_modules.missing_polyfill
     "not_implemented" 
     [str (s ^ " not implemented by bucklescript yet\n")]
 
-  (* call ~info:Js_call_info.ml_full_call *)
-  (*   { *)
-  (*     comment ; *)
-  (*     expression_desc =  *)
-  (*       Fun (false,[], ( *)
-  (*           [{J.statement_desc = *)
-  (*               Throw (str ?comment  *)
-  (*                        (s ^ " not implemented by bucklescript yet\n")) ; *)
-  (*             comment}]) , *)
-  (*            Js_fun_env.empty 0) *)
-  (*   } [] *)
+(* call ~info:Js_call_info.ml_full_call *)
+(*   { *)
+(*     comment ; *)
+(*     expression_desc =  *)
+(*       Fun (false,[], ( *)
+(*           [{J.statement_desc = *)
+(*               Throw (str ?comment  *)
+(*                        (s ^ " not implemented by bucklescript yet\n")) ; *)
+(*             comment}]) , *)
+(*            Js_fun_env.empty 0) *)
+(*   } [] *)
 
 

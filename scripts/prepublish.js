@@ -1,73 +1,51 @@
-#!/usr/bin/env node
-// set -e
-
-// # cd jscomp && watchman watch-del . || true &&  cd ..
-// # cd jscomp && git clean -dfx && cd ..
-
-// # have no idea why the tar.gz is not correct
-// # git clean -dfx && 
-// cd ocaml && git archive HEAD -o ../ocaml.tar.gz && cd ..
-
-
-var child_process = require('child_process')
+//@ts-check
+var p = require('child_process')
 var path = require('path')
+var fs = require('fs')
+var root = path.join(__dirname, '..')
+var root_config = { cwd: root, encoding: 'utf8' }
+var json = require(path.join(root, 'package.json'))
 
-var root_dir = path.join(__dirname, '..')
-var ocaml_dir = path.join(root_dir, 'ocaml')
-var ocaml_tar = path.join(root_dir, 'ocaml.tar.gz')
-var bin_dir = path.join(root_dir,'jscomp','bin')
 
-child_process.execSync(`git archive HEAD -o ${ocaml_tar}`, { cwd: ocaml_dir })
+function clean() {
+    console.log(`cleanning`)
+    p.execSync(`git clean -dfx .`, root_config)
+}
+function verifyIsCleanWorkTree() {
+    var output = p.execSync(`git status`, root_config)
+    if (output.includes('nothing to commit')) {
+        console.log(`still clean tree`)
 
-// var download = {
-//     mac: false,
-//     linux: false,
-//     win: false,
-//     source: false
-// }
+    } else {
 
-// var check_all = function () {
-//     var { mac, linux, win, source } = download;
-//     if (mac && linux && win && source) {
-//         console.log(`All downloading finished start next`)
-//     } else {
-//         console.log(`finished one job, remaining task`)
-//     }
-// }
+        console.log(output)
+        console.log(`Error: not fixed point`)
+        process.exit(2)
+    }
+}
+clean()
+p.execSync(`./release.sh`, { cwd: path.join(root, 'jscomp'), stdio: 'inherit' })
+verifyIsCleanWorkTree()
 
-// var ninja_url_base = `${ninja_build_base}/releases/download/v${ninja_version}`
+clean()
+console.log(`start packing`)
+p.execSync(`npm pack`, root_config)
+console.log(`finish packing`)
 
-var ninja_build_base = 'https://github.com/ninja-build/ninja'
-var ninja_version = '1.7.2'
+var tmpdir = 'tmp'
 
-var exec = child_process.exec
+fs.mkdirSync(path.join(root, tmpdir))
 
-// exec(`wget --content-disposition ${ninja_build_base}/archive/v${ninja_version}.tar.gz -O ninja-${ninja_version}.tar.gz`, {cwd: root_dir}, ()=>{
-//     // download.source = true
-//     console.log(`downloading source finished`)
-//     // check_all()
-// })
+p.execSync(`tar -xzf ${json.name}-${json.version}.tgz -C ${tmpdir} `, root_config)
 
-// var download_to_bin = function(url,cb){
-//     exec(`wget --content-disposition ${url}`, {cwd: root_dir},cb)
-// }
-
-// It really sucks, check
-// `node.js` ninja_vendor_tar exist or not
-// download_to_bin(`${ninja_url_base}/ninja-mac.zip`, () => {
-//     download.mac = true
-//     console.log(`downloading mac finished`)
-//     exec('unzip')
-//     check_all()
-// })
-// download_to_bin(`${ninja_url_base}/ninja-linux.zip`, () => {
-//     download.linux = true;
-//     console.log(`downloading linux finished`)
-//     check_all()
-// })
-
-// download_to_bin(`${ninja_url_base}/ninja-win.zip`, ()=>{
-//     download.win = true;
-//     console.log(`downloading win finished`)
-//     check_all()
-// })
+process.env.BS_ALWAYS_BUILD_YOUR_COMPILER = 'true'
+var tmpdir_config = {
+    cwd: path.join(root, tmpdir, 'package'),
+    encoding: 'utf8', stdio: 'inherit'
+}
+console.log(`start installing`)
+p.execSync(`npm install`, tmpdir_config)
+console.log(`finish installing`)
+clean()
+verifyIsCleanWorkTree()
+console.log(`okay to publish`)

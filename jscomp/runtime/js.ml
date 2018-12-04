@@ -38,7 +38,7 @@
 
 these types are not used by normal users}
 *)
-
+module MapperRt = Js_mapperRt
 module Internal = Js_internal
 
 (* {2 Types for JS objects} *)
@@ -56,9 +56,14 @@ type + 'a undefined
 (** value of this type can be either [undefined] or ['a]
     this type is the same as {!Js.Undefined.t}  *)
 
-type + 'a null_undefined
+type + 'a nullable    
+type + 'a null_undefined = 'a nullable
 (** value of this type can be [undefined], [null] or ['a]
     this type is the same as {!Js.Null_undefined.t}*)
+
+external toOption : 'a nullable  -> 'a option = "#null_undefined_to_opt"
+external test : 'a nullable -> bool = "#is_nil_undef"
+external testAny : 'a -> bool = "#is_nil_undef"
 
 type boolean
 (** The JS boolean type, can be [Js.true_] or [Js.false_] *)
@@ -94,6 +99,9 @@ external log3 : 'a -> 'b -> 'c -> unit = "log"
 external log4 : 'a -> 'b -> 'c -> 'd -> unit = "log" 
 [@@bs.val] [@@bs.scope "console"]
 (** A convenience function to log *)
+external logMany : 'a array -> unit = "log"
+[@@bs.val] [@@bs.scope "console"] [@@bs.splice]
+(** A convenience function to log more than 4 arguments *)
 
 (** {4 operators }*)
 external unsafe_lt : 'a -> 'a -> bool = "#unsafe_lt"
@@ -112,6 +120,7 @@ external unsafe_ge : 'a -> 'a -> bool = "#unsafe_ge"
 module Null = Js_null
 module Undefined = Js_undefined
 module Null_undefined = Js_null_undefined
+module Nullable = Js_null_undefined
 module Exn = Js_exn
 (* end::nested_built_in_modules[] *)
 

@@ -17,17 +17,24 @@ let process_implementation_file ppf name =
   Js_implementation.implementation ppf name (Compenv.output_prefix name)
 
 
-let process_file ppf name =
+let process_file ppf name = 
   match Ocaml_parse.check_suffix  name with 
-  | `Ml, opref ->
+  | Ml, opref ->
     Js_implementation.implementation ppf name opref 
-  | `Mli, opref -> 
+  | Mli, opref -> 
     Js_implementation.interface ppf name opref 
-  | `Mliast, opref 
+  | Mliast, opref 
     -> Js_implementation.interface_mliast ppf name opref 
-  | `Mlast, opref 
+  | Mlast, opref 
     -> Js_implementation.implementation_mlast ppf name opref
-
+  | Mlmap, opref 
+    -> Js_implementation.implementation_map ppf name opref
+  | Cmi, _ 
+    ->
+      let {Cmi_format.cmi_sign } =  Cmi_format.read_cmi name in 
+      Printtyp.signature Format.std_formatter cmi_sign ; 
+      Format.pp_print_newline Format.std_formatter ()
+      
 
 let usage = "Usage: bsc <options> <files>\nOptions are:"
 
@@ -45,7 +52,7 @@ let batch_files  = ref []
 let script_dirs = ref []
 let main_file  = ref ""
 let eval_string = ref ""
-    
+        
 let collect_file name = 
   batch_files := name :: !batch_files
 let add_bs_dir v = 
@@ -83,10 +90,31 @@ let define_variable s =
   | _ -> raise (Arg.Bad ("illegal definition: " ^ s))
 
   
-let buckle_script_flags =
+let buckle_script_flags : (string * Arg.spec * string) list =
+  ("-bs-super-errors",
+    Arg.Unit 
+      (* needs to be set here instead of, say, setting a
+        Js_config.better_errors flag; otherwise, when `anonymous` runs, we
+        don't have time to set the custom printer before it starts outputting
+        warnings *)
+      Super_main.setup
+     ,
+   " Better error message combined with other tools "
+  )
+  :: 
+  ("-bs-re-out",
+    Arg.Unit Reason_outcome_printer_main.setup,
+   " Print compiler output in Reason syntax"
+  )
+  ::
+  ("-bs-suffix",
+    Arg.Set Js_config.bs_suffix,
+    " Set suffix to .bs.js"
+  )  
+  :: 
   ("-bs-no-implicit-include", Arg.Set Clflags.no_implicit_current_dir
   , " Don't include current dir implicitly")
-  :: 
+  ::
   ("-bs-assume-has-mli", Arg.Unit (fun _ -> Clflags.assume_no_mli := Clflags.Mli_exists), 
     " (internal) Assume mli always exist ")
   ::
@@ -118,14 +146,6 @@ let buckle_script_flags =
    Arg.String set_eval_string, 
    " (experimental) Set the string to be evaluated, note this flag will be conflicted with -bs-main"
   )
-  ::("-bs-no-error-unused-attribute",
-    Arg.Set Js_config.no_error_unused_bs_attribute,
-    " No error when seeing unused attribute"
-    (* We introduce such flag mostly 
-      for work around 
-      in case some embarassing compiler bugs
-    *)
-  )
   ::
   (
     "-bs-sort-imports",
@@ -138,13 +158,14 @@ let buckle_script_flags =
     " No sort (see -bs-sort-imports)"
   )
   ::
-  ("-bs-better-errors",
-   Arg.Set Js_config.better_errors,
-   " Better error message combined with other tools "
-  )::
   ("-bs-package-name", 
-   Arg.String Js_config.set_package_name, 
+   Arg.String Js_packages_state.set_package_name, 
    " set package name, useful when you want to produce npm packages")
+  ::
+  ( "-bs-package-map", 
+   Arg.String Js_packages_state.set_package_map, 
+   " set package map, not only set package name but also use it as a namespace"    
+  )
   :: 
   ("-bs-no-version-header", 
    Arg.Set Js_config.no_version_header,
@@ -152,19 +173,14 @@ let buckle_script_flags =
   )
   ::
   ("-bs-package-output", 
-   Arg.String Js_config.set_npm_package_path, 
-   " set npm-output-path: [opt_module]:path, for example: 'lib/cjs', 'amdjs:lib/amdjs', 'es6:lib/es6' and 'goog:lib/gjs'")
+   Arg.String 
+    Js_packages_state.update_npm_package_path, 
+   " set npm-output-path: [opt_module]:path, for example: 'lib/cjs', 'amdjs:lib/amdjs', 'es6:lib/es6' ")
   ::
-  
-  ("-bs-no-warn-unused-bs-attribute",
-   Arg.Set Js_config.no_warn_unused_bs_attribute,
-   " disable warnings on unused bs. attribute"
+  ("-bs-no-warn-unimplemented-external",
+    Arg.Set Js_config.no_warn_unimplemented_external,
+    " disable warnings on unimplmented c externals"
   )
-  ::
-  ("-bs-no-warn-ffi-type", 
-   Arg.Set Js_config.no_warn_ffi_type,
-   " disable warnings for ffi type"
-  ) 
   ::
   ("-bs-no-builtin-ppx-ml", 
    Arg.Set Js_config.no_builtin_ppx_ml,
@@ -216,16 +232,15 @@ let buckle_script_flags =
   :: Ocaml_options.mk__ anonymous
   :: Ocaml_options.ocaml_options
 
-
-
-
 let _ = 
-  (* Default configuraiton: sync up with 
+  (* Default configuration: sync up with 
     {!Jsoo_main}  *)
+  Clflags.bs_only := true;  
   Clflags.unsafe_string := false;
   Clflags.debug := true;
   Clflags.record_event_when_debug := false;
   Clflags.binary_annotations := true; 
+  Oprint.out_ident := Outcome_printer_ns.out_ident;
   Bs_conditional_initial.setup_env ();
   try
     Compenv.readenv ppf Before_args;
@@ -234,19 +249,15 @@ let _ =
     let eval_string = !eval_string in
     let task : Ocaml_batch_compile.task = 
       if main_file <> "" then 
-        Main main_file
+        Bsc_task_main main_file
       else if eval_string <> "" then 
-        Eval eval_string
-      else None in
+        Bsc_task_eval eval_string
+      else Bsc_task_none in
     exit (Ocaml_batch_compile.batch_compile ppf 
             (if !Clflags.no_implicit_current_dir then !script_dirs else 
                Filename.current_dir_name::!script_dirs) !batch_files task) 
-  with x ->
-    if not @@ !Js_config.better_errors then
-      begin (* plain error messge reporting*)
-        Location.report_exception ppf x;
-        exit 2
-      end
-    else
-      (** Fancy error message reporting*)
+  with x -> 
+    begin
+      Location.report_exception ppf x;
       exit 2
+    end

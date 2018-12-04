@@ -25,10 +25,6 @@
 
 
 
-type _ kind =
-  | Ml : Parsetree.structure kind
-  | Mli : Parsetree.signature kind
-
 
 
 
@@ -36,7 +32,7 @@ type _ kind =
 
 module String_set = Depend.StringSet
 
-val read_parse_and_extract : 'a kind -> 'a -> String_set.t
+val read_parse_and_extract : 'a Ml_binary.kind -> 'a -> String_set.t
 
 type ('a,'b) t 
 
@@ -92,7 +88,7 @@ val build_queue :
   
 val handle_queue :
   Format.formatter ->
-  String_map.key Queue.t ->
+  string Queue.t ->
   ('a, 'b) t String_map.t ->
   (string -> string -> 'a -> unit) ->
   (string -> string -> 'b  -> unit) ->

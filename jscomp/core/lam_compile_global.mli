@@ -31,8 +31,8 @@
 
 (** Compile ocaml external module call , e.g [List.length] to  JS IR *)
 
-val get_exp : Lam_compile_env.key  -> J.expression
+val expand_global_module :  Ident.t -> Env.t   -> J.expression
 
 
 
-val query_lambda : Ident.t -> Env.t -> Lam.t
+val expand_global_module_as_lam : Ident.t -> Env.t -> Lam.t

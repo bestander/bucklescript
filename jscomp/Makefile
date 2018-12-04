@@ -1,9 +1,4 @@
-ifdef WIN32
-	EXE := .exe
-endif
-ifndef EXE
-	EXE := # empty
-endif
+
 .SECONDARY:
 NATIVE=ocamlopt.opt$(EXE)
 BYTE=ocamlc.opt$(EXE)
@@ -12,13 +7,17 @@ CAMLP4OF=camlp4of
 CAMLDEP=ocamldep.opt$(EXE)
 COMPFLAGS=-g -w +6-40-30-23 -warn-error +a-40-30-23 -absname
 # COMPFLAGS+= -S
-
-
+OCAML_SRC_UTILS=../vendor/ocaml/utils
+OCAML_SRC_PARSING=../vendor/ocaml/parsing
+OCAML_SRC_TYPING=../vendor/ocaml/typing
+OCAML_SRC_BYTECOMP=../vendor/ocaml/bytecomp
+OCAML_SRC_DRIVER=../vendor/ocaml/driver
+OCAML_SRC_TOOLS=../vendor/ocaml/tools
 .SUFFIXES: .mli .ml .cmi .cmx .mll .c .o .cmo
 
 print-%  : ; @echo $* = $($*)
 
-INCLUDES= -I +compiler-libs -I stubs -I ext -I common -I syntax -I depends -I core -I bsb -I ounit -I ounit_tests
+INCLUDES= -I +compiler-libs -I stubs -I ext -I common -I syntax -I depends -I core -I bsb -I ounit -I ounit_tests -I super_errors -I outcome_printer
 
 .mli.cmi:
 	$(NATIVE) $(INCLUDES) $(COMPFLAGS) -c $<
@@ -50,7 +49,7 @@ ext/int_vec.ml: ext/vec.cppo.ml
 ext/resize_array.ml: ext/vec.cppo.ml
 	cppo -D TYPE_FUNCTOR $< -o $@
 ext/string_set.ml : ext/set.cppo.ml
-	cppo -D TYPE_STRING $< -o $@	
+	cppo -D TYPE_STRING $< -o $@
 ext/set_int.ml : ext/set.cppo.ml
 	cppo -D TYPE_INT $< -o $@
 ext/ident_set.ml : ext/set.cppo.ml
@@ -85,16 +84,16 @@ ext/ordered_hash_set_ident.ml:ext/ordered_hash_set.cppo.ml
 	cppo -D TYPE_IDENT $< -o $@
 
 ext/string_hashtbl.ml: ext/hashtbl.cppo.ml
-	cppo -D TYPE_STRING $< -o $@	
+	cppo -D TYPE_STRING $< -o $@
 ext/int_hashtbl.ml: ext/hashtbl.cppo.ml
 	cppo -D TYPE_INT $< -o $@
-ext/ident_hashtbl.ml: ext/hashtbl.cppo.ml	
+ext/ident_hashtbl.ml: ext/hashtbl.cppo.ml
 	cppo -D TYPE_IDENT $< -o $@
 ext/hashtbl_make.ml: ext/hashtbl.cppo.ml
 	cppo -D TYPE_FUNCTOR $< -o $@
-## Stubs 
+## Stubs
 .c.o:
-	$(NATIVE) -ccopt -O2 -ccopt -o -ccopt $@ -c $< 
+	$(NATIVE) -ccopt -O2 -ccopt -o -ccopt $@ -c $<
 
 STUBS_OBJS=stubs/ext_basic_hash_stubs.o
 
@@ -155,7 +154,8 @@ OUNIT_TESTS_SRCS =  ounit_tests_util \
 	ounit_tests_main
 OUNIT_TESTS_CMXS = $(addprefix ounit_tests/, $(addsuffix .cmx, $(OUNIT_TESTS_SRCS)))
 
-EXT_SRCS = ext_util\
+EXT_SRCS = 	literals \
+	ext_util\
 	ext_int\
 	ext_position\
 	ext_array ext_bytes ext_char\
@@ -171,12 +171,13 @@ EXT_SRCS = ext_util\
 	ext_file_pp ext_format \
 	hashtbl_gen \
 	ext_string \
-	ext_color \
 	ext_utf8\
 	ext_js_regex\
 	string_hashtbl\
-	ext_list \
-	ext_map \
+	ext_list\
+	ext_stack\
+	ext_color\
+	ext_map\
 	ext_marshal ext_option \
 	ext_pervasives ext_pp ext_ref  ext_sys \
 	hash_set_gen hash_set \
@@ -195,7 +196,6 @@ EXT_SRCS = ext_util\
 	hashtbl_make\
 	ordered_hash_map_local_ident\
 	int_map\
-	literals \
 	string_map \
 	string_set\
 	set_int\
@@ -214,11 +214,20 @@ EXT_SRCS = ext_util\
 	hash_set_poly\
 	ident_hashtbl\
 	int_hashtbl\
-	ext_filename
+	ext_path\
+	ext_filename\
+	ext_modulename\
+	ext_namespace
 
 EXT_CMXS=$(addprefix ext/, $(addsuffix .cmx, $(EXT_SRCS)))
 EXT_CMOS=$(addprefix ext/, $(addsuffix .cmo, $(EXT_SRCS)))
-COMMON_SRCS= bs_version js_config  ext_log bs_loc  bs_warnings  lam_methname  binary_cache
+COMMON_SRCS= bs_version\
+	js_config \
+	ext_log \
+	bs_loc  \
+	bs_warnings  \
+	lam_methname  \
+	ml_binary
 COMMON_CMXS= $(addprefix common/, $(addsuffix .cmx, $(COMMON_SRCS)))
 SYNTAX_SRCS= \
 	bs_syntaxerr\
@@ -227,51 +236,75 @@ SYNTAX_SRCS= \
 	ast_derive_constructor \
 	ast_derive_util \
 	ast_exp \
-	ast_external \
+	ast_external_mk\
 	ast_lift \
 	ast_literal \
 	ast_pat \
-	ast_arg \
+	external_arg_spec\
 	ast_payload \
 	ast_signature \
-	ast_structure bs_ast_iterator  \
-	ast_derive ast_comb ast_attributes\
-	ast_core_type ast_derive_dyn\
+	ast_structure\
+	bs_ast_iterator\
+	ast_derive\
+	ast_comb\
+	ast_core_type\
+	bs_ast_invariant\
+	ast_attributes\
+	ast_polyvar\
+	ast_derive_dyn\
 	ast_derive_projector \
-	ast_ffi_types\
-	ast_external_attributes\
+	ast_derive_js_mapper\
+	external_ffi_types\
+	external_process\
 	ast_util\
-	ppx_entry\
-	bs_ast_invariant
-# not a good name ast_util	 
+	ppx_entry
+# not a good name ast_util
 SYNTAX_CMXS=$(addprefix syntax/, $(addsuffix .cmx, $(SYNTAX_SRCS)))
-DEPENDS_SRCS= depends_post_process bs_exception ast_extract binary_ast  
+DEPENDS_SRCS= bs_exception ast_extract binary_ast
 DEPENDS_CMXS=$(addprefix depends/, $(addsuffix .cmx, $(DEPENDS_SRCS)))
-CORE_SRCS= type_int_to_string type_util  ocaml_stdlib_slots bs_conditional_initial ocaml_options ocaml_parse\
+CORE_SRCS= js_runtime_modules \
+	config_util \
+	js_packages_info\
+	js_packages_state\
+	ocaml_types  \
+	ocaml_stdlib_slots \
+	bs_conditional_initial \
+	ocaml_options \
+	ocaml_parse\
 	js_op\
 	lam_module_ident\
 	lam_arity\
 	lam\
 	lam_print lam_beta_reduce_util lam_inline_util lam_analysis\
 	lam_closure\
-	js_cmj_format js_fun_env js_call_info js_closure  js_number js_cmj_datasets\
+	js_cmj_format \
+	js_cmj_load\
+	js_fun_env js_call_info js_closure  js_number js_cmj_datasets\
 	lam_exit_code j \
 	lam_compile_util \
 	lam_id_kind \
 	lam_stats \
-	config_util \
-	lam_compile_defs \
+	lam_compile_context\
 	js_map js_fold js_fold_basic js_pass_scope\
 	js_op_util js_analyzer js_shake js_exp_make js_long js_of_lam_exception js_of_lam_module js_of_lam_array js_of_lam_block js_of_lam_string\
 	js_of_lam_tuple js_of_lam_record js_of_lam_float_record js_arr lam_compile_const \
 	lam_inner \
+	lam_subst\
 	lam_util \
 	lam_eta_conversion\
 	lam_group \
 	lam_pass_deep_flatten\
 	js_stmt_make js_pass_flatten\
 	js_pass_tailcall_inline js_of_lam_variant js_pass_flatten_and_mark_dead js_ast_util lam_dce lam_group_pass lam_compile_env lam_stats_util\
-	lam_stats_export lam_pass_alpha_conversion lam_pass_collect js_program_loader js_dump js_pass_debug\
+	lam_stats_export lam_pass_alpha_conversion lam_pass_collect\
+	js_dump_lit\
+	js_dump_string\
+	js_dump_property\
+	js_dump_import_export\
+	js_dump \
+	js_name_of_module_id\
+	js_dump_program \
+	js_pass_debug\
 	js_of_lam_option js_output lam_compile_global \
 	lam_dispatch_primitive \
 	lam_bounded_vars\
@@ -284,28 +317,39 @@ CORE_SRCS= type_int_to_string type_util  ocaml_stdlib_slots bs_conditional_initi
 	lam_pass_lets_dce \
 	lam_pass_remove_alias \
 	lam_coercion \
-	lam_compile_group\
+	lam_compile_main\
 	js_implementation ocaml_batch_compile
 CORE_CMXS=$(addprefix core/, $(addsuffix .cmx, $(CORE_SRCS)))
 
 OTHER_CORE_SRCS= bsppx_main bspack_main jsoo_main  bspp_main js_cmi_datasets \
-		 js_main cmjdump_main
+		 js_main cmjdump_main astdump_main
+
 OTHER_CORE_CMXS= $(addprefix core/, $(addsuffix .cmx, $(OTHER_CORE_SRCS)))
-BSB_SRCS= bsb_config \
+BSB_SRCS= bsb_config\
 	bsb_exception\
+	bsb_db\
 	bsb_dir_index\
 	bsb_log\
-	bsb_pkg \
-	bsb_build_schemas \
-	bsb_build_util \
+	bsb_ninja_global_vars\
+	bsb_helper_depfile_gen\
+	bsb_pkg\
+	bsb_build_schemas\
+	bsb_build_util\
+	bsb_package_specs\
+	bsb_namespace_map_gen\
+	bsb_helper_extract\
+	bsb_helper_dep_graph\
 	bsb_helper_linker\
+	bsb_helper_packer\
 	bsb_helper_extract\
 	bsb_rule\
 	bsb_ninja_util \
+	bsb_ninja_file_groups\
 	bsb_parse_sources\
 	bsb_default\
-	bsb_bsdeps\
+	bsb_ninja_check\
 	bsb_watcher_gen\
+	bsb_warning\
 	bsb_merlin_gen\
 	bsb_ninja_gen\
 	bsb_file\
@@ -315,15 +359,22 @@ BSB_SRCS= bsb_config \
 	bsb_regex\
 	bsb_clean\
 	bsb_ninja_regen\
+	bsb_query\
 	bsb_world\
 	oCamlRes\
 	bsb_templates\
-	bsb_init
+	bsb_theme_init
+SUPER_ERRORS_SRCS=super_reason_react super_misc super_warnings super_location super_env super_pparse super_typecore super_typemod super_typetexp super_main
+REASON_OUTCOME_PRINTER_SRCS= outcome_printer_ns tweaked_reason_oprint reason_outcome_printer_main
 
 BSB_CMXS=$(addprefix bsb/, $(addsuffix .cmx, $(BSB_SRCS)))
 BSB_CMOS=$(addprefix bsb/, $(addsuffix .cmo, $(BSB_SRCS)))
+SUPER_ERRORS_CMXS=$(addprefix super_errors/, $(addsuffix .cmx, $(SUPER_ERRORS_SRCS)))
+REASON_OUTCOME_PRINTER_CMXS=$(addprefix outcome_printer/, $(addsuffix .cmx, $(REASON_OUTCOME_PRINTER_SRCS)))
+REASON_OUTCOME_PRINTER_CMOS=$(addprefix outcome_printer/, $(addsuffix .cmo, $(REASON_OUTCOME_PRINTER_SRCS)))
 MAIN_SRCS= jsgen_main jscmj_main bsb/bsb_main bsb/bsb_helper_main
 MAIN_CMXS=$(addsuffix .cmx, $(MAIN_SRCS))
+
 
 ounit.cmxa: $(OUNIT_CMXS)
 	ocamlopt.opt -a $^ -o $@
@@ -343,23 +394,40 @@ bsb.cmxa:$(BSB_CMXS)
 	ocamlopt.opt -a $^ -o $@
 bsb.cma:$(BSB_CMOS)
 	ocamlc.opt -a $^ -o $@
-	
-check:  $(EXT_CMXS) $(COMMON_CMXS) $(SYNTAX_CMXS) $(DEPENDS_CMXS) $(CORE_CMXS) $(BSB_CMXS) $(OTHER_CORE_CMXS) $(MAIN_CMXS) $(OUNIT_CMXS) $(OUNIT_TESTS_CMXS)
+super.cmxa:$(SUPER_ERRORS_CMXS)
+	ocamlopt.opt -a $^ -o $@
+super.cma:$(SUPER_ERRORS_CMOS)
+	ocamlc.opt -a $^ -o $@
+outcome_printer.cmxa:$(REASON_OUTCOME_PRINTER_CMXS)
+	ocamlopt.opt -a $^ -o $@
+outcome_printer.cma:$(REASON_OUTCOME_PRINTER_CMOS)
+	ocamlc.opt -a $^ -o $@
 
-bin/bsb.exe: bs_hash.cmxa ext.cmxa common.cmxa  bsb.cmxa bsb/bsb_main.cmx
-	$(NATIVE) -g  unix.cmxa str.cmxa $^ -o $@
+check: $(EXT_CMXS) $(COMMON_CMXS) $(SYNTAX_CMXS) $(DEPENDS_CMXS) $(CORE_CMXS) $(BSB_CMXS) $(OTHER_CORE_CMXS) $(MAIN_CMXS) $(SUPER_ERRORS_CMXS) $(REASON_OUTCOME_PRINTER_CMXS) $(OUNIT_CMXS) $(OUNIT_TESTS_CMXS)
+
+../lib/bsb.exe: bs_hash.cmxa ext.cmxa common.cmxa  bsb.cmxa bsb/bsb_main.cmx
+	$(NATIVE) -I +compiler-libs -g  ocamlcommon.cmxa unix.cmxa str.cmxa $^ -o $@
+
+../lib/bsb_helper.exe: bs_hash.cmxa ext.cmxa common.cmxa  bsb.cmxa bsb/bsb_helper_main.cmx
+	$(NATIVE) -I +compiler-libs -g  ocamlcommon.cmxa unix.cmxa str.cmxa $^ -o $@
 
 # bin/bsc:  ext.cmxa common.cmxa  depends.cmxa syntax.cmxa core.cmxa
 # 	$(NATIVE) -g -linkall -I +compiler-libs ocamlcommon.cmxa $^ -o $@
 
-bin/bsc.exe: bs_hash.cmxa ext.cmxa common.cmxa syntax.cmxa depends.cmxa core.cmxa core/js_main.cmx
+
+# $(BIN_PATH)/bsc.exe would not trigger rebuild..
+../lib/bsc.exe: bs_hash.cmxa ext.cmxa common.cmxa syntax.cmxa depends.cmxa core.cmxa super.cmxa outcome_printer.cmxa core/js_main.cmx
 	@echo "Linking"
 	$(NATIVE) -g -linkall -I +compiler-libs ocamlcommon.cmxa $^ -o $@
 
 bin/cmjdump.exe: bs_hash.cmxa ext.cmxa common.cmxa syntax.cmxa depends.cmxa core.cmxa core/cmjdump_main.cmx
 	@echo "Linking"
 	$(NATIVE) -g -linkall -I +compiler-libs ocamlcommon.cmxa $^ -o $@
-	
+
+bin/astdump.exe: bs_hash.cmxa ext.cmxa common.cmxa syntax.cmxa depends.cmxa bsb.cmxa core/astdump_main.cmx
+	@echo "Linking"
+	$(NATIVE) -g -linkall -I +compiler-libs ocamlcommon.cmxa unix.cmxa str.cmxa  $^ -o $@
+
 bin/jscmj.exe:bs_hash.cmxa ext.cmxa common.cmxa syntax.cmxa depends.cmxa core.cmxa  jscmj_main.cmx
 	@echo "Linking js_pack.exe"
 	$(NATIVE) -g -linkall -I +compiler-libs ocamlcommon.cmxa $^ -o $@
@@ -372,7 +440,7 @@ bin/jsgen.exe:bs_hash.cmxa ext.cmxa jsgen_main.cmx
 
 
 depend:
-	$(CAMLDEP) -absname -native -I stubs -I ext -I common -I syntax -I depends -I core -I ounit -I ounit_tests -I bsb \
+	BS_DEBUG=true $(CAMLDEP) -absname -native -I stubs -I ext -I common -I syntax -I depends -I core -I ounit -I ounit_tests -I bsb -I super_errors -I outcome_printer \
 	$(addprefix stubs/, $(addsuffix .ml, $(STUB_SRCS))) \
 	$(addprefix stubs/, $(addsuffix .mli, $(STUB_SRCS))) \
 	$(addprefix ext/, $(addsuffix .ml, $(EXT_SRCS))) \
@@ -389,6 +457,10 @@ depend:
 	$(addprefix core/, $(addsuffix .ml, $(OTHER_CORE_SRCS))) \
 	$(addprefix ounit/, $(addsuffix .mli, $(OUNIT_SRCS))) \
 	$(addprefix ounit/, $(addsuffix .ml, $(OUNIT_SRCS))) \
+	$(addprefix super_errors/, $(addsuffix .ml, $(SUPER_ERRORS_SRCS))) \
+	$(addprefix super_errors/, $(addsuffix .mli, $(SUPER_ERRORS_SRCS))) \
+	$(addprefix outcome_printer/, $(addsuffix .ml, $(REASON_OUTCOME_PRINTER_SRCS))) \
+	$(addprefix outcome_printer/, $(addsuffix .mli, $(REASON_OUTCOME_PRINTER_SRCS))) \
 	$(addprefix ounit_tests/, $(addsuffix .mli, $(OUNIT_TESTS_SRCS))) \
 	$(addprefix ounit_tests/, $(addsuffix .ml, $(OUNIT_TESTS_SRCS))) \
 	bsb/*.ml bsb/*.mli *.ml *.mli > all.depend
@@ -397,10 +469,9 @@ depend:
 
 
 
-SNAPSHOT_SRCS=$(addprefix bin/, $(addsuffix .ml, bsppx whole_compiler bsdep bsb bsb_helper bspp all_ounit_tests))
-SNAPSHOT_DEPS=$(SNAPSHOT_SRCS:.ml=.d)
 
-# this target  is used to make snapshotml
+
+# this target  is used to make 
 ./bin/bspack.exe: bin/bspack.mli bin/bspack.ml
 	$(MAKE) -C bin bspack.exe
 
@@ -437,40 +508,55 @@ SNAPSHOT_DEPS=$(SNAPSHOT_SRCS:.ml=.d)
 # Actually we can not make it correct by including..
 # if we force it, then the initial build will fail
 # if we don't force it, then if we remove bin/bsb.d
-# The build will never be re-triggered -- ninja seems to have special support for this semantics 
+# The build will never be re-triggered -- ninja seems to have special support for this semantics
 # if we move files around, it will cause file failure
 # Note the currently snapshot mode means if we don't
 # generate ml files it will not be included
 
 themes:
 	cd bsb && ./pack-templates.sh
-snapshotml:./bin/bspack.exe $(SNAPSHOT_SRCS)
-	
+
+snapshotml:./bin/bspack.exe 
+	$(MAKE) -j9 $(SNAPSHOT_SRCS)
+
 force-snapshotml:
 	rm -f $(SNAPSHOT_DEPS) $(SNAPSHOT_SRCS)
-	make snapshotml
+	$(MAKE) snapshotml
 
+BIN_PATH=../lib
+SNAPSHOT_SRCS=$(addprefix $(BIN_PATH)/, $(addsuffix .ml, bsppx whole_compiler bsdep bsb bsb_helper bspp ))
+SNAPSHOT_SRCS+=$(addprefix bin/, $(addsuffix .ml, all_ounit_tests))
+SNAPSHOT_DEPS=$(SNAPSHOT_SRCS:.ml=.d)
 
-bin/bsppx.ml:./bin/bspack.exe
-	$< -U BS_DEBUG -bs-MD  -module-alias Config=ConfigDummy -I bin -I ../ocaml/utils/ -I ../ocaml/parsing/ -I stubs -I common -I ext -I syntax -I core -bs-main Bsppx_main -o $@
+../lib/bsppx.ml:./bin/bspack.exe
+	$< -U BS_DEBUG -bs-MD  -module-alias Config=Config_whole_compiler  -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING) -I ../lib -I stubs -I common -I ext -I syntax -I core -bs-main Bsppx_main -o $@
 
-bin/whole_compiler.ml:./bin/bspack.exe
-	$< -U BS_DEBUG -bs-MD -prelude-str 'module Config = Config_whole_compiler' -bs-exclude-I config -o $@ -bs-main Js_main -I ../ocaml/utils/ -I ../ocaml/parsing/ -I ../ocaml/typing/ -I ../ocaml/bytecomp/ -I ../ocaml/driver/ -I stubs -I ext -I syntax -I depends -I common -I core
+../lib/whole_compiler.ml:./bin/bspack.exe
+	$< -U BS_DEBUG -bs-MD -module-alias Config=Config_whole_compiler -bs-exclude-I config -o $@ -bs-main Js_main -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_TYPING) -I $(OCAML_SRC_BYTECOMP) -I $(OCAML_SRC_DRIVER)/ -I ../lib -I stubs -I ext -I syntax -I depends -I common -I core -I super_errors -I outcome_printer
 
-bin/bsdep.ml:./bin/bspack.exe
-	$< -D BS_OCAMLDEP=true  -U BS_DEBUG -bs-MD  -module-alias Config=ConfigDummy -I bin  -I ../ocaml/utils/ -I ../ocaml/parsing/ -I ../ocaml/driver -I ../ocaml/tools -I common -I ext -I syntax -I depends -I core -I stubs -bs-main Ocamldep -o $@
+../lib/bsdep.ml:./bin/bspack.exe
+	$< -D BS_OCAMLDEP=true  -U BS_DEBUG -bs-MD  -module-alias Config=Config_whole_compiler -I ../lib  -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_DRIVER) -I $(OCAML_SRC_TOOLS) -I common -I ext -I syntax -I depends -I core -I stubs -bs-main Ocamldep -o $@
 
-bin/bsb_helper.ml:./bin/bspack.exe
+../lib/bsb_helper.ml:./bin/bspack.exe
 	 $< -bs-MD -U BS_DEBUG   -I stubs -I common -I ext -I syntax -I depends -I bsb  -bs-main Bsb_helper_main -o $@
 
-bin/bsb.ml:./bin/bspack.exe
-	 $< -bs-MD -U BS_DEBUG -I stubs -I common -I ext -I syntax -I depends -I bsb -I ext  -bs-main Bsb_main -o $@
+../lib/bsb.ml:./bin/bspack.exe
+	 $<  -D BS_MIN_LEX_DEPS=true -bs-MD -U BS_DEBUG -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING) -I stubs -I common -I ext -I syntax -I depends -I bsb -I ext  -bs-main Bsb_main -o $@
 
-bin/bspp.ml:./bin/bspack.exe
-	  $< -D BS_MIN_LEX_DEPS=true -U BS_DEBUG -bs-MD -module-alias Config=ConfigDummy   -I ../ocaml/utils/ -I ../ocaml/parsing?parser  -I bin -I common -I ext -I syntax -I depends -I bspp -I core -bs-main Bspp_main -o $@
+../lib/bspp.ml:./bin/bspack.exe
+	  $< -D BS_MIN_LEX_DEPS=true -U BS_DEBUG -bs-MD -module-alias Config=Config_whole_compiler   -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING)?parser  -I ../lib -I common -I ext -I syntax -I depends -I bspp -I core -bs-main Bspp_main -o $@
+
+../lib/bspp.exe:../lib/bspp.mli ../lib/bspp.ml
+	make -C ../lib bspp.exe
+
+../lib/reactjs_jsx_ppx_v2.ml:./bin/reactjs_jsx_ppx_v2.bspp.ml ../lib/bspp.exe
+	../lib/bspp.exe $^ > $@
+
+bin/jsoo_reactjs_jsx_ppx_v2.ml:./bin/reactjs_jsx_ppx_v2.bspp.ml ../lib/bspp.exe
+	BS_COMPILER_IN_BROWSER=true ../lib/bspp.exe $^ > $@
 
 bin/js_compiler.ml:./bin/bspack.exe
-	 bspack.exe -D BS_COMPILER_IN_BROWSER=true -U BS_DEBUG -bs-MD  -prelude-str 'module Config = Config_whole_compiler' -bs-exclude-I config -o $@ -bs-main Jsoo_main -I ../ocaml/utils/ -I ../ocaml/parsing/ -I ../ocaml/typing/ -I ../ocaml/bytecomp/ -I ../ocaml/driver/ -I stubs -I ext -I syntax -I depends -I common -I core
+	 ./bin/bspack.exe -D BS_COMPILER_IN_BROWSER=true -U BS_DEBUG -bs-MD  -prelude-str 'module Config = Config_whole_compiler' -bs-exclude-I config -o $@ -bs-main Jsoo_main -I $(OCAML_SRC_UTILS) -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_TYPING) -I $(OCAML_SRC_BYTECOMP) -I $(OCAML_SRC_DRIVER) -I stubs -I ext -I syntax -I depends -I common -I core
 
 bin/all_ounit_tests.ml:./bin/bspack.exe
 	$< -bs-MD    -I ounit -I ounit_tests  -I stubs -I bsb -I common -I ext -I syntax -I depends -I bspp -I core -bs-main Ounit_tests_main -o $@
@@ -506,10 +592,10 @@ bin/js_compiler.byte:bin/js_compiler.mli bin/js_compiler.ml
 
 bootbspack:
 	@echo "Bootstrap bspack.exe"
-	./bin/bspack.exe -bs-MD -module-alias Config=ConfigDummy -I bin -I ../ocaml/parsing/ -I ../ocaml/utils/ -I stubs -I ext -I common -I depends -I core -bs-main Bspack_main -o bin/bspack.ml
+	./bin/bspack.exe -bs-MD -module-alias Config=ConfigDummy -I bin -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_UTILS) -I stubs -I ext -I common -I depends -I core -bs-main Bspack_main -o bin/bspack.ml
 	$(NATIVE) ./stubs/ext_basic_hash_stubs.c -w -40  unix.cmxa  -I bin  bin/bspack.mli bin/bspack.ml -o bin/bspack.exe
 	@echo "Using the bootstrapped bspack.exe to genreate new bspack.ml: `date`"
-	./bin/bspack.exe -bs-MD  -module-alias Config=ConfigDummy -I bin -I ../ocaml/parsing/ -I ../ocaml/utils/ -I stubs -I ext -I common -I depends -I core -bs-main Bspack_main -o bin/bspack.ml
+	./bin/bspack.exe -bs-MD  -module-alias Config=ConfigDummy -I bin -I $(OCAML_SRC_PARSING) -I $(OCAML_SRC_UTILS) -I stubs -I ext -I common -I depends -I core -bs-main Bspack_main -o bin/bspack.ml
 	@echo "Bootstrap seems finished, please check diffs in bspack.exe"
 	@echo "Rebuilding bspack.exe"
 	make -C bin -B bspack.exe
@@ -544,48 +630,21 @@ release:bin/bspack.exe bin/jscmj.exe bin/jsgen.exe snapshotml
 	$(MAKE) -C bin -j6 all
 	$(MAKE) libs
 
-# Note we should not do snapshotml here
-# since, user may not have the sources available
-# -B is not necessary in jenkins, however, when dir is not clean..
-world:
-	@echo "Making compiler"
-	$(MAKE) -B -C bin -j 6 all
-	@echo "Making compiler finished"
-	BS_RELEASE_BUILD=1 $(MAKE) -j8 libs
 
 
 travis-world-test:
-	$(MAKE) world
 	@echo "Making test"
-	$(NATIVE) -g -I bin -I +compiler-libs -w -a ocamlcommon.cmxa unix.cmxa str.cmxa stubs/ext_basic_hash_stubs.c bin/all_ounit_tests.mli bin/all_ounit_tests.ml -o bin/all_ounit_tests.exe && bin/all_ounit_tests.exe
 	$(MAKE) -C test all
+	mocha test/**/*test.js
 	@echo "Making test finsihed"
 
 
-DEST=../lib/ocaml
-DEST_BIN=../bin
 
-# TODO: sync up with 
-# scripts/build_uitil.js 
-# function install 
-# scripts/build_util.install
-install:
-	@echo "copy exe"
-	mkdir -p $(DEST_BIN) $(DEST)
-	cp  ./bin/*.js ./bin/*.exe  $(DEST_BIN)
-	@echo "copy stdlib"
-	cp ./runtime/*.cmt* ./runtime/*.cmj* ./stdlib/*.cm* ./others/*.ml ./others/*.mli  ./others/*.cm* \
-	 ./runtime/js.ml  ./runtime/js.cmi \
-	./runtime/js_unsafe.cmi \
-	./runtime/js_internal.cmi \
-	./runtime/caml_exceptions.mli ./runtime/caml_exceptions.ml ./runtime/caml_exceptions.cmi \
-	./runtime/js_null.ml ./runtime/js_null.cmi \
-	./runtime/js_undefined.ml ./runtime/js_undefined.cmi \
-	./runtime/js_exn.ml ./runtime/js_exn.mli ./runtime/js_exn.cmi \
-	./runtime/js_typed_array.ml ./runtime/js_typed_array.cmi   $(DEST)
-	cp ./stdlib/*.ml ./stdlib/*.mli $(DEST)
+
+
+
 # ./runtime/js_null_undefined.ml ./runtime/js_null_undefined.cmi
-include all.depend
+-include all.depend
 -include $(SNAPSHOT_DEPS)
 
 clean:
@@ -597,7 +656,7 @@ clean:
 DOCS_SOURCES+=$(shell ls runtime/*.ml*)
 DOCS_SOURCES+=$(shell ls others/*.ml*)
 
-# 
+#
 ../odoc_gen/generator.cmxs : ../odoc_gen/generator.mli ../odoc_gen/generator.ml
 	ocamlopt.opt -I +compiler-libs -I +ocamldoc -shared -I ../odoc_gen  -o $@ $^
 
@@ -608,5 +667,5 @@ docs: ../odoc_gen/generator.cmxs
 
 top: bs_hash.cma ext.cma bsb.cma
 repl: top
-	rlwrap ocaml	
+	rlwrap ocaml
 .PHONY: release   releasebuild libs snapshotml force-snapshotml toplevel

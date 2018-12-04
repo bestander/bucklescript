@@ -6,32 +6,54 @@
                 "commonjs",
                 "amdjs",
                 "amdjs-global",
-                "goog",
                 "es6",
                 "es6-global"
             ],
-            "description": "amdjs-global and es6-global will generate relative `require` paths instead of relying on NodeJS' module resolution"
+            "description": "amdjs-global and es6-global generate relative `require` paths instead of relying on NodeJS' module resolution. Default: commonjs."
         },
-        "package-specs": {
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/module-format"
-            }
+        "module-format-object": {
+            "type": "object",
+            "properties": {
+                "module": {
+                    "$ref": "#/definitions/module-format"
+                },
+                "in-source": {
+                    "type": "boolean",
+                    "description": "Default: false."
+                }
+            },
+            "required": [
+                "module"
+            ]
         },
-        "react-jsx-version" : {
-            "title" : "jsx-version",
-            "oneOf" : [
+        "package-spec": {
+            "oneOf": [
                 {
-                    "type" : "boolean",
-                    "description" : "backward compatible mode, true means on with the default to be version 1 (the default value is subject to change)"
+                    "$ref": "#/definitions/module-format"
                 },
                 {
-                    "type" : "number",
-                    "description": "jsx version number, current recommend version number is 2"
+                    "$ref": "#/definitions/module-format-object"
                 }
             ]
-        }
-        ,
+        },
+        "package-specs": {
+            "oneOf": [
+                {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/package-spec"
+                    }
+                },
+                {
+                    "$ref": "#/definitions/package-spec"
+                }
+            ]
+        },
+        "react-jsx-version": {
+            "title": "jsx-version",
+            "type": "number",
+            "description": "backward compatible mode, true means on with the default to be version 1 (the default value is subject to change)"
+        },
         "ppx-specs": {
             "type": "array",
             "items": {
@@ -81,7 +103,7 @@
                     }
                 }
             },
-            "description": "(WIP) Note that we will add the directory path accordingly"
+            "description": "Note that we will add the directory path accordingly"
         },
         "sourceItem": {
             "title": "sourceItem",
@@ -163,8 +185,17 @@
                             }
                         },
                         "subdirs": {
-                            "$ref": "#/definitions/sources",
-                            "description": "More source directories"
+                            "title": "Sub directories",
+                            "oneOf": [
+                                {
+                                    "$ref": "#/definitions/sources",
+                                    "description": "More source directories"
+                                },
+                                {
+                                    "type": "boolean",
+                                    "description": "true means traverse to all subdirs"
+                                }
+                            ]
                         },
                         "group": {
                             "oneOf": [
@@ -254,6 +285,19 @@
                 }
             }
         },
+        "refmt-specs": {
+            "oneOf": [
+                {
+                    "type": "number",
+                    "enum": [2, 3],
+                    "description": "Reason syntax version to use. Prefer 3. Default: 2, for backward-compatiblity"
+                },
+                {
+                    "type": "string",
+                    "description": "(Usually not needed) Alternative path to `refmt`, the Reason syntax binary. Default: path to the `refmt.exe` BuckleScript provides out of the box"
+                }
+            ]
+        },
         "bsc-flags": {
             "oneOf": [
                 {
@@ -261,13 +305,12 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "Default: `[\"-no-alias-deps\", \"-w\", \"-40+6+7+27+32..39+44+45\"]`. [Here](https://github.com/bucklescript/bucklescript/blob/0db762aea73fc9f28ebd08e9eb92f1e072f44c2d/jscomp/bsb/bsb_default.ml#L26) are the meanings of the warning flags"
+                    "description": "Default: `[\"-no-alias-deps\"]`"
                 },
                 {
                     "type": "object",
                     "properties": {
-                        "kind" :
-                        {
+                        "kind": {
                             "enum": [
                                 "reset",
                                 "prefix",
@@ -298,6 +341,10 @@
             "type": "string",
             "description": "Package name"
         },
+        "namespace": {
+            "type": "boolean",
+            "description": "(WIP)whether use namespace or not, the name of namespace is automatically converted from name"
+        },
         "sources": {
             "$ref": "#/definitions/sources",
             "description": "Source code location"
@@ -317,21 +364,43 @@
             },
             "description": "(WIP) Pre defined rules"
         },
-        "cut-generators" : {
+        "cut-generators": {
             "type": "boolean",
             "description": "Ignore generators, cut the dependency on generator tools"
         },
         "reason": {
             "$ref": "#/definitions/reason-specs",
-            "description": "BuckleScript comes with [Reason](http://facebook.github.io/reason/) by default. Specific configurations here."
+            "description": "BuckleScript comes with [Reason](http://reasonml.github.io/) by default. Specific configurations here."
         },
         "bsc-flags": {
             "$ref": "#/definitions/bsc-flags",
             "description": "Flags passed to bsc.exe"
         },
+        "warnings": {
+            "type": "object",
+            "properties": {
+                "number": {
+                    "type": "string",
+                    "description": "Default: -40+6+7+27+32..39+44+45 [Here](https://caml.inria.fr/pub/docs/manual-ocaml/comp.html#sec270) for the meanings of the warning flags"
+                },
+                "error": {
+                    "oneOf": [
+                        {
+                            "type": "boolean",
+                            "description": "True means warn is error(default)"
+                        },
+                        {
+                            "type": "string",
+                            "description": "Same as warning number but different set"
+                        }
+                    ]
+                }
+            },
+            "description": "warning numbers and whether to turn it into error or not"
+        },
         "ppx-flags": {
             "$ref": "#/definitions/ppx-specs",
-            "description": "PPX macros to pass to compiler. The syntax is package_name/binary, for example: `reason/reactjs_jsx_ppx.native`. Currenly searches in `node_modules`"
+            "description": "PPX macros to pass to compiler. The syntax is package_name/binary, for example: `reason/reactjs_jsx_ppx_3.native`. Currenly searches in `node_modules`"
         },
         "js-post-build": {
             "$ref": "#/definitions/js-post-build",
@@ -339,19 +408,7 @@
         },
         "package-specs": {
             "$ref": "#/definitions/package-specs",
-            "description": "BuckleScript can currently output to [Commonjs](https://en.wikipedia.org/wiki/CommonJS), [AMD](http://requirejs.org/docs/whyamd.html), [Google module](https://github.com/google/closure-library/wiki/goog.module:-an-ES6-module-like-alternative-to-goog.provide) and [ES6 modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import)"
-        },
-        "ocamllex": {
-            "type": "string",
-            "description": "Path to [OCamllex](https://realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html)"
-        },
-        "ocamlyacc": {
-            "type": "string",
-            "description": "TODO path to ocamlyacc, mly"
-        },
-        "menhir": {
-            "type": "string",
-            "description": "TODO"
+            "description": "BuckleScript can currently output to [Commonjs](https://en.wikipedia.org/wiki/CommonJS), [AMD](http://requirejs.org/docs/whyamd.html),  and [ES6 modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import)"
         },
         "entries": {
             "$ref": "#/definitions/entries",
@@ -373,8 +430,8 @@
             "description": "(Not needed usually) external include directories, which will be applied `-I` to all compilation units"
         },
         "refmt": {
-            "type": "string",
-            "description": "(Not needed usually) alternative path to `refmt` for Reason syntax, for example: `reason/refmt_impl.native`. Default: the `refmt.exe` BuckleScript provides out of the box"
+            "$ref": "#/definitions/refmt-specs",
+            "description": "Reason syntax configuration"
         },
         "refmt-flags": {
             "type": "array",
@@ -382,6 +439,13 @@
                 "type": "string"
             },
             "description": "(Not needed usually) arguments to pass to `refmt` above. Default: `[\"--print\", \"binary\"]`."
+        },
+        "suffix" : {
+            "enum" : [
+                ".js",
+                ".bs.js"
+            ],
+            "description": "suffix of generated js files, default to [.js] "
         }
     },
     "additionalProperties": false,

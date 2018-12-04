@@ -93,6 +93,7 @@ val suffix_mlast : string
 val suffix_mlast_simple : string
 val suffix_mliast : string
 val suffix_mliast_simple : string
+val suffix_mlmap : string
 val suffix_mll : string
 val suffix_re : string
 val suffix_rei : string 
@@ -100,22 +101,21 @@ val suffix_rei : string
 val suffix_d : string
 val suffix_mlastd : string
 val suffix_mliastd : string
-val suffix_js : string
+
 val suffix_mli : string 
 val suffix_cmt : string 
 val suffix_cmti : string 
 
 val commonjs : string 
 val amdjs : string 
-val goog : string 
 val es6 : string 
 val es6_global : string
 val amdjs_global : string 
 val unused_attribute : string 
 val dash_nostdlib : string
 
-val reactjs_jsx_ppx_exe : string 
 val reactjs_jsx_ppx_2_exe : string 
+val reactjs_jsx_ppx_3_exe : string 
 val unescaped_j_delimiter : string 
 val escaped_j_delimiter : string 
 
@@ -124,3 +124,7 @@ val unescaped_js_delimiter : string
 val native : string
 val bytecode : string
 val js : string
+
+val node_sep : string 
+val node_parent : string 
+val node_current : string 

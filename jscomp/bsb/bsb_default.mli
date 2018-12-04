@@ -26,10 +26,8 @@
 
 val bsc_flags : string list 
 
-val ocamllex : string
+val refmt_flags : string list  
 
-val refmt_flags : string list 
 
-val package_specs : String_set.t
 
 val main_entries : Bsb_config_types.entries_t list

@@ -25,7 +25,7 @@
 
 (* DESIGN:  
     - It does not have any code, all its code will be inlined so that
-       there will be never
+       there will never be
        {[ require('js')]}
     - Its interface should be minimal
 *)
@@ -44,6 +44,7 @@
 (* internal types for FFI, these types are not used by normal users *)
 
 (**/**)
+module MapperRt = Js_mapperRt
 module Internal = Js_internal
 (**/**)
 
@@ -67,9 +68,17 @@ type + 'a undefined
 (** value of this type can be either [undefined] or ['a]
     this type is the same as type [t] in {!Undefined}  *)
 
-type + 'a null_undefined
+type + 'a nullable
 (** value of this type can be [undefined], [null] or ['a]
     this type is the same as type [t] n {!Null_undefined} *)
+
+type + 'a null_undefined = 'a nullable    
+
+external toOption : 'a nullable  -> 'a option = "#null_undefined_to_opt"
+external test : 'a nullable -> bool = "#is_nil_undef"
+
+(** The same as {!test} except that it is more permissive on the types of input *)
+external testAny : 'a -> bool = "#is_nil_undef"
 
 type boolean
 (** The value could be either  {!Js.true_} or {!Js.false_}.
@@ -109,6 +118,9 @@ external log3 : 'a -> 'b -> 'c -> unit = "log"
 external log4 : 'a -> 'b -> 'c -> 'd -> unit = "log" 
 [@@bs.val] [@@bs.scope "console"]
 (** A convenience function to log everything *)
+external logMany : 'a array -> unit = "log"
+[@@bs.val] [@@bs.scope "console"] [@@bs.splice]
+(** A convenience function to log more than 4 arguments *)
 
 (** {4 operators }*)
 
@@ -134,12 +146,13 @@ external unsafe_ge : 'a -> 'a -> bool = "#unsafe_ge"
 (** {12 nested modules}*)
 
 module Null = Js_null
-(** Provide utilities arond ['a null] *)
+(** Provide utilities around ['a null] *)
 
 module Undefined = Js_undefined
 (** Provide utilities around {!undefined} *)
+module Nullable = Js_null_undefined
+(** Provide utilities around {!null_undefined} *)
 module Null_undefined = Js_null_undefined
-(** Provide utilities arond {!null_undefined} *)
 
 module Exn = Js_exn
 (** Provide utilities for dealing with Js exceptions *)
@@ -149,7 +162,7 @@ module Array = Js_array
 module String = Js_string
 (** Provide bindings to JS string *)
 module Boolean = Js_boolean
-(** Provide utilties for {!boolean} *)
+(** Provide utilities for {!boolean} *)
 
 module Re = Js_re
 (** Provide bindings to Js regex expression *)
@@ -179,7 +192,7 @@ module Typed_array = Js_typed_array
 (** Provide bindings for JS typed array *)
 
 module Types = Js_types
-(** Provide utilities for maninpulatig JS types  *)
+(** Provide utilities for manipulating JS types  *)
 module Float = Js_float
 (** Provide utilities for JS float *)
 module Int = Js_int
@@ -189,9 +202,9 @@ module Option = Js_option
 (** Provide utilities for option *)
 
 module Result = Js_result
-(** definie the interface for result *)
+(** Define the interface for result *)
 
 module List = Js_list 
-(** Provide utilties for list *)
+(** Provide utilities for list *)
 
 module Vector = Js_vector 
