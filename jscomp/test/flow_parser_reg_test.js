@@ -865,7 +865,7 @@ function with_lexbuf(lexbuf, env) {
 }
 
 function in_comment_syntax(is_in, env) {
-  if (Caml_obj.caml_notequal(is_in, env[/* lex_in_comment_syntax */2])) {
+  if (is_in !== env[/* lex_in_comment_syntax */2]) {
     return /* record */[
             /* lex_source */env[/* lex_source */0],
             /* lex_lb */env[/* lex_lb */1],
@@ -13596,31 +13596,29 @@ function module_body(term_fn, env) {
   while(true) {
     var acc = _acc;
     var t = Curry._2(Parser_env_048[/* token */0], /* None */0, env$1);
+    var exit = 0;
     if (typeof t === "number") {
       if (t !== 105) {
-        if (Curry._1(term_fn$1, t)) {
-          return List.rev(acc);
-        } else {
-          _acc = /* :: */[
-            module_item(env$1),
-            acc
-          ];
-          continue ;
-          
-        }
+        exit = 1;
       } else {
         return List.rev(acc);
       }
-    } else if (Curry._1(term_fn$1, t)) {
-      return List.rev(acc);
     } else {
-      _acc = /* :: */[
-        module_item(env$1),
-        acc
-      ];
-      continue ;
-      
+      exit = 1;
     }
+    if (exit === 1) {
+      if (Curry._1(term_fn$1, t)) {
+        return List.rev(acc);
+      } else {
+        _acc = /* :: */[
+          module_item(env$1),
+          acc
+        ];
+        continue ;
+        
+      }
+    }
+    
   };
 }
 
@@ -13777,31 +13775,29 @@ function statement_list$1(term_fn, env) {
   while(true) {
     var acc = _acc;
     var t = Curry._2(Parser_env_048[/* token */0], /* None */0, env$1);
+    var exit = 0;
     if (typeof t === "number") {
       if (t !== 105) {
-        if (Curry._1(term_fn$1, t)) {
-          return List.rev(acc);
-        } else {
-          _acc = /* :: */[
-            statement_list_item(/* None */0, env$1),
-            acc
-          ];
-          continue ;
-          
-        }
+        exit = 1;
       } else {
         return List.rev(acc);
       }
-    } else if (Curry._1(term_fn$1, t)) {
-      return List.rev(acc);
     } else {
-      _acc = /* :: */[
-        statement_list_item(/* None */0, env$1),
-        acc
-      ];
-      continue ;
-      
+      exit = 1;
     }
+    if (exit === 1) {
+      if (Curry._1(term_fn$1, t)) {
+        return List.rev(acc);
+      } else {
+        _acc = /* :: */[
+          statement_list_item(/* None */0, env$1),
+          acc
+        ];
+        continue ;
+        
+      }
+    }
+    
   };
 }
 

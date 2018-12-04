@@ -23,20 +23,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-let (//) = Ext_filename.combine
+let (//) = Ext_path.combine
 
+(** TODO: create the animation effect 
+    logging installed files
+*)
 let install_targets cwd (config : Bsb_config_types.t option) =
-  (** TODO: create the animation effect *)
+  
   let install ~destdir file = 
     if Bsb_file.install_if_exists ~destdir file  then 
       begin 
         ()
-        (*Format.pp_print_string Format.std_formatter "=> "; 
-          Format.pp_print_string Format.std_formatter destdir;
-          Format.pp_print_string Format.std_formatter "<= ";
-          Format.pp_print_string Format.std_formatter file ;
-          Format.pp_print_string Format.std_formatter "\r"; 
-          Format.pp_print_flush Format.std_formatter ();*)
+
       end
   in
   let install_filename_sans_extension destdir namespace x = 
@@ -60,16 +58,14 @@ let install_targets cwd (config : Bsb_config_types.t option) =
     let destdir = cwd // Bsb_config.lib_ocaml in (* lib is already there after building, so just mkdir [lib/ocaml] *)
     if not @@ Sys.file_exists destdir then begin Unix.mkdir destdir 0o777  end;
     begin
-      Format.fprintf Format.std_formatter "@{<info>Installing started@}@.";
-      (*Format.pp_print_flush Format.std_formatter ();*)
-      (* Format.fprintf Format.std_formatter "@{<info>%s@} Installed @." x;  *)
+      Bsb_log.info "@{<info>Installing started@}@.";
       begin match namespace with 
         | None -> ()
         | Some x -> 
           install_filename_sans_extension destdir None  x
       end;
       String_hash_set.iter (install_filename_sans_extension destdir namespace) files_to_install;
-      Format.fprintf Format.std_formatter "@{<info>Installing finished@} @.";
+      Bsb_log.info "@{<info>Installing finished@} @.";
     end
 
 
@@ -82,16 +78,21 @@ let build_bs_deps cwd deps =
     (fun {top; cwd} ->
        if not top then
          begin 
-           let config_opt = Bsb_ninja_regen.regenerate_ninja ~no_dev:true
+           let config_opt = Bsb_ninja_regen.regenerate_ninja ~not_dev:true
                ~generate_watch_metadata:false
                ~override_package_specs:(Some deps) 
                ~forced:true
                cwd bsc_dir  in (* set true to force regenrate ninja file so we have [config_opt]*)
-           Bsb_unix.run_command_execv
-             {cmd = vendor_ninja;
+           let command = 
+            {Bsb_unix.cmd = vendor_ninja;
               cwd = cwd // Bsb_config.lib_bs;
               args  = [|vendor_ninja|]
-             };
+             } in     
+           let eid =
+             Bsb_unix.run_command_execv
+             command in 
+           if eid <> 0 then   
+            Bsb_unix.command_fatal_error command eid;
            (* When ninja is not regenerated, ninja will still do the build, 
               still need reinstall check
               Note that we can check if ninja print "no work to do", 
@@ -103,7 +104,7 @@ let build_bs_deps cwd deps =
 
 
 let make_world_deps cwd (config : Bsb_config_types.t option) =
-  print_endline "\nMaking the dependency world!";
+  Bsb_log.info "Making the dependency world!@.";
   let deps =
     match config with
     | None ->

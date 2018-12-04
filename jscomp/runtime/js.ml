@@ -38,7 +38,7 @@
 
 these types are not used by normal users}
 *)
-
+module MapperRt = Js_mapperRt
 module Internal = Js_internal
 
 (* {2 Types for JS objects} *)
@@ -63,6 +63,7 @@ type + 'a null_undefined = 'a nullable
 
 external toOption : 'a nullable  -> 'a option = "#null_undefined_to_opt"
 external test : 'a nullable -> bool = "#is_nil_undef"
+external testAny : 'a -> bool = "#is_nil_undef"
 
 type boolean
 (** The JS boolean type, can be [Js.true_] or [Js.false_] *)

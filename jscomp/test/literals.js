@@ -119,8 +119,6 @@ var commonjs = "commonjs";
 
 var amdjs = "amdjs";
 
-var goog = "goog";
-
 var es6 = "es6";
 
 var es6_global = "es6-global";
@@ -131,9 +129,9 @@ var unused_attribute = "Unused attribute ";
 
 var dash_nostdlib = "-nostdlib";
 
-var reactjs_jsx_ppx_exe = "reactjs_jsx_ppx.exe";
-
 var reactjs_jsx_ppx_2_exe = "reactjs_jsx_ppx_2.exe";
+
+var reactjs_jsx_ppx_3_exe = "reactjs_jsx_ppx_3.exe";
 
 var unescaped_j_delimiter = "j";
 
@@ -206,14 +204,13 @@ exports.suffix_cmt             = suffix_cmt;
 exports.suffix_cmti            = suffix_cmti;
 exports.commonjs               = commonjs;
 exports.amdjs                  = amdjs;
-exports.goog                   = goog;
 exports.es6                    = es6;
 exports.es6_global             = es6_global;
 exports.amdjs_global           = amdjs_global;
 exports.unused_attribute       = unused_attribute;
 exports.dash_nostdlib          = dash_nostdlib;
-exports.reactjs_jsx_ppx_exe    = reactjs_jsx_ppx_exe;
 exports.reactjs_jsx_ppx_2_exe  = reactjs_jsx_ppx_2_exe;
+exports.reactjs_jsx_ppx_3_exe  = reactjs_jsx_ppx_3_exe;
 exports.unescaped_j_delimiter  = unescaped_j_delimiter;
 exports.escaped_j_delimiter    = escaped_j_delimiter;
 exports.unescaped_js_delimiter = unescaped_js_delimiter;

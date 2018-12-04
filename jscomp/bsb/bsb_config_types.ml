@@ -35,6 +35,11 @@ type entries_t = JsTarget of string | NativeTarget of string | BytecodeTarget of
 
 type reason_react_jsx = string option 
 
+type refmt = 
+  | Refmt_none
+  | Refmt_v2
+  | Refmt_v3 
+  | Refmt_custom of string 
 type t = 
   {
     package_name : string ; 
@@ -47,11 +52,12 @@ type t =
     bs_dependencies : dependencies;
     bs_dev_dependencies : dependencies;
     built_in_dependency : dependency option; 
+    warning : Bsb_warning.t option;
     (*TODO: maybe we should always resolve bs-platform 
       so that we can calculate correct relative path in 
       [.merlin]
     *)
-    refmt : string option;
+    refmt : refmt;
     refmt_flags : string list;
     js_post_build_cmd : string option;
     package_specs : Bsb_package_specs.t ; 
@@ -63,4 +69,5 @@ type t =
     entries : entries_t list ;
     generators : string String_map.t ; 
     cut_generators : bool; (* note when used as a dev mode, we will always ignore it *)
+    bs_suffix : bool ; (* true means [.bs.js] we should pass [-bs-suffix] flag *)
   }

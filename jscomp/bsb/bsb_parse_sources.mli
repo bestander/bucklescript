@@ -26,7 +26,7 @@ type public =
   | Export_all 
   | Export_set of String_set.t 
   | Export_none
-    
+
 
 
 type build_generator = 
@@ -37,7 +37,7 @@ type build_generator =
 type  file_group = 
   { dir : string ; 
     (* currently relative path expected for ninja file generation *)
-    sources : Bsb_build_cache.t ; 
+    sources : Bsb_db.t ; 
     resources : string list ; 
     (* relative path *)
     public : public;
@@ -45,11 +45,14 @@ type  file_group =
     generators : build_generator list;
   } 
 
-
+(** when [is_empty file_group]
+    we don't need issue [-I] [-S] in [.merlin] file
+*)  
+val is_empty : file_group -> bool 
 
 type t = 
   { files :  file_group list ;
-   (* flattened list of directories *)
+    (* flattened list of directories *)
     intervals :  Ext_file_pp.interval list ;
     globbed_dirs : string list ; 
 
@@ -60,18 +63,38 @@ type t =
 
 
 type cxt = {
-  no_dev : bool ;
+  not_dev : bool ;
   dir_index : Bsb_dir_index.t ; 
   cwd : string ;
   root : string ;
-  cut_generators : bool
+  cut_generators : bool;
+  traverse : bool;
+  namespace : string option;
 }
 
-  
-(** entry is to the 
-    [sources] in the schema
 
-    [parse_sources cxt json]
+(* val parsing_simple_dir : 
+  cxt -> 
+  string -> 
+  t *)
+
+(* val parsing_source_dir_map :
+  cxt ->
+  Ext_json_types.t String_map.t -> 
+  t *)
+
+(* val parsing_source : 
+  cxt -> 
+  Ext_json_types.t ->     
+  t  *)
+
+(* val parsing_arr_sources :  
+  cxt ->
+  Ext_json_types.t array ->
+  t *)
+
+(** [parse_sources cxt json]
+    entry is to the [sources] in the schema    
     given a root, return an object which is
     all relative paths, this function will do the IO
 *)
@@ -79,4 +102,4 @@ val parse_sources :
   cxt ->
   Ext_json_types.t  ->
   t 
-  
+

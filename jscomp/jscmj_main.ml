@@ -73,8 +73,9 @@ let from_cmj (files : string list) (output_file : string) =
       in
       Ext_pp.string f "(* -*-mode:fundamental-*- *)"  ;
       Ext_pp.newline f ;
-      Ext_pp.string f "let data_sets = String_map.of_list "    ;
-      Ext_pp.bracket_vgroup f 1 (fun _ -> List.iter aux files))
+      Ext_pp.string f "let data_sets = let map = String_map.of_list "    ;
+      Ext_pp.bracket_vgroup f 1 (fun _ -> List.iter aux files);
+      Ext_pp.string f " in ref map")
 
 
 (** the cache should be readable and also update *)
@@ -118,11 +119,11 @@ let from_cmi (files : string list) (output_file : string) =
 
 
 let () = 
-  from_cmj (get_files Literals.suffix_cmj "stdlib"
-            @ get_files Literals.suffix_cmj "runtime"
-            @ get_files Literals.suffix_cmj "others") 
+  from_cmj ( Ext_list.append (get_files Literals.suffix_cmj "stdlib")
+             (Ext_list.append (get_files Literals.suffix_cmj "runtime")
+             (get_files Literals.suffix_cmj "others"))) 
     (Filename.concat "core" "js_cmj_datasets.ml");
-  from_cmi (get_files ".cmi" "stdlib"
-            @ get_files ".cmi" "others") 
+  from_cmi (Ext_list.append (get_files ".cmi" "stdlib")
+              (get_files ".cmi" "others"))
     (Filename.concat "core" "js_cmi_datasets.ml")
 

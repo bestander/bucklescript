@@ -43,14 +43,16 @@ type effect = string option
 
 let single_na = Single NA
 (** we don't force people to use package *)
-
+type cmj_case = Ext_namespace.file_kind
+  
 type t = {
   values : cmj_value String_map.t;
   effect : effect;
   npm_package_path : Js_packages_info.t ;
+  cmj_case : cmj_case; 
 }
 
-let cmj_magic_number =  "BUCKLE20170811"
+let cmj_magic_number =  "BUCKLE20171012"
 let cmj_magic_number_length = 
   String.length cmj_magic_number
 
@@ -58,14 +60,16 @@ let pure_dummy =
   {
     values = String_map.empty;
     effect = None;
-    npm_package_path = Empty;
+    npm_package_path = Js_packages_info.empty;
+    cmj_case = Little_js;
   }
 
 let no_pure_dummy = 
   {
     values = String_map.empty;
     effect = Some Ext_string.empty;
-    npm_package_path = Empty;  
+    npm_package_path = Js_packages_info.empty;  
+    cmj_case = Little_js; (** TODO: consistent with Js_config.bs_suffix default *)
   }
 
 

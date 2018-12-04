@@ -68,20 +68,18 @@ let rec get_arity
   (*   end *)
   | Lprim {primitive = Pfield (n,_); 
            args =  [ Lglobal_module id  ]; _} ->
-    Lam_compile_env.find_and_add_if_not_exist (id, n) meta.env
-      ~not_found:(fun _ -> assert false)
-      ~found:(fun x -> match x.arity with Single x -> x | Submodule _ -> NA )
+    begin match (Lam_compile_env.cached_find_ml_id_pos id n meta.env).arity with 
+    | Single x -> x 
+    | Submodule _ -> NA
+    end
   | Lprim {primitive = Pfield (m,_); 
            args =  [ Lprim{primitive = Pfield(n,_); 
             args = [ Lglobal_module id]}  ]
            ; _} ->
-    Lam_compile_env.find_and_add_if_not_exist (id, n) meta.env
-      ~not_found:(fun _ -> assert false)
-      ~found:(fun x -> match x.arity with 
+    begin match (Lam_compile_env.cached_find_ml_id_pos id n meta.env).arity with 
       | Submodule subs -> subs.(m)
-      | Single _ -> NA
-       )
-
+      | Single _ -> NA       
+  end
       
   | Lprim {primitive = Pfield _; _} -> NA (** TODO *)
   | Lprim {primitive = Praise ;  _} -> Determin(true,[], true)
@@ -145,12 +143,14 @@ let rec get_arity
                 sw_numconsts = _;
                }) -> 
     all_lambdas meta (
-      let rest = (sw_consts |> List.map snd) @ (sw_blocks |> List.map snd ) in
+      let rest = 
+        Ext_list.map_append snd sw_consts
+        (Ext_list.map snd sw_blocks) in
       match sw_failaction with None -> rest | Some x -> x::rest )
   | Lstringswitch(l, sw, d) -> 
     begin match d with 
-      | None -> all_lambdas meta (List.map snd  sw )
-      | Some v -> all_lambdas meta (v:: List.map snd  sw)
+      | None -> all_lambdas meta (Ext_list.map snd  sw )
+      | Some v -> all_lambdas meta (v:: Ext_list.map snd  sw)
     end
   | Lstaticraise _ -> NA (* since it will not be in tail position *)
   | Lstaticcatch(_, _, handler) -> get_arity meta handler
@@ -195,8 +195,8 @@ and all_lambdas meta (xs : Lam.t list) =
 (*
 let dump_exports_arities (meta : Lam_stats.t ) = 
   let fmt = 
-    if meta.filename != "" then 
-      let cmj_file = Ext_filename.chop_extension meta.filename ^ Literals.suffix_cmj in
+    if meta.filename <> "" then 
+      let cmj_file = Ext_path.chop_extension meta.filename ^ Literals.suffix_cmj in
       let out = open_out cmj_file in   
       Format.formatter_of_out_channel out
     else 

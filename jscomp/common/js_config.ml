@@ -68,12 +68,10 @@ let (//) = Filename.concat
 let default_gen_tds = ref false
 let no_builtin_ppx_ml = ref false
 let no_builtin_ppx_mli = ref false
-let no_warn_ffi_type = ref false
+
 
 (** TODO: will flip the option when it is ready *)
-let no_warn_unused_bs_attribute = ref false
-let no_error_unused_bs_attribute = ref false 
-
+let no_warn_unimplemented_external = ref false 
 let current_file = ref ""
 let debug_file = ref ""
 
@@ -96,10 +94,8 @@ let tool_name = "BuckleScript"
 let check_div_by_zero = ref true
 let get_check_div_by_zero () = !check_div_by_zero
 
-let no_any_assert = ref false
 
-let set_no_any_assert () = no_any_assert := true
-let get_no_any_assert () = !no_any_assert
+
 
 let sort_imports = ref true
 let dump_js = ref false
@@ -109,3 +105,4 @@ let dump_js = ref false
 let syntax_only = ref false
 let binary_ast = ref false
 
+let bs_suffix = ref false 

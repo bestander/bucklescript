@@ -89,6 +89,11 @@ let starts_with s beg =
    !i = beg_len
   )
 
+let rec ends_aux s end_ j k = 
+  if k < 0 then (j + 1)
+  else if String.unsafe_get s j = String.unsafe_get end_ k then 
+    ends_aux s end_ (j - 1) (k - 1)
+  else  -1   
 
 (** return an index which is minus when [s] does not 
     end with [beg]
@@ -98,12 +103,7 @@ let ends_with_index s end_ =
   let s_beg = String.length end_ - 1 in
   if s_beg > s_finish then -1
   else
-    let rec aux j k = 
-      if k < 0 then (j + 1)
-      else if String.unsafe_get s j = String.unsafe_get end_ k then 
-        aux (j - 1) (k - 1)
-      else  -1 in 
-    aux s_finish s_beg
+    ends_aux s end_ s_finish s_beg
 
 let ends_with s end_ = ends_with_index s end_ >= 0 
 
@@ -156,10 +156,11 @@ let rec unsafe_for_all_range s ~start ~finish p =
   p (String.unsafe_get s start) && 
   unsafe_for_all_range s ~start:(start + 1) ~finish p
 
-let for_all_range s ~start ~finish p = 
+let for_all_from s start  p = 
   let len = String.length s in 
-  if start < 0 || finish >= len then invalid_arg "Ext_string.for_all_range"
-  else unsafe_for_all_range s ~start ~finish p 
+  if start < 0  then invalid_arg "Ext_string.for_all_from"
+  else unsafe_for_all_range s ~start ~finish:(len - 1) p 
+
 
 let for_all (p : char -> bool) s =   
   unsafe_for_all_range s ~start:0  ~finish:(String.length s - 1) p 
@@ -240,69 +241,7 @@ let tail_from s x =
   if  x > len then invalid_arg ("Ext_string.tail_from " ^s ^ " : "^ string_of_int x )
   else String.sub s x (len - x)
 
-
-(**
-   {[ 
-     digits_of_str "11_js" 2 == 11     
-   ]}
-*)
-let digits_of_str s ~offset x = 
-  let rec aux i acc s x  = 
-    if i >= x then acc 
-    else aux (i + 1) (10 * acc + Char.code s.[offset + i] - 48 (* Char.code '0' *)) s x in 
-  aux 0 0 s x 
-
-
-
-(*
-   {[
-     starts_with_and_number "js_fn_mk_01" 0 "js_fn_mk_" = 1 ;;
-     starts_with_and_number "js_fn_run_02" 0 "js_fn_mk_" = -1 ;;
-     starts_with_and_number "js_fn_mk_03" 6 "mk_" = 3 ;;
-     starts_with_and_number "js_fn_mk_04" 6 "run_" = -1;;
-     starts_with_and_number "js_fn_run_04" 6 "run_" = 4;;
-     (starts_with_and_number "js_fn_run_04" 6 "run_" = 3) = false ;;
-   ]}
-*)
-let starts_with_and_number s ~offset beg =
-  let beg_len = String.length beg in
-  let s_len = String.length s in
-  let finish_delim = offset + beg_len in 
-
-  if finish_delim >  s_len  then -1 
-  else 
-    let i = ref offset  in
-    while !i <  finish_delim
-          && String.unsafe_get s !i =
-             String.unsafe_get beg (!i - offset) do 
-      incr i 
-    done;
-    if !i = finish_delim then 
-      digits_of_str ~offset:finish_delim s 2 
-    else 
-      -1 
-
 let equal (x : string) y  = x = y
-
-let unsafe_concat_with_length len sep l =
-  match l with 
-  | [] -> ""
-  | hd :: tl -> (* num is positive *)
-    let r = Bytes.create len in
-    let hd_len = String.length hd in 
-    let sep_len = String.length sep in 
-    String.unsafe_blit hd 0 r 0 hd_len;
-    let pos = ref hd_len in
-    List.iter
-      (fun s ->
-         let s_len = String.length s in
-         String.unsafe_blit sep 0 r !pos sep_len;
-         pos := !pos +  sep_len;
-         String.unsafe_blit s 0 r !pos s_len;
-         pos := !pos + s_len)
-      tl;
-    Bytes.unsafe_to_string r
-
 
 let rec rindex_rec s i c =
   if i < 0 then i else
@@ -332,35 +271,16 @@ let is_valid_module_file (s : string) =
   | _ -> false 
 
 
-(* https://docs.npmjs.com/files/package.json 
-  Some rules:
-  The name must be less than or equal to 214 characters. This includes the scope for scoped packages.
-  The name can't start with a dot or an underscore.
-  New packages must not have uppercase letters in the name.
-  The name ends up being part of a URL, an argument on the command line, and a folder name. Therefore, the name can't contain any non-URL-safe characters.
-*)
-let is_valid_npm_package_name (s : string) = 
-  let len = String.length s in 
-  len <= 214 && (* magic number forced by npm *)
-  len > 0 &&
-  match String.unsafe_get s 0 with 
-  | 'a' .. 'z' | '@' -> 
-    unsafe_for_all_range s ~start:1 ~finish:(len - 1)
-      (fun x -> 
-         match x with 
-         |  'a'..'z' | '0'..'9' | '_' | '-' -> true
-         | _ -> false )
-  | _ -> false 
 
 
 type check_result = 
   | Good 
   | Invalid_module_name 
   | Suffix_mismatch
-(** 
-   TODO: move to another module 
-   Make {!Ext_filename} not stateful
-*)
+  (** 
+     TODO: move to another module 
+     Make {!Ext_filename} not stateful
+  *)
 let is_valid_source_name name : check_result =
   match check_any_suffix_case_then_chop name [
       ".ml"; 
@@ -382,9 +302,9 @@ let rec unsafe_no_char x ch i  last_idx =
 let rec unsafe_no_char_idx x ch i last_idx = 
   if i > last_idx  then -1 
   else 
-    if String.unsafe_get x i <> ch then 
-      unsafe_no_char_idx x ch (i + 1)  last_idx
-    else i
+  if String.unsafe_get x i <> ch then 
+    unsafe_no_char_idx x ch (i + 1)  last_idx
+  else i
 
 let no_char x ch i len  : bool =
   let str_len = String.length x in 
@@ -420,7 +340,6 @@ let empty = ""
 let compare = Bs_hash_stubs.string_length_based_compare    
 #else    
 external compare : string -> string -> int = "caml_string_length_based_compare" "noalloc";;
-
 #end
 let single_space = " "
 let single_colon = ":"
@@ -471,7 +390,7 @@ let concat4 a b c d =
   let c_len = String.length c in 
   let d_len = String.length d in 
   let len = a_len + b_len + c_len + d_len in 
-  
+
   let target = Bytes.create len in 
   String.unsafe_blit a 0 target 0 a_len ; 
   String.unsafe_blit b 0 target a_len b_len;
@@ -487,7 +406,7 @@ let concat5 a b c d e =
   let d_len = String.length d in 
   let e_len = String.length e in 
   let len = a_len + b_len + c_len + d_len + e_len in 
-  
+
   let target = Bytes.create len in 
   String.unsafe_blit a 0 target 0 a_len ; 
   String.unsafe_blit b 0 target a_len b_len;
@@ -499,7 +418,7 @@ let concat5 a b c d e =
 
 
 let inter2 a b = 
-    concat3 a single_space b 
+  concat3 a single_space b 
 
 
 let inter3 a b c = 
@@ -511,7 +430,29 @@ let inter3 a b c =
 
 let inter4 a b c d =
   concat_array single_space [| a; b ; c; d|]
-  
-    
+
+
 let parent_dir_lit = ".."    
 let current_dir_lit = "."
+
+
+(* reference {!Bytes.unppercase} *)
+let capitalize_ascii (s : string) : string = 
+  if String.length s = 0 then s 
+  else 
+    begin
+      let c = String.unsafe_get s 0 in 
+      if (c >= 'a' && c <= 'z')
+      || (c >= '\224' && c <= '\246')
+      || (c >= '\248' && c <= '\254') then 
+        let uc = Char.unsafe_chr (Char.code c - 32) in 
+        let bytes = Bytes.of_string s in
+        Bytes.unsafe_set bytes 0 uc;
+        Bytes.unsafe_to_string bytes 
+      else s 
+    end
+
+
+
+
+

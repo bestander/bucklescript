@@ -22,7 +22,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-let (//) = Ext_filename.combine
+let (//) = Ext_path.combine
 
 type info =
   string list   
@@ -50,8 +50,8 @@ let handle_generators oc
           begin match output, input with
             | output::outputs, input::inputs -> 
               Bsb_ninja_util.output_build oc 
-                ~outputs:(List.map map_to_source_dir  outputs)
-                ~inputs:(List.map map_to_source_dir inputs) 
+                ~outputs:(Ext_list.map map_to_source_dir  outputs)
+                ~inputs:(Ext_list.map map_to_source_dir inputs) 
                 ~output:(map_to_source_dir output)
                 ~input:(map_to_source_dir input)
                 ~rule
@@ -91,7 +91,7 @@ let make_common_shadows
   in 
   if is_re then 
     { key = Bsb_ninja_global_vars.bsc_flags; 
-      op = Append("-bs-re-error")
+      op = AppendList ["-bs-re-out"; "-bs-super-errors"]
     } :: shadows
   else shadows
 
@@ -100,6 +100,7 @@ let emit_impl_build
     (package_specs : Bsb_package_specs.t)
     (group_dir_index : Bsb_dir_index.t) 
     oc 
+    ~bs_suffix
     ~no_intf_file:(no_intf_file : bool) 
     js_post_build_cmd
     ~is_re
@@ -122,7 +123,7 @@ let emit_impl_build
   let file_cmi =  output_filename_sans_extension ^ Literals.suffix_cmi in
   let output_cmj =  output_filename_sans_extension ^ Literals.suffix_cmj in
   let output_js =
-    Bsb_package_specs.get_list_of_output_js package_specs output_filename_sans_extension in 
+    Bsb_package_specs.get_list_of_output_js package_specs bs_suffix output_filename_sans_extension in 
   let common_shadows = 
     make_common_shadows is_re package_specs
       (Filename.dirname file_cmi)
@@ -224,17 +225,19 @@ let handle_module_info
     (group_dir_index : Bsb_dir_index.t)
     (package_specs : Bsb_package_specs.t) 
     js_post_build_cmd
+    ~bs_suffix
     oc  module_name 
-    ( module_info : Bsb_build_cache.module_info)
+    ( module_info : Bsb_db.module_info)
     namespace
   : info =
   match module_info.ml, module_info.mli with
-  | Ml_source (input_impl,impl_is_re), 
-    Mli_source(input_intf, intf_is_re) ->
+  | Ml_source (input_impl,impl_is_re,_), 
+    Mli_source(input_intf, intf_is_re,_) ->
     emit_impl_build 
       package_specs
       group_dir_index
       oc 
+      ~bs_suffix
       ~no_intf_file:false
       ~is_re:impl_is_re
       js_post_build_cmd      
@@ -247,17 +250,18 @@ let handle_module_info
       ~is_re:intf_is_re
       namespace
       input_intf 
-  | Ml_source(input,is_re), Mli_empty ->
+  | Ml_source(input,is_re,_), Mli_empty ->
     emit_impl_build 
       package_specs
       group_dir_index
       oc 
+      ~bs_suffix
       ~no_intf_file:true
       js_post_build_cmd      
       ~is_re
       namespace
       input 
-  | Ml_empty, Mli_source(input,is_re) ->    
+  | Ml_empty, Mli_source(input,is_re,_) ->    
     emit_intf_build 
       package_specs
       group_dir_index
@@ -270,6 +274,7 @@ let handle_module_info
 
 let handle_file_group 
     oc 
+    ~bs_suffix
     ~custom_rules 
     ~package_specs 
     ~js_post_build_cmd  
@@ -288,8 +293,10 @@ let handle_file_group
         | Export_set set ->  
           String_set.mem module_name set in
       if installable then 
-        String_hash_set.add files_to_install (Bsb_build_cache.filename_sans_suffix_of_module_info module_info);
-      (handle_module_info group.dir_index 
+        String_hash_set.add files_to_install (Bsb_db.filename_sans_suffix_of_module_info module_info);
+      (handle_module_info 
+        ~bs_suffix
+         group.dir_index 
          package_specs js_post_build_cmd 
          oc 
          module_name 
@@ -300,13 +307,15 @@ let handle_file_group
 
 
 let handle_file_groups
-    oc ~package_specs ~js_post_build_cmd
+    oc ~package_specs 
+    ~bs_suffix
+    ~js_post_build_cmd
     ~files_to_install ~custom_rules
     (file_groups  :  Bsb_parse_sources.file_group list)
     namespace (st : info) : info  =
   List.fold_left 
     (handle_file_group 
-       oc ~package_specs ~custom_rules ~js_post_build_cmd
+       oc  ~bs_suffix ~package_specs ~custom_rules ~js_post_build_cmd
        files_to_install 
        namespace
     ) 

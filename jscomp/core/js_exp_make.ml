@@ -130,7 +130,7 @@ let make_block ?comment tag tag_info es mutable_flag : t =
       List.mapi (fun i (e : t) -> merge_outer_comment des.(i) e) es
     (* TODO: may overriden its previous comments *)
     | Blk_module (Some des) 
-      ->  List.map2  merge_outer_comment 
+      ->  Ext_list.map2  merge_outer_comment 
             des es
     | _ -> es 
   in
@@ -788,7 +788,7 @@ let rec econd ?comment (b : t) (t : t) (f : t) : t =
   (*   econd ?comment { b with expression_desc = Bin (And , b0,b1)} t f *)
   | _ -> 
     let b  = ocaml_boolean_under_condition b in 
-    (* if b' != b then *)
+    (* if b' <> b then *)
     (*   econd ?comment b' t f  *)
     (* else  *)
     if Js_analyzer.eq_expression t f then
@@ -1285,8 +1285,9 @@ let of_block ?comment ?e block : t =
              begin match e with 
                | None -> block 
                | Some e -> 
-                 block @ [{J.statement_desc = Return {return_value = e } ;
-                           comment}]
+                 Ext_list.append block  
+                   [{J.statement_desc = Return {return_value = e } ;
+                     comment}]
              end
             , Js_fun_env.empty 0)
     } []
@@ -1308,9 +1309,9 @@ let is_null_undefined ?comment (x: t) : t =
   | Number _ | Array _ | Caml_block _ -> caml_false
   | _ -> 
     bool_of_boolean
-    { comment ; 
-      expression_desc = Is_null_undefined_to_boolean x 
-    }
+      { comment ; 
+        expression_desc = Is_null_undefined_to_boolean x 
+      }
 let not_implemented ?comment (s : string) : t =  
   runtime_call
     Js_runtime_modules.missing_polyfill

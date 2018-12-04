@@ -103,19 +103,18 @@ let suffix_mliast_simple = ".mliast_simple"
 let suffix_d = ".d"
 let suffix_mlastd = ".mlast.d"
 let suffix_mliastd = ".mliast.d"
-let suffix_js = ".js"
+
 
 let commonjs = "commonjs" 
 let amdjs = "amdjs"
-let goog = "goog"
 let es6 = "es6"
 let es6_global = "es6-global"
 let amdjs_global = "amdjs-global"
 let unused_attribute = "Unused attribute " 
 let dash_nostdlib = "-nostdlib"
 
-let reactjs_jsx_ppx_exe  = "reactjs_jsx_ppx.exe"
 let reactjs_jsx_ppx_2_exe = "reactjs_jsx_ppx_2.exe"
+let reactjs_jsx_ppx_3_exe  = "reactjs_jsx_ppx_3.exe"
 let unescaped_j_delimiter = "j"
 let unescaped_js_delimiter = "js"
 let escaped_j_delimiter =  "*j" (* not user level syntax allowed *)
@@ -123,3 +122,11 @@ let escaped_j_delimiter =  "*j" (* not user level syntax allowed *)
 let native = "native"
 let bytecode = "bytecode"
 let js = "js"
+
+
+
+(** Used when produce node compatible paths *)
+let node_sep = "/"
+let node_parent = ".."
+let node_current = "."
+

@@ -9338,7 +9338,7 @@ var $$Error$2 = Caml_exceptions.create("Ocaml_parsetree_test.Lexer.Error");
 function assert_same_type(lexbuf, x, y) {
   var lhs = type_of_directive(x);
   var rhs = type_of_directive(y);
-  if (Caml_obj.caml_notequal(lhs, rhs)) {
+  if (lhs !== rhs) {
     throw [
           $$Error$2,
           /* Conditional_expr_expected_type */Block.__(7, [
@@ -11907,34 +11907,36 @@ function wrap(parsing_fun, lexbuf) {
     var err = Js_exn.internalToOCamlException(raw_err);
     var exit = 0;
     var exit$1 = 0;
+    var exit$2 = 0;
     if (err[0] === $$Error$2) {
       var tmp = err[1];
       if (typeof tmp === "number") {
-        exit$1 = 2;
+        exit$2 = 3;
       } else if (tmp.tag) {
-        exit$1 = 2;
+        exit$2 = 3;
       } else if (input_name[0] === "//toplevel//") {
         skip_phrase(lexbuf);
         throw err;
       } else {
-        exit$1 = 2;
+        exit$2 = 3;
       }
     } else {
-      exit$1 = 2;
+      exit$2 = 3;
     }
-    if (exit$1 === 2) {
+    if (exit$2 === 3) {
       if (err[0] === $$Error$1) {
         if (input_name[0] === "//toplevel//") {
           maybe_skip_phrase(lexbuf);
           throw err;
-        } else if (err === Parsing.Parse_error) {
-          exit = 1;
-        } else if (err === Escape_error) {
-          exit = 1;
         } else {
-          throw err;
+          exit$1 = 2;
         }
-      } else if (err === Parsing.Parse_error) {
+      } else {
+        exit$1 = 2;
+      }
+    }
+    if (exit$1 === 2) {
+      if (err === Parsing.Parse_error) {
         exit = 1;
       } else if (err === Escape_error) {
         exit = 1;

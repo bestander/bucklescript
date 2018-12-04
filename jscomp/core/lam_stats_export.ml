@@ -125,7 +125,7 @@ let values_of_export
 let get_effect (meta : Lam_stats.t) maybe_pure external_ids = 
   match maybe_pure with
   | None ->  
-    Ext_option.bind ( Ext_list.for_all_ret 
+    Ext_option.bind ( Ext_list.find_first_not 
                         (fun (id : Lam_module_ident.t) -> 
                            Lam_compile_env.query_and_add_if_not_exist id 
                              (Has_env meta.env )
@@ -159,17 +159,22 @@ let export_to_cmj
     maybe_pure
     external_ids 
     export_map
+    cmj_case
   : Js_cmj_format.t = 
   let values =  values_of_export meta export_map in
   let () =
     if !Js_config.default_gen_tds && not ( Ext_string.is_empty meta.filename) then
       Ext_pervasives.with_file_as_pp
-        (Ext_filename.chop_extension ~loc:__LOC__ meta.filename ^ ".d.ts")
+        (Ext_path.chop_extension ~loc:__LOC__ meta.filename ^ ".d.ts")
       @@ fun fmt ->
       pp fmt "@[<v>%a@]@." (dump meta) meta.exports in
   let effect = get_effect meta maybe_pure external_ids in
   {values; 
    effect ; 
    npm_package_path = Js_packages_state.get_packages_info ();
+   cmj_case ;
+    (* FIXME: make sure [-o] would not change its case 
+      add test for ns/non-ns
+    *)
   }
 
