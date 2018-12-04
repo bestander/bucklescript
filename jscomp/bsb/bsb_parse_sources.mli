@@ -45,7 +45,10 @@ type  file_group =
     generators : build_generator list;
   } 
 
-
+(** when [is_empty file_group]
+    we don't need issue [-I] [-S] in [.merlin] file
+*)  
+val is_empty : file_group -> bool 
 
 type t = 
   { files :  file_group list ;
@@ -65,7 +68,8 @@ type cxt = {
   cwd : string ;
   root : string ;
   cut_generators : bool;
-  traverse : bool
+  traverse : bool;
+  namespace : string option;
 }
 
 

@@ -43,9 +43,15 @@ let suites =
         bsc_check_eval  {|let bla4 foo x y= foo##(method1 x y [@bs]) |} in 
       (* debug_output should_be_warning; *)
       OUnit.assert_bool __LOC__ (Ext_string.contain_substring
-                                   should_be_warning.stderr Literals.unused_attribute)
+                                   should_be_warning.stderr "Unused")
     end;
-
+     __LOC__ >:: begin fun _ ->    
+      let should_be_warning = 
+        bsc_check_eval  {| external mk : int -> ([`a|`b [@bs.string]]) = "" [@@bs.val] |} in 
+        OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring
+                                   should_be_warning.stderr "Unused")
+     end;
     __LOC__ >:: begin fun _ -> 
       let should_err = bsc_check_eval {|
 external ff : 
@@ -197,7 +203,39 @@ external ff :
         (not (Ext_string.is_empty should_err.stderr))
 
     end;
-
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external foo_bar :
+    (_ [@bs.as "foo"]) ->
+    string ->
+    string = "bar"
+  [@@bs.send]
+    |} in 
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr "Ill defined attribute")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+      let bla4 foo x y = foo##(method1 x y [@bs])
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external mk : int -> 
+  (
+    [`a|`b] 
+     [@bs.string] 
+  ) = "" [@@bs.val]       
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end
     (* __LOC__ >:: begin fun _ ->  *)
     (*   let should_infer = perform_bsc [| "-i"; "-bs-eval"|] {| *)
     (*      let  f = fun [@bs] x -> let (a,b) = x in a + b  *)

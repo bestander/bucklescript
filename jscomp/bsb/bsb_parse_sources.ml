@@ -54,6 +54,12 @@ type  file_group =
     *)
   } 
 
+let is_empty (x : file_group) = 
+  String_map.is_empty x.sources &&
+  x.resources = [] &&
+  x.generators = []
+
+  
 (**
     [intervals] are used for side effect so we can patch `bsconfig.json` to add new files 
      we need add a new line in the end,
@@ -77,7 +83,8 @@ type cxt = {
   cwd : string ;
   root : string;
   cut_generators : bool;
-  traverse : bool
+  traverse : bool;
+  namespace : string option;
 }
 
 let collect_pub_modules 
@@ -387,13 +394,21 @@ let rec
          let lib_parent = 
            Filename.concat (Filename.concat cxt.root Bsb_config.lib_bs) 
              cxt.cwd in 
-         if not (String_map.mem (String.capitalize basename) cur_sources) then 
+         if not (String_map.mem (Ext_string.capitalize_ascii basename) cur_sources) then 
            begin 
              Unix.unlink (Filename.concat parent f);
+             let basename = 
+              match cxt.namespace with  
+              | None -> basename
+              | Some ns -> Ext_namespace.make ~ns basename in 
              try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_cmi));
              try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_cmj));
              try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_cmt));
              try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_cmti));
+             try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_mlast));
+             try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_mlastd));
+             try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_mliast));
+             try_unlink (Filename.concat lib_parent (basename ^ Literals.suffix_mliastd));
            end           
      done 
   )

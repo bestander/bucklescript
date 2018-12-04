@@ -23,7 +23,7 @@
 
 (*
   This file's shared between the Reason repo and the BuckleScript repo. In
-  Reason, it's in src. In BuckleScript, it's in vendor/reason We periodically
+  Reason, it's in src. In BuckleScript, it's in jscomp/bin. We periodically
   copy this file from Reason (the source of truth) to BuckleScript, then
   uncomment the #if #else #end cppo macros you see in the file. That's because
   BuckleScript's on OCaml 4.02 while Reason's on 4.04; so the #if macros
@@ -61,24 +61,22 @@ open Asttypes
 open Parsetree
 open Longident
 
-let listToArray ~loc ~mapper theList =
-  let rec listToArray' theList accum =
+(* if children is a list, convert it to an array while mapping each element. If not, just map over it, as usual *)
+let transformChildren ~loc ~mapper theList =
+  let rec transformChildren' theList accum =
     (* not in the sense of converting a list to an array; convert the AST
        reprensentation of a list to the AST reprensentation of an array *)
     match theList with
-    | {pexp_desc = Pexp_construct ({txt = Lident "[]"}, None)} -> 
-      accum 
+    | {pexp_desc = Pexp_construct ({txt = Lident "[]"}, None)} ->
+      List.rev accum |> Exp.array ~loc
     | {pexp_desc = Pexp_construct (
         {txt = Lident "::"},
         Some {pexp_desc = Pexp_tuple (v::acc::[])}
       )} ->
-      listToArray' acc (v::accum)
-    | _ -> raise (
-        Invalid_argument "JSX: the `children` prop must be a literal list (of react elements)."
-      ) in
-  listToArray' theList []
-  |> List.rev_map (fun a -> mapper.expr mapper a)
-  |> Exp.array ~loc
+      transformChildren' acc ((mapper.expr mapper v)::accum)
+    | notAList -> mapper.expr mapper notAList
+  in
+  transformChildren' theList []
 
 let extractChildrenForDOMElements ?(removeLastPositionUnit=false) ~loc propsAndChildren =
   let rec allButLast_ lst acc = match lst with
@@ -119,7 +117,7 @@ let jsxMapper () =
       )} when List.for_all (fun (attribute, _) -> attribute.txt <> "JSX") pexp_attributes ->
       mapper.expr mapper singleItem
     (* if it's a single jsx item, or multiple items, turn list into an array *)
-    | nonEmptyChildren -> listToArray ~loc ~mapper nonEmptyChildren
+    | nonEmptyChildren -> transformChildren ~loc ~mapper nonEmptyChildren
     in
     let recursivelyTransformedArgsForMake = argsForMake |> List.map (fun (label, expression) -> (label, mapper.expr mapper expression)) in
     let args = recursivelyTransformedArgsForMake @ [ (nolabel, childrenExpr) ] in
@@ -140,7 +138,7 @@ let jsxMapper () =
     let (children, argsWithLabels) =
       extractChildrenForDOMElements ~loc ~removeLastPositionUnit:true callArguments in
     let (argsKeyRef, argsForMake) = List.partition argIsKeyRef argsWithLabels in
-    let childrenExpr = listToArray ~loc ~mapper children in
+    let childrenExpr = transformChildren ~loc ~mapper children in
     let recursivelyTransformedArgsForMake = argsForMake |> List.map (fun (label, expression) -> (label, mapper.expr mapper expression)) in
     let args = recursivelyTransformedArgsForMake @ [ (nolabel, childrenExpr) ] in
     let wrapWithReasonReactElement e = (* ReasonReact.element ::key ::ref (...) *)
@@ -160,7 +158,7 @@ let jsxMapper () =
     let (children, propsWithLabels) =
       extractChildrenForDOMElements ~loc callArguments in
     let componentNameExpr = constantString ~loc id in
-    let childrenExpr = listToArray ~loc ~mapper children in
+    let childrenExpr = transformChildren ~loc ~mapper children in
     let args = match propsWithLabels with
       | [theUnitArgumentAtEnd] ->
         [
@@ -312,7 +310,75 @@ let jsxMapper () =
   { default_mapper with structure; expr }
 #end
 
-#if defined BS_NO_COMPILER_PATCH then
+#if BS_COMPILER_IN_BROWSER then
+let rewrite code =
+  let mapper = jsxMapper () in
+  Location.input_name := "//toplevel//";
+  try
+    let lexer = Lexing.from_string code in
+    let pstr = Parse.implementation lexer in
+    let pstr = mapper.structure mapper pstr in
+    Pprintast.structure Format.str_formatter pstr;
+    let ocaml_code = Format.flush_str_formatter () in
+    Printf.sprintf "{\"ocaml_code\": %S}" ocaml_code
+  with e ->
+    match Location.error_of_exn e with
+    | Some error ->
+        let (file, line, startchar) =
+          Location.get_pos_info error.loc.loc_start in
+        let (file, endline, endchar) =
+          Location.get_pos_info error.loc.loc_end in
+        let result =
+          Printf.sprintf
+            "{ \
+              \"ppx_error_msg\": %S, \
+              \"row\": %d, \
+              \"column\": %d, \
+              \"endRow\": %d, \
+              \"endColumn\": %d, \
+              \"text\": %S, \
+              \"type\": \"error\" \
+            }"
+            (Printf.sprintf "Line %d, %d: %s" line startchar error.msg)
+            (line - 1) startchar (endline - 1) endchar error.msg in
+        Location.report_error Format.std_formatter error;
+        result
+    | None ->
+        Printf.sprintf "{\"js_error_msg\": %S}" (Printexc.to_string e)
+
+module Js = struct
+  module Unsafe = struct
+    type any
+    external inject : 'a -> any = "%identity"
+    external get : 'a -> 'b -> 'c = "caml_js_get"
+    external set : 'a -> 'b -> 'c -> unit = "caml_js_set"
+    external pure_js_expr : string -> 'a = "caml_pure_js_expr"
+    let global = pure_js_expr "joo_global_object"
+    external obj : (string * any) array -> 'a = "caml_js_object"
+  end
+  type (-'a, +'b) meth_callback
+  type 'a callback = (unit, 'a) meth_callback
+  external wrap_meth_callback : ('a -> 'b) -> ('a, 'b) meth_callback = "caml_js_wrap_meth_callback"
+  type + 'a t
+  type js_string
+  external string : string -> js_string t = "caml_js_from_string"
+  external to_string : js_string t -> string = "caml_js_to_string"
+end
+
+let export (field : string) v =
+  Js.Unsafe.set (Js.Unsafe.global) field v
+
+let make_ppx name =
+  export name
+    (Js.Unsafe.(obj
+                  [|"rewrite",
+                    inject @@
+                    Js.wrap_meth_callback
+                      (fun _ code ->
+                         Js.string (rewrite (Js.to_string code)));
+                  |]))
+let () = make_ppx "jsxv2"
+#elif defined BS_NO_COMPILER_PATCH then
 let () = Compiler_libs.Ast_mapper.register "JSX" (fun _argv -> jsxMapper ())
 #else
 let () = Ast_mapper.register "JSX" (fun _argv -> jsxMapper ())

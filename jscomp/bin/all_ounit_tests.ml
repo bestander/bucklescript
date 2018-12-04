@@ -5131,7 +5131,7 @@ let rec unsafe_root_dir_aux cwd  =
 
 let project_root = unsafe_root_dir_aux (Sys.getcwd ())
 let jscomp = project_root // "jscomp"
-let bsc_bin = jscomp // "bin" 
+let bsc_bin = project_root // "lib" 
 
 let bsc_exe = bsc_bin // "bsc.exe"
 let runtime_dir = jscomp // "runtime"
@@ -5282,9 +5282,15 @@ let suites =
         bsc_check_eval  {|let bla4 foo x y= foo##(method1 x y [@bs]) |} in 
       (* debug_output should_be_warning; *)
       OUnit.assert_bool __LOC__ (Ext_string.contain_substring
-                                   should_be_warning.stderr Literals.unused_attribute)
+                                   should_be_warning.stderr "Unused")
     end;
-
+     __LOC__ >:: begin fun _ ->    
+      let should_be_warning = 
+        bsc_check_eval  {| external mk : int -> ([`a|`b [@bs.string]]) = "" [@@bs.val] |} in 
+        OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring
+                                   should_be_warning.stderr "Unused")
+     end;
     __LOC__ >:: begin fun _ -> 
       let should_err = bsc_check_eval {|
 external ff : 
@@ -5436,7 +5442,39 @@ external ff :
         (not (Ext_string.is_empty should_err.stderr))
 
     end;
-
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external foo_bar :
+    (_ [@bs.as "foo"]) ->
+    string ->
+    string = "bar"
+  [@@bs.send]
+    |} in 
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr "Ill defined attribute")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+      let bla4 foo x y = foo##(method1 x y [@bs])
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end;
+    __LOC__ >:: begin fun _ -> 
+    let should_err = bsc_check_eval {|
+    external mk : int -> 
+  (
+    [`a|`b] 
+     [@bs.string] 
+  ) = "" [@@bs.val]       
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ;  *)
+    OUnit.assert_bool __LOC__ 
+    (Ext_string.contain_substring should_err.stderr
+    "Unused")
+  end
     (* __LOC__ >:: begin fun _ ->  *)
     (*   let should_infer = perform_bsc [| "-i"; "-bs-eval"|] {| *)
     (*      let  f = fun [@bs] x -> let (a,b) = x in a + b  *)
@@ -9778,6 +9816,7 @@ type callback =
     `Str of (string -> unit) 
   | `Str_loc of (string -> Lexing.position -> unit)
   | `Flo of (string -> unit )
+  | `Flo_loc of (string -> Lexing.position -> unit )
   | `Bool of (bool -> unit )
   | `Obj of (Ext_json_types.t String_map.t -> unit)
   | `Arr of (Ext_json_types.t array -> unit )
@@ -9799,6 +9838,7 @@ val query : path -> Ext_json_types.t ->  status
 val loc_of : Ext_json_types.t -> Ext_position.t
 
 val equal : Ext_json_types.t -> Ext_json_types.t -> bool 
+
 end = struct
 #1 "ext_json.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -9830,6 +9870,7 @@ type callback =
     `Str of (string -> unit) 
   | `Str_loc of (string -> Lexing.position -> unit)
   | `Flo of (string -> unit )
+  | `Flo_loc of (string -> Lexing.position -> unit )
   | `Bool of (bool -> unit )
   | `Obj of (Ext_json_types.t String_map.t -> unit)
   | `Arr of (Ext_json_types.t array -> unit )
@@ -9858,6 +9899,7 @@ let test   ?(fail=(fun () -> ())) key
     | True _, `Bool cb -> cb true
     | False _, `Bool cb  -> cb false 
     | Flo {flo = s} , `Flo cb  -> cb s 
+    | Flo {flo = s; loc} , `Flo_loc cb  -> cb s loc
     | Obj {map = b} , `Obj cb -> cb b 
     | Arr {content}, `Arr cb -> cb content 
     | Arr {content; loc_start ; loc_end}, `Arr_loc cb -> 
@@ -13836,6 +13878,172 @@ let suites =
         end;
     ]
 end
+module Ext_modulename : sig 
+#1 "ext_modulename.mli"
+(* Copyright (C) 2017 Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+
+
+val module_name_of_file : string -> string
+
+
+val module_name_of_file_if_any : string -> string
+
+(** [modulename, upper]
+  if [upper = true] then it means it is indeed uppercase
+*)
+val module_name_of_file_if_any_with_upper : string -> string * bool
+
+
+(** Given an JS bundle name, generate a meaningful
+  bounded module name
+*)
+val js_id_name_of_hint_name : string -> string 
+end = struct
+#1 "ext_modulename.ml"
+(* Copyright (C) 2017 Authors of BuckleScript
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+let module_name_of_file file =
+  Ext_string.capitalize_ascii 
+    (Filename.chop_extension @@ Filename.basename file)  
+
+let module_name_of_file_if_any file = 
+  let v = Ext_path.chop_extension_if_any @@ Filename.basename file in
+  Ext_string.capitalize_ascii v 
+
+let module_name_of_file_if_any_with_upper file = 
+  let v = Ext_path.chop_extension_if_any @@ Filename.basename file in
+  let res = Ext_string.capitalize_ascii v in 
+  res, res == v 
+
+
+
+
+let good_hint_name module_name offset =
+  let len = String.length module_name in 
+  len > offset && 
+  (function | 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false) 
+    (String.unsafe_get module_name offset) &&
+  Ext_string.for_all_from module_name (offset + 1) 
+    (function 
+      | 'a' .. 'z' 
+      | 'A' .. 'Z' 
+      | '0' .. '9' 
+      | '_' 
+         -> true
+      | _ -> false)
+
+let rec collect_start buf s off len = 
+  if off >= len then ()
+  else 
+    let next = succ off in 
+    match String.unsafe_get  s off with     
+    | 'a' .. 'z' as c -> 
+      Buffer.add_char buf (Char.uppercase c) ;
+      collect_next buf s next len
+    | 'A' .. 'Z' as c -> 
+      Buffer.add_char buf c ;
+      collect_next buf s next len
+    | _ -> collect_start buf s next len
+and collect_next buf s off len = 
+  if off >= len then ()  
+  else 
+    let next = off + 1 in 
+    match String.unsafe_get s off with 
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '_'
+    as c ->
+      Buffer.add_char buf c ;
+      collect_next buf s next len 
+    | '.'
+    | '-' -> 
+      collect_start buf s next len      
+    | _ -> 
+      collect_next buf s next len 
+
+(** This is for a js exeternal module, we can change it when printing
+   for example
+   {[
+     var React$1 = require('react');
+     React$1.render(..)
+   ]}
+   Given a name, if duplicated, they should  have the same id
+*)
+let js_id_name_of_hint_name module_name =       
+  let i = Ext_string.rindex_neg module_name '/' in 
+  if i >= 0 then
+    let offset = succ i in 
+    if good_hint_name module_name offset then 
+      Ext_string.capitalize_ascii
+        (Ext_string.tail_from module_name offset)
+    else 
+      let str_len = String.length module_name in 
+      let buf = Buffer.create str_len in 
+      collect_start buf module_name offset str_len ;
+      let res = Buffer.contents buf in 
+      if Ext_string.is_empty res then 
+        Ext_string.capitalize_ascii module_name
+      else res 
+  else 
+  if good_hint_name module_name 0 then
+    Ext_string.capitalize_ascii module_name
+  else 
+    let str_len = (String.length module_name) in 
+    let buf = Buffer.create str_len in 
+    collect_start buf module_name 0 str_len ;
+    let res = Buffer.contents buf in 
+    if Ext_string.is_empty res then module_name
+    else res   
+
+end
 module Ext_namespace : sig 
 #1 "ext_namespace.mli"
 (* Copyright (C) 2017- Authors of BuckleScript
@@ -14415,7 +14623,22 @@ let suites =
       Ext_path.chop_all_extensions_if_any "a" =~ "a";
       Ext_path.chop_all_extensions_if_any "a.x.bs.js" =~ "a"
     end;
-
+    let (=~) = OUnit.assert_equal ~printer:(fun x -> x) in 
+    __LOC__ >:: begin fun _ ->
+      let k = Ext_modulename.js_id_name_of_hint_name in 
+      k "xx" =~ "Xx";
+      k "react-dom" =~ "ReactDom";
+      k "a/b/react-dom" =~ "ReactDom";
+      k "a/b" =~ "B";
+      k "a/" =~ "A/" ; (*TODO: warning?*)
+      k "#moduleid" =~ "Moduleid";
+      k "@bundle" =~ "Bundle";
+      k "xx#bc" =~ "Xxbc";
+      k "hi@myproj" =~ "Himyproj";
+      k "ab/c/xx.b.js" =~ "XxBJs"; (* improve it in the future*)
+      k "c/d/a--b"=~ "AB";
+      k "c/d/ac--" =~ "Ac"
+    end 
   ]
 
 end
