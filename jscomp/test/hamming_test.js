@@ -1,14 +1,14 @@
 'use strict';
 
-var Mt               = require("./mt");
-var Block            = require("../../lib/js/block");
-var Curry            = require("../../lib/js/curry");
-var Buffer           = require("../../lib/js/buffer");
-var Printf           = require("../../lib/js/printf");
-var Caml_obj         = require("../../lib/js/caml_obj");
-var Caml_int64       = require("../../lib/js/caml_int64");
-var Caml_format      = require("../../lib/js/caml_format");
-var CamlinternalLazy = require("../../lib/js/camlinternalLazy");
+var Mt               = require("./mt.js");
+var Block            = require("../../lib/js/block.js");
+var Curry            = require("../../lib/js/curry.js");
+var Buffer           = require("../../lib/js/buffer.js");
+var Printf           = require("../../lib/js/printf.js");
+var Caml_obj         = require("../../lib/js/caml_obj.js");
+var Caml_int64       = require("../../lib/js/caml_int64.js");
+var Caml_format      = require("../../lib/js/caml_format.js");
+var CamlinternalLazy = require("../../lib/js/camlinternalLazy.js");
 
 var n0 = /* int64 */[
   /* hi */0,
@@ -55,23 +55,21 @@ function mul(n, param) {
 
 function cmp(param, param$1) {
   var ph = param$1[1];
-  var pl = param$1[0];
   var nh = param[1];
-  var nl = param[0];
   if (Caml_obj.caml_lessthan(nh, ph)) {
     return -1;
-  }
-  else if (Caml_obj.caml_greaterthan(nh, ph)) {
+  } else if (Caml_obj.caml_greaterthan(nh, ph)) {
     return 1;
-  }
-  else if (Caml_obj.caml_lessthan(nl, pl)) {
-    return -1;
-  }
-  else if (Caml_obj.caml_greaterthan(nl, pl)) {
-    return 1;
-  }
-  else {
-    return 0;
+  } else {
+    var pl = param$1[0];
+    var nl = param[0];
+    if (Caml_obj.caml_lessthan(nl, pl)) {
+      return -1;
+    } else if (Caml_obj.caml_greaterthan(nl, pl)) {
+      return 1;
+    } else {
+      return 0;
+    }
   }
 }
 
@@ -118,8 +116,7 @@ function pr(param) {
                       ]),
                     "%Ld%018Ld\n"
                   ]), nh, nl);
-  }
-  else {
+  } else {
     return Curry._1(Printf.bprintf(buf, /* Format */[
                     /* Int64 */Block.__(7, [
                         /* Int_d */0,
@@ -169,15 +166,13 @@ function merge(cmp, l1, l2) {
                           x1,
                           merge(cmp, ll1, l2)
                         ];
-                }
-                else {
+                } else {
                   return /* Cons */[
                           x2,
                           merge(cmp, l1, ll2)
                         ];
                 }
-              }
-              else {
+              } else {
                 return /* Cons */[
                         x1,
                         merge(cmp, ll1, ll2)
@@ -191,8 +186,8 @@ function iter_interval(f, _l, _param) {
     var param = _param;
     var l = _l;
     var stop = param[1];
-    var start = param[0];
     if (stop) {
+      var start = param[0];
       var tag = l.tag | 0;
       var match = tag === 250 ? l[0] : (
           tag === 246 ? CamlinternalLazy.force_lazy_block(l) : l
@@ -207,8 +202,7 @@ function iter_interval(f, _l, _param) {
       _l = match[1];
       continue ;
       
-    }
-    else {
+    } else {
       return /* () */0;
     }
   };
@@ -234,11 +228,9 @@ Caml_obj.caml_update_dummy(ham2, Block.__(246, [function () {
           var tag = lzarg.tag | 0;
           if (tag === 250) {
             return lzarg[0];
-          }
-          else if (tag === 246) {
+          } else if (tag === 246) {
             return CamlinternalLazy.force_lazy_block(lzarg);
-          }
-          else {
+          } else {
             return lzarg;
           }
         }]));
@@ -248,11 +240,9 @@ Caml_obj.caml_update_dummy(ham3, Block.__(246, [function () {
           var tag = lzarg.tag | 0;
           if (tag === 250) {
             return lzarg[0];
-          }
-          else if (tag === 246) {
+          } else if (tag === 246) {
             return CamlinternalLazy.force_lazy_block(lzarg);
-          }
-          else {
+          } else {
             return lzarg;
           }
         }]));
@@ -262,11 +252,9 @@ Caml_obj.caml_update_dummy(ham5, Block.__(246, [function () {
           var tag = lzarg.tag | 0;
           if (tag === 250) {
             return lzarg[0];
-          }
-          else if (tag === 246) {
+          } else if (tag === 246) {
             return CamlinternalLazy.force_lazy_block(lzarg);
-          }
-          else {
+          } else {
             return lzarg;
           }
         }]));

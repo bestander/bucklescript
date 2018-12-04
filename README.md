@@ -57,7 +57,7 @@ https://github.com/bloomberg/bucklescript-addons.
 #### An HTTP Server
 
 This example creates a simple http server. The complete code is available
-[here](https://github.com/bloomberg/bucklescript-addons/tree/master/examples/node-http-server).
+[here](https://github.com/BuckleTypes/bs-examples/tree/master/node-http-server).
 
 The attribute `[@bs]` used in the example below is one of the OCaml attributes mentioned earlier.
 When BuckleScript generates code, it may use either a curried (OCaml) or uncurried (JavaScript)
@@ -175,11 +175,19 @@ test();
 If you need help or have a question, comment, or suggestion, please feel free to [open an
 issue](https://github.com/bloomberg/bucklescript/issues).
 
+## Credits
+
+* Thanks to the  [OCaml](https://ocaml.org) team, obviously, without such a beautiful yet practical language, this backend would not exist
+* Thanks to [ninja-build](https://ninja-build.org), BuckleScript also comes with a blazing fast build tool on top of it, `ninja` is a truly [well engineered](http://aosabook.org/en/posa/ninja.html) scalable build tool
+
 ## Licensing
 
-See [COPYING](./COPYING)
+See [COPYING](./COPYING) and [COPYING.LESSER](./COPYING.LESSER)
 
 The [`ocaml`](ocaml) directory contains the official [OCaml](https://ocaml.org) compiler (version 4.02.3).
+Refer to its copyright and license notices for information about its licensing.
+
+The [`ninja-build`](ninja-build) directory contains the official [ninja-build](https://github.com/ninja-build/ninja) (version 1.7.2).
 Refer to its copyright and license notices for information about its licensing.
 
 BuckleScript builds on parts of [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml):

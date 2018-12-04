@@ -1,7 +1,9 @@
 'use strict';
 
-var Mt    = require("./mt");
-var Block = require("../../lib/js/block");
+var Mt           = require("./mt.js");
+var Block        = require("../../lib/js/block.js");
+var Caml_array   = require("../../lib/js/caml_array.js");
+var Js_primitive = require("../../lib/js/js_primitive.js");
 
 var suites = [/* [] */0];
 
@@ -33,43 +35,43 @@ var v = /* int array */[
   3
 ];
 
-eq('File "array_subtle_test.ml", line 12, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 12, characters 5-12", /* tuple */[
       4,
       v.length
     ]);
 
-eq('File "array_subtle_test.ml", line 15, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 15, characters 5-12", /* tuple */[
       5,
       v.push(3)
     ]);
 
-eq('File "array_subtle_test.ml", line 16, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 16, characters 5-12", /* tuple */[
       5,
       v.length
     ]);
 
-eq('File "array_subtle_test.ml", line 17, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 17, characters 5-12", /* tuple */[
       5,
       v.length
     ]);
 
-eq('File "array_subtle_test.ml", line 21, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 21, characters 5-12", /* tuple */[
       3,
-      v[2]
+      Caml_array.caml_array_get(v, 2)
     ]);
 
-v[2] = 4;
+Caml_array.caml_array_set(v, 2, 4);
 
-eq('File "array_subtle_test.ml", line 23, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 23, characters 5-12", /* tuple */[
       4,
-      v[2]
+      Caml_array.caml_array_get(v, 2)
     ]);
 
 while(v.length > 0) {
-  v.pop();
+  Js_primitive.undefined_to_opt(v.pop());
 };
 
-eq('File "array_subtle_test.ml", line 29, characters 5-12', /* tuple */[
+eq("File \"array_subtle_test.ml\", line 29, characters 5-12", /* tuple */[
       0,
       v.length
     ]);

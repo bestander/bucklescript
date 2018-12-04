@@ -37,23 +37,21 @@ var stdlib = "stdlib";
 
 var imul = "imul";
 
-var js_debugger = "js_debugger";
+var $$debugger = "debugger";
 
-var js_pure_expr = "js_pure_expr";
+var raw_expr = "raw_expr";
 
-var js_pure_stmt = "js_pure_stmt";
+var raw_stmt = "raw_stmt";
 
-var js_unsafe_downgrade = "js_unsafe_downgrade";
+var unsafe_downgrade = "unsafe_downgrade";
 
-var js_fn_run = "js_fn_run";
+var fn_run = "fn_run";
 
-var js_method_run = "js_method_run";
+var method_run = "method_run";
 
-var js_fn_method = "js_fn_method";
+var fn_method = "fn_method";
 
-var js_fn_mk = "js_fn_mk";
-
-var js_fn_runmethod = "js_fn_runmethod";
+var fn_mk = "fn_mk";
 
 var bs_deriving = "bs.deriving";
 
@@ -83,6 +81,10 @@ var suffix_mliast = ".mliast";
 
 var suffix_mll = ".mll";
 
+var suffix_re = ".re";
+
+var suffix_rei = ".rei";
+
 var suffix_d = ".d";
 
 var suffix_mlastd = ".mlast.d";
@@ -105,59 +107,90 @@ var goog = "goog";
 
 var es6 = "es6";
 
+var es6_global = "es6-global";
+
+var amdjs_global = "amdjs-global";
+
 var unused_attribute = "Unused attribute ";
 
-exports.js_array_ctor       = js_array_ctor;
-exports.js_type_number      = js_type_number;
-exports.js_type_string      = js_type_string;
-exports.js_type_object      = js_type_object;
-exports.js_undefined        = js_undefined;
-exports.js_prop_length      = js_prop_length;
-exports.param               = param;
-exports.partial_arg         = partial_arg;
-exports.prim                = prim;
-exports.tmp                 = tmp;
-exports.create              = create;
-exports.app                 = app;
-exports.app_array           = app_array;
-exports.runtime             = runtime;
-exports.stdlib              = stdlib;
-exports.imul                = imul;
-exports.setter_suffix       = setter_suffix;
-exports.setter_suffix_len   = setter_suffix_len;
-exports.js_debugger         = js_debugger;
-exports.js_pure_expr        = js_pure_expr;
-exports.js_pure_stmt        = js_pure_stmt;
-exports.js_unsafe_downgrade = js_unsafe_downgrade;
-exports.js_fn_run           = js_fn_run;
-exports.js_method_run       = js_method_run;
-exports.js_fn_method        = js_fn_method;
-exports.js_fn_mk            = js_fn_mk;
-exports.js_fn_runmethod     = js_fn_runmethod;
-exports.bs_deriving         = bs_deriving;
-exports.bs_deriving_dot     = bs_deriving_dot;
-exports.bs_type             = bs_type;
-exports.node_modules        = node_modules;
-exports.node_modules_length = node_modules_length;
-exports.package_json        = package_json;
-exports.bsconfig_json       = bsconfig_json;
-exports.build_ninja         = build_ninja;
-exports.suffix_cmj          = suffix_cmj;
-exports.suffix_cmi          = suffix_cmi;
-exports.suffix_ml           = suffix_ml;
-exports.suffix_mlast        = suffix_mlast;
-exports.suffix_mliast       = suffix_mliast;
-exports.suffix_mll          = suffix_mll;
-exports.suffix_d            = suffix_d;
-exports.suffix_mlastd       = suffix_mlastd;
-exports.suffix_mliastd      = suffix_mliastd;
-exports.suffix_js           = suffix_js;
-exports.suffix_mli          = suffix_mli;
-exports.suffix_cmt          = suffix_cmt;
-exports.suffix_cmti         = suffix_cmti;
-exports.commonjs            = commonjs;
-exports.amdjs               = amdjs;
-exports.goog                = goog;
-exports.es6                 = es6;
-exports.unused_attribute    = unused_attribute;
+var dash_nostdlib = "-nostdlib";
+
+var reactjs_jsx_ppx_exe = "reactjs_jsx_ppx.exe";
+
+var unescaped_j_delimiter = "j";
+
+var escaped_j_delimiter = "*j";
+
+var unescaped_js_delimiter = "js";
+
+var $$native = "native";
+
+var bytecode = "bytecode";
+
+var js = "js";
+
+exports.js_array_ctor          = js_array_ctor;
+exports.js_type_number         = js_type_number;
+exports.js_type_string         = js_type_string;
+exports.js_type_object         = js_type_object;
+exports.js_undefined           = js_undefined;
+exports.js_prop_length         = js_prop_length;
+exports.param                  = param;
+exports.partial_arg            = partial_arg;
+exports.prim                   = prim;
+exports.tmp                    = tmp;
+exports.create                 = create;
+exports.app                    = app;
+exports.app_array              = app_array;
+exports.runtime                = runtime;
+exports.stdlib                 = stdlib;
+exports.imul                   = imul;
+exports.setter_suffix          = setter_suffix;
+exports.setter_suffix_len      = setter_suffix_len;
+exports.$$debugger             = $$debugger;
+exports.raw_expr               = raw_expr;
+exports.raw_stmt               = raw_stmt;
+exports.unsafe_downgrade       = unsafe_downgrade;
+exports.fn_run                 = fn_run;
+exports.method_run             = method_run;
+exports.fn_method              = fn_method;
+exports.fn_mk                  = fn_mk;
+exports.bs_deriving            = bs_deriving;
+exports.bs_deriving_dot        = bs_deriving_dot;
+exports.bs_type                = bs_type;
+exports.node_modules           = node_modules;
+exports.node_modules_length    = node_modules_length;
+exports.package_json           = package_json;
+exports.bsconfig_json          = bsconfig_json;
+exports.build_ninja            = build_ninja;
+exports.suffix_cmj             = suffix_cmj;
+exports.suffix_cmi             = suffix_cmi;
+exports.suffix_ml              = suffix_ml;
+exports.suffix_mlast           = suffix_mlast;
+exports.suffix_mliast          = suffix_mliast;
+exports.suffix_mll             = suffix_mll;
+exports.suffix_re              = suffix_re;
+exports.suffix_rei             = suffix_rei;
+exports.suffix_d               = suffix_d;
+exports.suffix_mlastd          = suffix_mlastd;
+exports.suffix_mliastd         = suffix_mliastd;
+exports.suffix_js              = suffix_js;
+exports.suffix_mli             = suffix_mli;
+exports.suffix_cmt             = suffix_cmt;
+exports.suffix_cmti            = suffix_cmti;
+exports.commonjs               = commonjs;
+exports.amdjs                  = amdjs;
+exports.goog                   = goog;
+exports.es6                    = es6;
+exports.es6_global             = es6_global;
+exports.amdjs_global           = amdjs_global;
+exports.unused_attribute       = unused_attribute;
+exports.dash_nostdlib          = dash_nostdlib;
+exports.reactjs_jsx_ppx_exe    = reactjs_jsx_ppx_exe;
+exports.unescaped_j_delimiter  = unescaped_j_delimiter;
+exports.escaped_j_delimiter    = escaped_j_delimiter;
+exports.unescaped_js_delimiter = unescaped_js_delimiter;
+exports.$$native               = $$native;
+exports.bytecode               = bytecode;
+exports.js                     = js;
 /* No side effect */

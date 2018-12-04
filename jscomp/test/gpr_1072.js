@@ -167,6 +167,8 @@ again4((side_effect[0] = side_effect[0] + 1 | 0, /* () */0), (side_effect[0] = s
 
 again4(undefined, (side_effect[0] = side_effect[0] - 1 | 0, /* () */0), 173);
 
+again4((side_effect[0] = side_effect[0] + 1 | 0, /* () */0), /* () */0, 174);
+
 exports.u            = u;
 exports.v_ice_cream3 = v_ice_cream3;
 exports.v_ice_cream4 = v_ice_cream4;
@@ -184,4 +186,4 @@ exports.v_mk6_1      = v_mk6_1;
 exports.mk_u         = mk_u;
 exports.v_mk7        = v_mk7;
 exports.side_effect  = side_effect;
-/* u Not a pure module */
+/*  Not a pure module */

@@ -212,7 +212,13 @@ and get_exp_with_args (cxt : Lam_compile_defs.cxt)  lam args_lambda
                      (E.call ~info:{arity=Full; call_info = Call_ml} acc first_part)
                      (Determin (a, rest, b))
                      continue (len - x)
-                 else  acc 
+                 else (* GPR #1423 *)
+                 if List.for_all Js_analyzer.is_simple_no_side_effect_expression args then 
+                   let params = Ext_list.init (x - len)
+                       (fun _ -> Ext_ident.create "param") in
+                   E.ocaml_fun params 
+                     [S.return (E.call ~info:{arity=Full; call_info=Call_ml} acc (args @ List.map E.var params))]
+                 else E.call ~info:Js_call_info.dummy acc args
                (* alpha conversion now? --
                   Since we did an alpha conversion before so it is not here
                *)
@@ -244,7 +250,7 @@ and compile_recursive_let
     (id : Ident.t)
     (arg : Lam.t)   : Js_output.t * Ident.t list = 
   match arg with 
-  |  Lfunction { kind; params; body; _}  -> 
+  |  Lfunction { function_kind; params; body; _}  -> 
 
     let continue_label = Lam_util.generate_label ~name:id.name () in
     (* TODO: Think about recursive value 
@@ -392,7 +398,7 @@ and compile_general_cases :
   (J.expression -> J.expression -> J.expression) -> 
   Lam_compile_defs.cxt -> 
   (?default:J.block ->
-   ?declaration:Lambda.let_kind * Ident.t  -> 
+   ?declaration:Lam.let_kind * Ident.t  -> 
    _ -> 'a J.case_clause list ->  J.statement) -> 
   _ -> 
   ('a * Lam.t) list -> default_case -> J.block 
@@ -481,7 +487,7 @@ and
     (lam : Lam.t)  : Js_output.t  =
   begin
     match lam with 
-    | Lfunction{ kind; params; body} ->
+    | Lfunction{ function_kind; params; body} ->
       Js_output.handle_name_tail st should_return lam 
         (E.ocaml_fun
            params
@@ -839,7 +845,7 @@ and
       end
     | Lprim {primitive = Pjs_fn_method arity;  args = args_lambda} -> 
       begin match args_lambda with 
-        | [Lfunction{arity = len; kind; params; body} ] 
+        | [Lfunction{arity = len; function_kind; params; body} ] 
           when len = arity -> 
           Js_output.handle_block_return 
             st
@@ -861,89 +867,12 @@ and
       end
 
 
-    | Lprim {primitive = Pjs_fn_make arity;  args = args_lambda} -> 
+    | Lprim {primitive = Pjs_fn_make arity;  args = [fn]; loc } -> 
+          compile_lambda cxt (Lam_eta_conversion.unsafe_adjust_to_arity loc ~to_:arity ?from:None fn)
 
-      begin match args_lambda with 
-        | [fn] -> 
-          if arity = 0 then 
-            (* 
-                Invariant: mk0 : (unit -> 'a0) -> 'a0 t 
-                TODO: this case should be optimized, 
-                we need check where we handle [arity=0] 
-                as a special case -- 
-                if we do an optimization before compiling
-                into lambda
-
-               {[Fn.mk0]} is not intended for use by normal users
-
-               so we assume [Fn.mk0] is only used in such cases
-               {[
-                 Fn.mk0 (fun _ -> .. )
-               ]}
-               when it is passed as a function directly
-            *)
-            begin match fn with 
-              | Lfunction {params =  [_]; body}
-                ->
-                compile_lambda cxt 
-                  (Lam.function_ 
-                     ~arity:0 
-                     ~kind:Curried
-                     ~params:[]
-                     ~body)
-              | _ -> 
-
-                compile_lambda cxt  
-                  (Lam.function_ ~arity:0 
-                     ~kind:Curried ~params:[] 
-                     ~body:(
-                       Lam.apply fn
-                         [Lam.unit]
-                         Location.none App_na
-                     ))
-            end
-          else 
-            begin match fn with
-              | Lam.Lfunction{arity = len; kind; params = args; body}
-                ->
-                if len = arity then
-                  compile_lambda cxt fn 
-                else if len > arity then 
-                  let params, rest  = Ext_list.take arity args  in 
-                  compile_lambda cxt 
-                    (Lam.function_ 
-                       ~arity
-                       ~kind ~params
-                       ~body:(Lam.function_ ~arity:(len - arity)
-                                ~kind ~params:rest ~body)
-                    )
-                else 
-                  compile_lambda cxt 
-                    (Lam_util.eta_conversion arity 
-                       Location.none App_na
-                       fn  [] )
-              (* let extra_args = Ext_list.init (arity - len) (fun _ ->   (Ident.create Literals.param)) in *)
-              (* let extra_lambdas = List.map (fun x -> Lambda.Lvar x) extra_args in *)
-              (* Lambda.Lfunction (kind, extra_args @ args , body ) *)
-              (*TODO: can be optimized ?
-                {[\ x y -> (\u -> body x) x y]}
-                {[\u x -> body x]}        
-                rewrite rules 
-                {[
-                  \x -> body 
-                        --
-                        \y (\x -> body ) y 
-                ]}
-                {[\ x y -> (\a b c -> g a b c) x y]}
-                {[ \a b -> \c -> g a b c ]}
-              *)
-              | _ -> 
-                compile_lambda cxt 
-                  (Lam_util.eta_conversion arity
-                     Location.none App_na  fn  [] )
-            end
-        | _ -> assert false 
-      end
+    | Lprim {primitive = Pjs_fn_make arity;  
+      args = [] | _::_::_ } -> 
+      assert false 
     | Lglobal_module i -> 
       (* introduced by 
          1. {[ include Array --> let include  = Array  ]}
@@ -1037,35 +966,35 @@ and
                       ])
               end
             | Assign id -> 
-(* 
+              (* 
 #if BS_DEBUG then 
             let () = Ext_log.dwarn __LOC__ "\n@[[TIME:]Lifthenelse: %f@]@."  (Sys.time () *. 1000.) in      
 #end 
 *)              
-(* match
-                  compile_lambda {cxt with st = NeedValue}  t_br, 
-                  compile_lambda {cxt with st = NeedValue}  f_br with 
-              | {block = []; value =  Some out1}, 
-                {block = []; value =  Some out2} ->  
-                (* Invariant:  should_return is false *)
-                Js_output.make [S.assign id (E.econd e out1 out2)]
-              | _, _ -> *)
-                let then_output = 
-                  Js_output.to_block @@ 
-                  (compile_lambda cxt  t_br) in
-                let else_output = 
-                  Js_output.to_block @@ 
-                  (compile_lambda cxt f_br) in
-                Js_output.make (b @ [
-                    S.if_ e 
-                      then_output
-                      ~else_:else_output
-                  ])
+              (* match
+                                compile_lambda {cxt with st = NeedValue}  t_br, 
+                                compile_lambda {cxt with st = NeedValue}  f_br with 
+                            | {block = []; value =  Some out1}, 
+                              {block = []; value =  Some out2} ->  
+                              (* Invariant:  should_return is false *)
+                              Js_output.make [S.assign id (E.econd e out1 out2)]
+                            | _, _ -> *)
+              let then_output = 
+                Js_output.to_block @@ 
+                (compile_lambda cxt  t_br) in
+              let else_output = 
+                Js_output.to_block @@ 
+                (compile_lambda cxt f_br) in
+              Js_output.make (b @ [
+                  S.if_ e 
+                    then_output
+                    ~else_:else_output
+                ])
             | EffectCall ->
               begin match should_return,
                           compile_lambda {cxt with st = NeedValue}  t_br, 
                           compile_lambda {cxt with st = NeedValue}  f_br with  
-           
+
               (* see PR#83 *)
               |  False , {block = []; value =  Some out1}, 
                  {block = []; value =  Some out2} ->
@@ -1118,14 +1047,14 @@ and
 
               | True _, {block = []; value =  Some out1}, 
                 {block = []; value =  Some out2} ->
-(*                
+                (*                
 #if BS_DEBUG then 
             let () = Ext_log.dwarn __LOC__ "\n@[[TIME:]Lifthenelse: %f@]@."  (Sys.time () *. 1000.) in      
 #end                 
 *)
                 Js_output.make [S.return  (E.econd e  out1 out2)] ~finished:True                         
               |   _, _, _  ->
-(*              
+                (*              
 #if BS_DEBUG then 
             let () = Ext_log.dwarn __LOC__ "\n@[[TIME:]Lifthenelse: %f@]@."  (Sys.time () *. 1000.) in      
 #end 
@@ -1143,7 +1072,7 @@ and
                   ])
               end
           end
-         | {value = None } -> assert false 
+        | {value = None } -> assert false 
       end
     | Lstringswitch(l, cases, default) -> 
 

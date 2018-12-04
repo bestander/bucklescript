@@ -1,9 +1,9 @@
 'use strict';
 
-var Curry                   = require("../../lib/js/curry");
-var Caml_array              = require("../../lib/js/caml_array");
-var Pervasives              = require("../../lib/js/pervasives");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_array              = require("../../lib/js/caml_array.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function map(f, a) {
   var f$1 = Curry.__1(f);
@@ -15,8 +15,7 @@ function map(f, a) {
       r[i] = f$1(a$1[i]);
     }
     return r;
-  }
-  else {
+  } else {
     return /* array */[];
   }
 }
@@ -30,16 +29,14 @@ function init(l, f) {
             Caml_builtin_exceptions.invalid_argument,
             "Array.init"
           ];
-    }
-    else {
+    } else {
       var res = Caml_array.caml_make_vect(l$1, f$1(0));
       for(var i = 1 ,i_finish = l$1 - 1 | 0; i <= i_finish; ++i){
         res[i] = f$1(i);
       }
       return res;
     }
-  }
-  else {
+  } else {
     return /* array */[];
   }
 }

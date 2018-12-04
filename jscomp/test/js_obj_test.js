@@ -1,10 +1,10 @@
 'use strict';
 
-var Mt             = require("./mt");
-var Block          = require("../../lib/js/block");
-var Curry          = require("../../lib/js/curry");
-var Caml_oo_curry  = require("../../lib/js/caml_oo_curry");
-var CamlinternalOO = require("../../lib/js/camlinternalOO");
+var Mt             = require("./mt.js");
+var Block          = require("../../lib/js/block.js");
+var Curry          = require("../../lib/js/curry.js");
+var Caml_oo_curry  = require("../../lib/js/caml_oo_curry.js");
+var CamlinternalOO = require("../../lib/js/camlinternalOO.js");
 
 function f(u) {
   return Caml_oo_curry.js2(5740587, 1, u, 32);
@@ -46,14 +46,13 @@ var suites_001 = /* :: */[
   /* tuple */[
     "js_obj",
     function () {
-      var u = {
-        say: function (x) {
-          return x + 2 | 0;
-        }
-      };
       return /* Eq */Block.__(0, [
                 34,
-                u.say(32)
+                {
+                    say: function (x) {
+                      return x + 2 | 0;
+                    }
+                  }.say(32)
               ]);
     }
   ],
@@ -71,7 +70,33 @@ var suites_001 = /* :: */[
                 ]);
       }
     ],
-    /* [] */0
+    /* :: */[
+      /* tuple */[
+        "empty",
+        function () {
+          return /* Eq */Block.__(0, [
+                    0,
+                    Object.keys({ }).length
+                  ]);
+        }
+      ],
+      /* :: */[
+        /* tuple */[
+          "assign",
+          function () {
+            return /* Eq */Block.__(0, [
+                      {
+                        a: 1
+                      },
+                      Object.assign({ }, {
+                            a: 1
+                          })
+                    ]);
+          }
+        ],
+        /* [] */0
+      ]
+    ]
   ]
 ];
 

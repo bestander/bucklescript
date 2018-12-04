@@ -1,8 +1,8 @@
 'use strict';
 
-var Mt    = require("./mt");
-var Block = require("../../lib/js/block");
-var Curry = require("../../lib/js/curry");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
+var Curry = require("../../lib/js/curry.js");
 
 var v = [3];
 
@@ -107,4 +107,4 @@ exports.a = a;
 exports.b = b;
 exports.c = c;
 exports.d = d;
-/* prim Not a pure module */
+/*  Not a pure module */

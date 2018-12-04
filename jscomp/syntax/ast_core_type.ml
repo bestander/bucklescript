@@ -29,17 +29,6 @@ type arg_label =
   | Optional of string 
   | Empty (* it will be ignored , side effect will be recorded *)
 
-type arg_type = 
-  | NullString of (int * string) list (* `a does not have any value*)
-  | NonNullString of (int * string) list (* `a of int *)
-  | Int of (int * int ) list (* ([`a | `b ] [@bs.int])*)
-  | Arg_int_lit of int 
-  | Arg_string_lit of string 
-    (* maybe we can improve it as a combination of {!Asttypes.constant} and tuple *)
-  | Array 
-  | Extern_unit
-  | Nothing
-  | Ignore
 
 
 let extract_option_type_exn (ty : t) = 
@@ -93,8 +82,20 @@ let is_array (ty : t) =
   | Ptyp_constr({txt =Lident "array"}, [_]) -> true
   | _ -> false 
 
+let is_user_option (ty : t) = 
+  match ty.ptyp_desc with 
+  | Ptyp_constr({txt = Lident "option"},[_]) -> true 
+  | _ -> false 
 
+let is_user_bool (ty : t) = 
+  match ty.ptyp_desc with 
+  | Ptyp_constr({txt = Lident "bool"},[]) -> true 
+  | _ -> false 
 
+let is_user_int (ty : t) = 
+  match ty.ptyp_desc with 
+  | Ptyp_constr({txt = Lident "int"},[]) -> true 
+  | _ -> false 
 
 let is_optional_label l =
   String.length l > 0 && l.[0] = '?'
@@ -131,3 +132,45 @@ let from_labels ~loc arity labels
 let make_obj ~loc xs =
   Ast_comb.to_js_type loc @@
   Ast_helper.Typ.object_  ~loc xs   Closed
+
+
+
+(** 
+
+{[ 'a . 'a -> 'b ]} 
+OCaml does not support such syntax yet
+{[ 'a -> ('a. 'a -> 'b) ]}
+
+*)
+let rec get_uncurry_arity_aux  (ty : t) acc = 
+    match ty.ptyp_desc with 
+    | Ptyp_arrow(_, _ , new_ty) -> 
+      get_uncurry_arity_aux new_ty (succ acc)
+    | Ptyp_poly (_,ty) -> 
+      get_uncurry_arity_aux ty acc 
+    | _ -> acc 
+
+(**
+  {[ unit -> 'b ]} return arity 1 
+  {[ 'a1 -> 'a2 -> ... 'aN -> 'b ]} return arity N   
+*)
+let get_uncurry_arity (ty : t ) = 
+  match ty.ptyp_desc  with 
+  | Ptyp_arrow("", {ptyp_desc = (Ptyp_constr ({txt = Lident "unit"}, []))}, 
+    ({ptyp_desc = Ptyp_arrow _ } as rest  )) -> `Arity (get_uncurry_arity_aux rest 1 )
+  | Ptyp_arrow("", {ptyp_desc = (Ptyp_constr ({txt = Lident "unit"}, []))}, _) -> `Arity 0
+  | Ptyp_arrow(_,_,rest ) -> 
+    `Arity(get_uncurry_arity_aux rest 1)
+  | _ -> `Not_function 
+
+
+
+let list_of_arrow (ty : t) = 
+  let rec aux (ty : t) acc = 
+    match ty.ptyp_desc with 
+    | Ptyp_arrow(label,t1,t2) -> 
+      aux t2 ((label,t1,ty.ptyp_attributes,ty.ptyp_loc) ::acc)
+    | Ptyp_poly(_, ty) -> (* should not happen? *)
+      Bs_syntaxerr.err ty.ptyp_loc Unhandled_poly_type
+    | return_type -> ty, List.rev acc
+  in aux ty []

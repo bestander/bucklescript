@@ -54,17 +54,17 @@ val setter_suffix : string
 val setter_suffix_len : int
 
 
-val js_debugger : string
-val js_pure_expr : string
-val js_pure_stmt : string
-val js_unsafe_downgrade : string
-val js_fn_run : string
-val js_method_run : string
-val js_fn_method : string
-val js_fn_mk : string
+val debugger : string
+val raw_expr : string
+val raw_stmt : string
+val unsafe_downgrade : string
+val fn_run : string
+val method_run : string
+val fn_method : string
+val fn_mk : string
 
 (** callback actually, not exposed to user yet *)
-val js_fn_runmethod : string 
+(* val js_fn_runmethod : string *)
 
 val bs_deriving : string
 val bs_deriving_dot : string
@@ -83,6 +83,9 @@ val suffix_ml : string
 val suffix_mlast : string 
 val suffix_mliast : string
 val suffix_mll : string
+val suffix_re : string
+val suffix_rei : string 
+
 val suffix_d : string
 val suffix_mlastd : string
 val suffix_mliastd : string
@@ -95,4 +98,18 @@ val commonjs : string
 val amdjs : string 
 val goog : string 
 val es6 : string 
+val es6_global : string
+val amdjs_global : string 
 val unused_attribute : string 
+val dash_nostdlib : string
+
+val reactjs_jsx_ppx_exe : string 
+
+val unescaped_j_delimiter : string 
+val escaped_j_delimiter : string 
+
+val unescaped_js_delimiter : string 
+
+val native : string
+val bytecode : string
+val js : string

@@ -35,7 +35,7 @@
     "postinstall": "node scripts/install.js"
   },
   "name": "bs-platform",
-  "version": "1.4.3",
+  "version": "1.6.1",
   "description": "bucklescript compiler, ocaml standard libary by bucklescript and its required runtime support",
   "repository": {
     "type": "git",
@@ -56,7 +56,7 @@
       "email": "bobzhang1988@gmail.com"
     }
   ],
-  "license": "see LICENSE",
+  "license": "SEE LICENSE IN LICENSE",
   "bugs": {
     "url": "https://github.com/bloomberg/bucklescript/issues"
   },

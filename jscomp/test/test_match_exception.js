@@ -1,7 +1,7 @@
 'use strict';
 
-var Curry                   = require("../../lib/js/curry");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function f(g, x) {
   try {
@@ -10,8 +10,7 @@ function f(g, x) {
   catch (exn){
     if (exn === Caml_builtin_exceptions.not_found) {
       return 3;
-    }
-    else {
+    } else {
       throw exn;
     }
   }

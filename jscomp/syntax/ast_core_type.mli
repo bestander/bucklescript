@@ -34,20 +34,9 @@ val is_unit : t -> bool
 val is_array : t -> bool 
 type arg_label =
   | Label of string 
-(*| Label_int_lit of string * int 
-  | Label_string_lit of string * string *)
   | Optional of string 
   | Empty
-type arg_type = 
-  | NullString of (int * string) list 
-  | NonNullString of (int * string) list 
-  | Int of (int * int ) list 
-  | Arg_int_lit of int 
-  | Arg_string_lit of string 
-  | Array 
-  | Extern_unit
-  | Nothing
-  | Ignore
+
 
 (** for 
        [x:t] -> "x"
@@ -72,4 +61,22 @@ val make_obj :
   (string * Parsetree.attributes * t) list ->
   t
 
+val is_user_option : t -> bool 
+
+val is_user_bool : t -> bool
+
+val is_user_int : t -> bool
+
 val is_optional_label : string -> bool 
+
+(** 
+  returns 0 when it can not tell arity from the syntax 
+*)
+val get_uncurry_arity : t -> [`Arity of int | `Not_function ]
+
+
+(** fails when Ptyp_poly *)
+val list_of_arrow : 
+  t -> 
+  t *  (Asttypes.label * t * Parsetree.attributes * Location.t) list
+

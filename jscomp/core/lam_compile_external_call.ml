@@ -78,21 +78,22 @@ let handle_external_opt
      This would not work with [NonNullString]
 *)
 let ocaml_to_js_eff 
-    ({ Ast_ffi_types.arg_label;  arg_type })
+    ({ Ast_arg.arg_label;  arg_type })
     (arg : J.expression) 
   : E.t list * E.t list  =
   let arg =
     match arg_label with
     | Optional label -> Js_of_lam_option.get_default_undefined arg 
-    | Label _ | Empty -> arg 
-    | Label_int_lit _ 
-    | Label_string_lit _ 
-    | Empty_int_lit _ 
-    | Empty_string_lit _  -> assert false in 
+    | Label (_, None) | Empty None -> arg 
+    | Label (_, Some _) 
+    | Empty ( Some _)
+      -> assert false in 
   match arg_type with
-  | Arg_int_lit _ | Arg_string_lit _ -> assert false 
+  | Arg_cst _ -> assert false 
+  | Fn_uncurry_arity _ -> assert false  
+  (* has to be preprocessed by {!Lam} module first *)
   | Extern_unit ->  
-    (if arg_label = Empty then [] else [E.unit]), 
+    (if arg_label = Ast_arg.empty_label then [] else [E.unit]), 
     (if Js_analyzer.no_side_effect_expression arg then 
        []
      else 
@@ -111,111 +112,15 @@ let ocaml_to_js_eff
     [Js_of_lam_variant.eval_as_int arg dispatches],[]
   | Nothing  | Array ->  [arg], []
 
-let fuse x xs =
-  if xs = [] then x  
-  else List.fold_left E.seq x xs 
 
 
-   
 let empty_pair = [],[]       
-
-let assemble_args (arg_types : Ast_ffi_types.arg_kind list) args : E.t list * E.t option  = 
-  let rec aux (labels : Ast_ffi_types.arg_kind list) args = 
-    match labels, args with 
-    | [] , [] -> empty_pair
-    | { arg_label =  Empty_int_lit i } :: labels  , args 
-    | { arg_label =  Label_int_lit (_,i)} :: labels  , args -> 
-      let accs, eff = aux labels args in 
-      E.int (Int32.of_int i) ::accs, eff 
-    | { arg_label =  Label_string_lit(_,i)} :: labels , args 
-    | { arg_label =  Empty_string_lit i} :: labels , args
-      -> 
-      let accs, eff = aux labels args in 
-      E.str i :: accs, eff
-
-    | ({arg_label = Empty | Label _ | Optional _ } as arg_kind) ::labels, arg::args 
-      ->  
-      let accs, eff = aux labels args in 
-      let acc, new_eff = ocaml_to_js_eff arg_kind arg in 
-      acc @ accs, new_eff @ eff
-    | { arg_label = Empty | Label _ | Optional _  } :: _ , [] -> assert false 
-    | [],  _ :: _  -> assert false      
-  in 
-  let args, eff = aux arg_types args in
-  args, begin match eff with 
-    | [] -> None
-    | x::xs -> Some (fuse x xs)
-  end
 
 let add_eff eff e =
   match eff with
   | None -> e 
   | Some v -> E.seq v e 
 
-(* Note: can potentially be inconsistent, sometimes 
-   {[
-     { x : 3 , y : undefined}
-   ]}
-   and 
-   {[
-     {x : 3 }
-   ]}
-   But the default to be undefined  seems reasonable 
-*)
-  
-let assemble_args_obj (labels : Ast_ffi_types.arg_kind list) (args : J.expression list) = 
-  let rec aux (labels : Ast_ffi_types.arg_kind list) args = 
-    match labels, args with 
-    | [] , [] -> empty_pair
-    | {arg_label = Label_int_lit (label,i)} :: labels  , args -> 
-      let accs, eff = aux labels args in 
-      (Js_op.Key label, E.int (Int32.of_int i) )::accs, eff 
-    | {arg_label = Label_string_lit(label,i)} :: labels , args 
-      -> 
-      let accs, eff = aux labels args in 
-      (Js_op.Key label, E.str i) :: accs, eff
-    | {arg_label = Empty_int_lit i } :: rest  , args -> assert false 
-    | {arg_label = Empty_string_lit i} :: rest , args -> assert false 
-    | {arg_label = Empty }::labels, arg::args 
-      ->  
-      let (accs, eff) as r  = aux labels args in 
-      if Js_analyzer.no_side_effect_expression arg then r 
-      else (accs, arg::eff)
-    | ({arg_label = Label label  } as arg_kind)::labels, arg::args 
-      -> 
-      let accs, eff = aux labels args in 
-      let acc, new_eff = ocaml_to_js_eff arg_kind arg in 
-      begin match acc with 
-        | [ ] -> assert false
-        | x::xs -> 
-          (Js_op.Key label, fuse x xs ) :: accs , new_eff @ eff 
-      end (* evaluation order is undefined *)
-
-    | ({arg_label = Optional label } as arg_kind)::labels, arg::args 
-      -> 
-      let (accs, eff) as r = aux labels args  in 
-      begin match arg.expression_desc with 
-        | Number _ -> (*Invariant: None encoding*)
-          r
-        | _ ->                 
-          let acc, new_eff = ocaml_to_js_eff arg_kind arg in 
-          begin match acc with 
-            | [] -> assert false 
-            | x::xs -> 
-              (Js_op.Key label, fuse x xs)::accs , 
-              new_eff @ eff 
-          end 
-      end
-
-    | {arg_label = Empty | Label _ | Optional _  } :: _ , [] -> assert false 
-    | [],  _ :: _  -> assert false 
-  in 
-  let map, eff = aux labels args in 
-
-  match eff with
-  | [] -> 
-    E.obj map 
-  | x::xs -> E.seq (fuse x xs) (E.obj map)
 
 
 (* TODO: fix splice, 
@@ -224,46 +129,35 @@ let assemble_args_obj (labels : Ast_ffi_types.arg_kind list) (args : J.expressio
    no compiler failure here 
    Invariant : Array encoding
 *)
-
-let ocaml_to_js ~js_splice:(js_splice : bool) call_loc ffi
-    last ({ Ast_ffi_types.arg_label;  arg_type = ty } as arg_ty)
-    (arg : J.expression) 
-  = 
-  if last && js_splice then
-    match ty with 
-    | Array -> 
-      begin match arg with 
-        | {expression_desc = Array (ls,_mutable_flag) } -> 
-          ls, [] 
-        | _ -> 
-          Location.raise_errorf ~loc:call_loc
-            "function call with %s  is a primitive with [@@bs.splice], it expects its arguments to be a syntactic array in the call site" 
-            (Ast_ffi_types.name_of_ffi ffi)
-      end
-    | _ -> assert  false
-  else 
-    ocaml_to_js_eff arg_ty arg 
-
 let assemble_args_splice call_loc ffi  js_splice arg_types args : E.t list * E.t option = 
-  let rec aux (labels : Ast_ffi_types.arg_kind list) args = 
+  let rec aux (labels : Ast_arg.kind list) args = 
     match labels, args with 
     | [] , [] -> empty_pair
-    | { arg_label =  Empty_int_lit i } :: labels  , args 
-    | { arg_label =  Label_int_lit (_,i)} :: labels  , args -> 
-      let accs, eff = aux labels args in 
-      E.int (Int32.of_int i) ::accs, eff 
-    | { arg_label =  Label_string_lit(_,i)} :: labels , args 
-    | { arg_label =  Empty_string_lit i} :: labels , args
-      -> 
-      let accs, eff = aux labels args in 
-      E.str i :: accs, eff
-
-    | ({arg_label = Empty | Label _ | Optional _ } as arg_kind) ::labels, arg::args 
+    | { arg_label =  Empty (Some cst) } :: labels  , args 
+    | { arg_label =  Label (_, Some cst)} :: labels  , args -> 
+      let accs, eff = aux labels args in
+      Lam_compile_const.translate_arg_cst cst :: accs, eff 
+    | ({arg_label = Empty None | Label (_,None) | Optional _ } as arg_kind) ::labels, arg :: args
       ->  
-      let accs, eff = aux labels args in 
-      let acc, new_eff = ocaml_to_js call_loc ffi ~js_splice (args = []) arg_kind arg in 
-      acc @ accs, new_eff @ eff
-    | { arg_label = Empty | Label _ | Optional _  } :: _ , [] -> assert false 
+      if js_splice && args = [] then 
+        let accs, eff = aux labels [] in 
+        begin match arg_kind.arg_type with 
+          | Array -> 
+            begin match (arg : E.t) with 
+              | {expression_desc = Array (ls,_mutable_flag) } -> 
+                ls @ accs, eff 
+              | _ -> 
+                Location.raise_errorf ~loc:call_loc
+                  {|@{<error>Error:@} function call with %s  is a primitive with [@@bs.splice], it expects its `bs.splice` argument to be a syntactic array in the call site and  all arguments to be supplied|}
+                  (Ast_ffi_types.name_of_ffi ffi)
+            end
+          | _ -> assert false 
+        end
+      else 
+        let accs, eff = aux labels args in 
+        let acc, new_eff = ocaml_to_js_eff arg_kind arg in 
+        acc @ accs, new_eff @ eff
+    | { arg_label = Empty None | Label (_,None) | Optional _  } :: _ , [] -> assert false 
     | [],  _ :: _  -> assert false      
 
   in 
@@ -272,13 +166,15 @@ let assemble_args_splice call_loc ffi  js_splice arg_types args : E.t list * E.t
   begin  match eff with
     | [] -> None 
     | x::xs ->  
-      Some (fuse x xs) 
+      Some (E.fuse_to_seq x xs) 
   end
 
 
-let translate_ffi call_loc (ffi : Ast_ffi_types.ffi ) prim_name
+let translate_ffi 
+    call_loc (ffi : Ast_ffi_types.ffi ) 
+    (* prim_name *)
     (cxt  : Lam_compile_defs.cxt)
-    arg_types result_type
+    arg_types 
     (args : J.expression list) = 
   match ffi with 
 
@@ -293,12 +189,8 @@ let translate_ffi call_loc (ffi : Ast_ffi_types.ffi ) prim_name
       | None ->  E.js_var fn
     in
     let args, eff  = assemble_args_splice   call_loc ffi js_splice arg_types args in 
-    add_eff eff 
-      (if result_type then 
-
-         E.seq (E.call ~info:{arity=Full; call_info = Call_na} fn args) E.unit
-       else 
-         E.call ~info:{arity=Full; call_info = Call_na} fn args)
+    add_eff eff @@              
+    E.call ~info:{arity=Full; call_info = Call_na} fn args
 
   | Js_module_as_var module_name -> 
     let (id, name) =  handle_external  module_name  in
@@ -311,17 +203,14 @@ let translate_ffi call_loc (ffi : Ast_ffi_types.ffi ) prim_name
     in           
     let args, eff = assemble_args_splice   call_loc ffi splice arg_types args in 
     (* TODO: fix in rest calling convention *)          
-    add_eff eff 
-      ( if result_type then
-          E.seq (E.call ~info:{arity=Full; call_info = Call_na} fn args) E.unit
-        else
-          E.call ~info:{arity=Full; call_info = Call_na} fn args
-      )
+    add_eff eff @@
+    E.call ~info:{arity=Full; call_info = Call_na} fn args
+
   | Js_module_as_class module_name ->
     let fn =
       let (id,name) = handle_external  module_name in
       E.external_var_dot id ~external_name:name  in           
-    let args,eff = assemble_args arg_types args in 
+    let args,eff = assemble_args_splice call_loc  ffi false  arg_types args in 
     (* TODO: fix in rest calling convention *)   
     add_eff eff        
       begin 
@@ -419,10 +308,8 @@ let translate_ffi call_loc (ffi : Ast_ffi_types.ffi ) prim_name
     begin match args, arg_types with 
       | [obj; v], _ -> 
         E.assign (E.dot obj name) v         
-      | [obj], [_; {arg_type = Arg_int_lit i }] ->
-        E.assign (E.dot obj name) (E.int (Int32.of_int i))  
-      | [obj], [_; {arg_type = Arg_string_lit i }] ->
-        E.assign (E.dot obj name) (E.str i)          
+      | [obj], [_; {arg_type = Arg_cst cst }] ->
+        E.assign (E.dot obj name) (Lam_compile_const.translate_arg_cst cst)
       | _ -> 
         assert false 
     end
@@ -441,15 +328,3 @@ let translate_ffi call_loc (ffi : Ast_ffi_types.ffi ) prim_name
       | _ -> assert false
     end
 
-
-
-let translate loc cxt 
-    ({prim_name ;  prim_native_name} 
-     : Primitive.description) args  = 
-
-  match Ast_ffi_types.from_string prim_native_name with 
-  | Ffi_normal ->    
-    Lam_dispatch_primitive.translate prim_name args 
-  | Ffi_obj_create labels -> assemble_args_obj labels args 
-  | Ffi_bs (arg_types, result_type, ffi) -> 
-    translate_ffi loc  ffi prim_name cxt arg_types result_type args 

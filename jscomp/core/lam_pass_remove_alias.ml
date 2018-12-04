@@ -103,14 +103,16 @@ let simplify_alias
         let l1 = 
           match x with 
           | Null 
-            -> Lam.not_ (Location.none) ( Lam.prim ~primitive:Lam.Prim.js_is_nil ~args:[l] Location.none) 
+            -> Lam.not_ (Location.none) ( Lam.prim ~primitive:Pis_null
+
+            ~args:[l] Location.none) 
           | Undefined 
             -> 
-            Lam.not_  Location.none (Lam.prim ~primitive:Lam.Prim.js_is_undef ~args:[l] Location.none)
+            Lam.not_  Location.none (Lam.prim ~primitive:Pis_undefined ~args:[l] Location.none)
           | Null_undefined
             -> 
             Lam.not_ Location.none
-              ( Lam.prim ~primitive:Lam.Prim.js_is_nil_undef  ~args:[l] Location.none) 
+              ( Lam.prim ~primitive:Pis_null_undefined  ~args:[l] Location.none) 
           | Normal ->  l1 
         in 
         Lam.if_ l1 (simpl l2) (simpl l3)
@@ -202,7 +204,7 @@ let simplify_alias
               end
             else 
             if (* Lam_analysis.size body < Lam_analysis.small_inline_size *)
-              Lam_analysis.ok_to_inline ~body params args 
+              Lam_analysis.ok_to_inline_fun_when_app ~body params args 
             then 
 
                 (* let param_map =  *)
@@ -242,21 +244,21 @@ let simplify_alias
 
       end
 
-    | Lapply{ fn = Lfunction{ kind = Curried ; params; body}; args; _}
+    | Lapply{ fn = Lfunction{ function_kind = Curried ; params; body}; args; _}
       when  Ext_list.same_length params args ->
       simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args)
-    | Lapply{ fn = Lfunction{kind =  Tupled;  params; body}; 
-             args = [Lprim {primitive = Pmakeblock _; args; _}]; _}
-      (** TODO: keep track of this parameter in ocaml trunk,
-          can we switch to the tupled backend?
-      *)
-      when  Ext_list.same_length params args ->
-      simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args)
+    (* | Lapply{ fn = Lfunction{function_kind =  Tupled;  params; body};  *)
+    (*          args = [Lprim {primitive = Pmakeblock _; args; _}]; _} *)
+    (*   (\** TODO: keep track of this parameter in ocaml trunk, *)
+    (*       can we switch to the tupled backend? *)
+    (*   *\) *)
+    (*   when  Ext_list.same_length params args -> *)
+    (*   simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args) *)
 
     | Lapply {fn = l1; args =  ll;  loc ; status} ->
       Lam.apply (simpl  l1) (List.map simpl  ll) loc status
-    | Lfunction {arity; kind; params; body = l}
-      -> Lam.function_ ~arity ~kind ~params  ~body:(simpl  l)
+    | Lfunction {arity; function_kind; params; body = l}
+      -> Lam.function_ ~arity ~function_kind ~params  ~body:(simpl  l)
     | Lswitch (l, {sw_failaction; 
                    sw_consts; 
                    sw_blocks;

@@ -1,14 +1,13 @@
 'use strict';
 
-var Mt       = require("./mt");
-var Block    = require("../../lib/js/block");
-var Caml_obj = require("../../lib/js/caml_obj");
+var Mt       = require("./mt.js");
+var Block    = require("../../lib/js/block.js");
+var Caml_obj = require("../../lib/js/caml_obj.js");
 
 function f(x) {
   if (x) {
     return /* true */1;
-  }
-  else {
+  } else {
     return /* false */0;
   }
 }
@@ -16,8 +15,7 @@ function f(x) {
 function f2(x) {
   if (x) {
     return true;
-  }
-  else {
+  } else {
     return false;
   }
 }
@@ -25,8 +23,7 @@ function f2(x) {
 function f4(x) {
   if (x) {
     return true;
-  }
-  else {
+  } else {
     return false;
   }
 }

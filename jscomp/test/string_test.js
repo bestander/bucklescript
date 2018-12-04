@@ -1,13 +1,13 @@
 'use strict';
 
-var Mt                      = require("./mt");
-var List                    = require("../../lib/js/list");
-var Block                   = require("../../lib/js/block");
-var Bytes                   = require("../../lib/js/bytes");
-var $$String                = require("../../lib/js/string");
-var Ext_string              = require("./ext_string");
-var Caml_string             = require("../../lib/js/caml_string");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Mt                      = require("./mt.js");
+var List                    = require("../../lib/js/list.js");
+var Block                   = require("../../lib/js/block.js");
+var Bytes                   = require("../../lib/js/bytes.js");
+var $$String                = require("../../lib/js/string.js");
+var Ext_string              = require("./ext_string.js");
+var Caml_string             = require("../../lib/js/caml_string.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function ff(x) {
   var a;
@@ -36,8 +36,7 @@ function gg(x) {
   var a;
   if (x > 8 || x < 0) {
     a = 8;
-  }
-  else {
+  } else {
     switch (x) {
       case 0 : 
       case 1 : 
@@ -87,8 +86,7 @@ function rev_split_by_char(c, s) {
                 $$String.sub(s, i, s.length - i | 0),
                 l
               ];
-      }
-      else {
+      } else {
         throw exn;
       }
     }
@@ -116,8 +114,7 @@ function xsplit(delim, s) {
                     $$String.sub(s, 0, i),
                     l
                   ];
-          }
-          else {
+          } else {
             throw exn;
           }
         }
@@ -137,19 +134,19 @@ function xsplit(delim, s) {
           
         }
         
-      }
-      else {
+      } else {
         return l;
       }
     };
-  }
-  else {
+  } else {
     return /* [] */0;
   }
 }
 
 function string_of_chars(x) {
-  return $$String.concat("", List.map(Caml_string.js_string_of_char, x));
+  return $$String.concat("", List.map(function (prim) {
+                  return String.fromCharCode(prim);
+                }, x));
 }
 
 Mt.from_pair_suites("string_test.ml", /* :: */[
@@ -197,8 +194,8 @@ Mt.from_pair_suites("string_test.ml", /* :: */[
                 "escape_quote",
                 function () {
                   return /* Eq */Block.__(0, [
-                            '\\"\\"',
-                            $$String.escaped('""')
+                            "\\\"\\\"",
+                            $$String.escaped("\"\"")
                           ]);
                 }
               ],
@@ -328,7 +325,7 @@ Mt.from_pair_suites("string_test.ml", /* :: */[
                                       "of_char",
                                       function () {
                                         return /* Eq */Block.__(0, [
-                                                  "0",
+                                                  String.fromCharCode(/* "0" */48),
                                                   Caml_string.bytes_to_string(Bytes.make(1, /* "0" */48))
                                                 ]);
                                       }

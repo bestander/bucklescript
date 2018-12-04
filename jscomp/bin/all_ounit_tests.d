@@ -12,6 +12,7 @@ bin/all_ounit_tests.ml : ext/ext_json.ml
 bin/all_ounit_tests.ml : ext/ext_list.ml
 bin/all_ounit_tests.ml : ext/ext_scc.mli
 bin/all_ounit_tests.ml : ext/ext_sexp.ml
+bin/all_ounit_tests.ml : ext/ext_utf8.ml
 bin/all_ounit_tests.ml : ext/ext_util.ml
 bin/all_ounit_tests.ml : ext/hash_set.ml
 bin/all_ounit_tests.ml : ext/int_map.mli
@@ -26,6 +27,7 @@ bin/all_ounit_tests.ml : ext/ext_ident.ml
 bin/all_ounit_tests.ml : ext/ext_json.mli
 bin/all_ounit_tests.ml : ext/ext_list.mli
 bin/all_ounit_tests.ml : ext/ext_sexp.mli
+bin/all_ounit_tests.ml : ext/ext_utf8.mli
 bin/all_ounit_tests.ml : ext/ext_util.mli
 bin/all_ounit_tests.ml : ext/hash_set.mli
 bin/all_ounit_tests.ml : ext/literals.mli
@@ -43,6 +45,8 @@ bin/all_ounit_tests.ml : ext/int_vec_vec.ml
 bin/all_ounit_tests.ml : ext/string_map.mli
 bin/all_ounit_tests.ml : ext/union_find.mli
 bin/all_ounit_tests.ml : ext/ext_filename.ml
+bin/all_ounit_tests.ml : ext/ext_js_regex.ml
+bin/all_ounit_tests.ml : ext/ext_position.ml
 bin/all_ounit_tests.ml : ext/ext_topsort.mli
 bin/all_ounit_tests.ml : ext/hash_set_gen.ml
 bin/all_ounit_tests.ml : ext/int_hash_set.ml
@@ -52,15 +56,20 @@ bin/all_ounit_tests.ml : ext/resize_array.ml
 bin/all_ounit_tests.ml : ounit/oUnitTypes.ml
 bin/all_ounit_tests.ml : ounit/oUnitUtils.ml
 bin/all_ounit_tests.ml : ext/ext_filename.mli
+bin/all_ounit_tests.ml : ext/ext_js_regex.mli
+bin/all_ounit_tests.ml : ext/ext_position.mli
 bin/all_ounit_tests.ml : ext/hash_set_poly.ml
 bin/all_ounit_tests.ml : ext/int_hash_set.mli
 bin/all_ounit_tests.ml : ext/int_vec_util.mli
 bin/all_ounit_tests.ml : ext/resize_array.mli
 bin/all_ounit_tests.ml : ounit/oUnitLogger.ml
+bin/all_ounit_tests.ml : ext/ext_json_parse.ml
+bin/all_ounit_tests.ml : ext/ext_json_types.ml
 bin/all_ounit_tests.ml : ext/ext_pervasives.ml
 bin/all_ounit_tests.ml : ext/hash_set_poly.mli
 bin/all_ounit_tests.ml : ext/string_hashtbl.ml
 bin/all_ounit_tests.ml : ounit/oUnitChooser.ml
+bin/all_ounit_tests.ml : ext/ext_json_parse.mli
 bin/all_ounit_tests.ml : ext/ext_pervasives.mli
 bin/all_ounit_tests.ml : ext/string_hash_set.ml
 bin/all_ounit_tests.ml : ext/string_hashtbl.mli
@@ -77,6 +86,7 @@ bin/all_ounit_tests.ml : ounit_tests/ounit_cmd_util.mli
 bin/all_ounit_tests.ml : ounit_tests/ounit_list_test.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_map_tests.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_scc_tests.ml
+bin/all_ounit_tests.ml : ounit_tests/ounit_utf8_test.ml
 bin/all_ounit_tests.ml : ext/ordered_hash_set_string.mli
 bin/all_ounit_tests.ml : ounit_tests/ounit_json_tests.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_path_tests.ml
@@ -96,4 +106,5 @@ bin/all_ounit_tests.ml : ounit_tests/ounit_hash_stubs_test.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_ident_mask_tests.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_union_find_tests.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_ffi_error_debug_test.ml
+bin/all_ounit_tests.ml : ounit_tests/ounit_js_regex_checker_tests.ml
 bin/all_ounit_tests.ml : ounit_tests/ounit_ordered_hash_set_tests.ml

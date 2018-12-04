@@ -1,7 +1,7 @@
 'use strict';
 
-var Curry      = require("../../lib/js/curry");
-var Caml_array = require("../../lib/js/caml_array");
+var Curry      = require("../../lib/js/curry.js");
+var Caml_array = require("../../lib/js/caml_array.js");
 
 function f(_n, _acc) {
   while(true) {
@@ -17,8 +17,7 @@ function f(_n, _acc) {
       _n = n - 1 | 0;
       continue ;
       
-    }
-    else {
+    } else {
       return Curry._1(acc, /* () */0);
     }
   };
@@ -29,11 +28,11 @@ function test_closure() {
         return x;
       });
   for(var i = 0; i <= 6; ++i){
-    arr[i] = (function(i){
-    return function () {
-      return i;
-    }
-    }(i));
+    Caml_array.caml_array_set(arr, i, (function(i){
+        return function () {
+          return i;
+        }
+        }(i)));
   }
   return arr;
 }

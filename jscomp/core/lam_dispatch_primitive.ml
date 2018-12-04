@@ -46,7 +46,8 @@ TODO: return type to be expression is ugly,
 *)
 let translate (prim_name : string) 
     (args : J.expression list) : J.expression  =
-  let call m = E.runtime_call m prim_name args in 
+  let call m = 
+    E.runtime_call m prim_name args in 
   begin match prim_name with 
   | "caml_gc_stat" 
   | "caml_gc_quick_stat"  
@@ -146,7 +147,8 @@ let translate (prim_name : string)
     | _ ->  assert false 
     end
 
-  | "caml_array_get"
+  | "caml_array_get" -> 
+    call Js_config.array
   | "caml_array_get_addr"
   | "caml_array_get_float"
   | "caml_array_unsafe_get"
@@ -155,7 +157,8 @@ let translate (prim_name : string)
     | [e0;e1] -> Js_of_lam_array.ref_array e0 e1
     | _ -> assert false
     end
-  | "caml_array_set"
+  | "caml_array_set" ->
+    call Js_config.array
   | "caml_array_set_addr"
   | "caml_array_set_float"
   | "caml_array_unsafe_set"
@@ -459,21 +462,22 @@ let translate (prim_name : string)
     (** No cross compilation *)
     Js_of_lam_tuple.make [E.str Sys.os_type; E.small_int  Sys.word_size; 
                           E.bool Sys.big_endian ]
-  | "caml_sys_get_argv" -> 
+  | "caml_sys_get_argv" 
     (** TODO: refine
         Inlined here is helpful for DCE
         {[ external get_argv: unit -> string * string array = "caml_sys_get_argv" ]}
     *)
-    Js_of_lam_tuple.make [E.str "cmd"; 
-                          Js_of_lam_array.make_array NA Pgenarray []
-                         ]
+    (* Js_of_lam_tuple.make [E.str "cmd";  *)
+    (*                       Js_of_lam_array.make_array NA Pgenarray [] *)
+    (*                      ] *)
   | "caml_sys_time"
   | "caml_sys_random_seed"
   | "caml_sys_getenv"
   | "caml_sys_system_command" 
   | "caml_sys_getcwd" (* check browser or nodejs *)
   | "caml_sys_is_directory"
-  | "caml_sys_file_exists"
+  | "caml_sys_exit"
+  (* | "caml_sys_file_exists" *)
     -> 
     call Js_config.sys
   | "caml_lex_engine"
@@ -802,7 +806,7 @@ let translate (prim_name : string)
   | "caml_ml_input_int"
   | "caml_ml_close_channel"
   | "caml_ml_output_int"
-  | "caml_sys_exit"
+
   | "caml_ml_channel_size_64"
   | "caml_ml_channel_size"
   | "caml_ml_pos_in_64"
@@ -815,243 +819,15 @@ let translate (prim_name : string)
   | "caml_ml_seek_out_64"
   | "caml_ml_set_binary_mode"
     ->  E.not_implemented prim_name
-
-  | "js_function_length"
-
-    -> begin
-        match args with 
-        | [f ] -> E.function_length f 
-        | _ -> assert false
-      end
-  | "js_create_array" 
-    -> 
-    begin match args with 
-    | [e] -> E.uninitialized_array e 
-    | _ -> assert false
-    end
-  | "js_array_append" 
-    -> 
-    begin match args with 
-    | [a;b] -> 
-      E.array_append a b 
-    | _ -> assert false 
-    end
-  | "js_string_append"
-    -> 
-    begin match args with 
-    | [a ; b] -> E.string_append a b 
-    | _ -> assert false
-    end
-  | "js_apply" 
-    -> 
-    begin match args with 
-    | [f ;  args] -> 
-      E.flat_call f args
-    | _ -> assert false 
-    end
-  | "js_string_of_small_int_array"
-    ->
-    begin match args with 
-    | [e] -> E.string_of_small_int_array e 
-    | _ -> assert false
-    end
-  | "js_string_of_char" 
-    ->
-      begin match args with 
-      | [{expression_desc = Number (Int {i; _})} ] 
-        -> E.str (String.make 1 (Char.chr (Int32.to_int i)))
-      | _ -> call Js_config.string
-      end
-  | "js_unsafe_lt" 
-    -> 
-    begin match args with 
-      | [l; r] -> E.bin Lt l r 
-      | _ -> assert false 
-    end
-  | "js_unsafe_le" 
-    -> begin match args with 
-    | [l; r] -> E.bin Le l r 
-    | _ -> assert false end 
-  | "js_unsafe_gt" 
-    -> begin match args with 
-    | [l;r] -> E.bin Gt l r 
-    | _ ->  assert false end 
-  | "js_unsafe_ge" -> 
-    begin match args with 
-    | [l ; r] -> E.bin Ge l r 
-    | _ -> assert false end
-  | "js_boolean_to_bool"
-    -> 
-    begin match args with 
-    | [e] -> E.to_ocaml_boolean e 
-    | _ -> assert false
-    end
-  | "js_is_instance_array" 
-    ->
-    begin match args with 
-    | [e] -> E.is_instance_array e 
-    | _ -> assert false end
-  | "js_typeof"
-    -> 
-    begin match args with 
-    | [e] -> E.typeof e         
-    | _ -> assert false
-    end
-
-  | "js_dump"
-    -> 
-    (* This primitive can accept any number of arguments 
-       {[
-         console.log(1,2,3)
-           1 2 3
-       ]}         
-    *)      
-    E.seq (E.dump Log args) E.unit
-
-  | "caml_anything_to_string"
-  (* patched to compiler to support for convenience *)      
-  | "js_anything_to_string" 
-    ->
-    begin match args with 
-    | [e] -> E.anything_to_string e 
-    | _ -> assert false
-    end
-  | "js_anything_to_number" 
-    -> 
-    begin match args with 
-    | [e] -> E.to_number e 
-    | _ -> assert false
-    end
-
-  | "js_json_stringify"      
-    -> 
-    begin match args with 
-    | [e] ->        
-      E.to_json_string e
-    | _ -> 
-      assert false      
-    end
-    (* | "js_dump1" *)
-    (* | "js_dump2" *)
-    (* | "js_dump3" *)
-    (* | "js_dump4" *)
-    (* | "js_dump5" *)
-    (* | "js_dump6" *)
-    (* | "js_dump7" (\* TODO: refin api later *\) *)
-    (* | "js_dump8" -> E.dump Log args  *)
-    | "js_apply1"
-    | "js_apply2"
-    | "js_apply3"
-    | "js_apply4"
-    | "js_apply5"
-    | "js_apply6"
-    | "js_apply7"
-    | "js_apply8" -> 
-      begin match args with 
-        | fn :: rest -> 
-          E.call ~info:{arity=Full; call_info =  Call_na} fn rest 
-        | _ -> assert false
-      end
-    | "js_uninitialized_object"
-      ->
-      begin match args with 
-        | [ tag; size] -> E.uninitialized_object tag size 
-        | _ -> assert false  end
-    | "js_obj_length" 
-      -> 
-      begin match args with 
-        | [e] -> E.obj_length e 
-        | _ -> assert false 
-      end
-    | "js_pure_expr" (* TODO: conver it even earlier *)
-      -> 
-      begin match args with 
-      | [ { expression_desc = Str (_,s )}] -> 
-        E.raw_js_code Exp  s
-      | _ -> 
-        Ext_log.err __LOC__ 
-          "JS.unsafe_js_expr is applied to an non literal string in %s"
-          (Js_config.get_current_file ())
-        ;
-        assert false
-      end
-    | "js_pure_stmt" (* TODO: convert even ealier *)
-      -> 
-      begin match args with 
-      | [ { expression_desc = Str (_,s )}] -> E.raw_js_code Stmt s
-      | _ -> 
-        Ext_log.err __LOC__ 
-          "JS.unsafe_js_expr is applied to an non literal string in %s"
-          (Js_config.get_current_file ())
-        ;
-        assert false
-      end
-    | "js_is_nil" -> 
-      begin match args with
-      | [ e ] -> E.is_nil e 
-      | _ -> assert false 
-      end
-    | "js_is_undef" -> 
-      begin match args with 
-      | [e] -> E.is_undef e 
-      | _ -> assert false
-      end
-    | "js_is_nil_undef" 
-    | "js_from_nullable_def"
-      -> call Js_config.js_primitive
-    | "js_from_def" 
-      -> 
-      begin match args with 
-      | [e] -> 
-        begin match e.expression_desc with 
-        | Var _ -> 
-          E.econd (E.is_undef e) Js_of_lam_option.none (Js_of_lam_option.some e)
-        | _ -> 
-          call Js_config.js_primitive  
-        (* # GPR 974
-          let id = Ext_ident.create "v" in
-          let tmp = E.var id in
-          E.(seq (assign tmp e ) 
-               (econd (is_undef tmp) Js_of_lam_option.none (Js_of_lam_option.some tmp)) )
-        *)
-        end
-
-      | _ -> assert false 
-      end
-    | "js_from_nullable" 
-      -> 
-      begin match args with 
-      | [e] -> 
-        begin match e.expression_desc with 
-        | Var _ -> 
-          E.econd (E.is_nil e) Js_of_lam_option.none (Js_of_lam_option.some e)
-        | _ ->
-          call Js_config.js_primitive
-         (* GPR #974
-          let id = Ext_ident.create "v" in
-          let tmp = E.var id in
-          E.(seq (assign tmp e ) 
-               (econd (is_nil tmp) Js_of_lam_option.none (Js_of_lam_option.some tmp)) )
-          *)
-        end
-
-      | _ -> assert false 
-      end
-    | "js_obj_set_length"
-      ->
-      begin match args with 
-        | [a; b] -> E.set_length a b 
-        | _ -> assert false 
-      end
-
-    | _ -> 
-
+  | _ -> 
       let comment = "Missing primitive" in       
       Ext_log.warn __LOC__  "%s: %s when compiling %s\n" comment prim_name 
         (Js_config.get_current_file ()) ;
       E.not_implemented prim_name
       (*we dont use [throw] here, since [throw] is an statement 
         so we wrap in IIFE
+        TODO: we might provoide a hook for user to provide polyfill.
+        For example `Bs_global.xxx`
       *)        
 
   end 

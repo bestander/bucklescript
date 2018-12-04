@@ -1,15 +1,68 @@
-## OCaml calling JS
+## BuckleScript annotations for Unicode and JS FFI support
 
-To make OCaml work smoothly with Javascript, we introduced several
+To make OCaml work smoothly with JavaScript, we introduced several
 extensions to the OCaml language. These BuckleScript extensions
 facilitate the integration of native JavaScript code and
 improve the generated code.
+
+### Unicode support (@since 1.5.1)
+
+[WARNING]
+========
+In this section, we assume the source is encoded using UTF8.
+========
+
+In OCaml, string is an immutable byte sequence (like GoLang), so if the user types some Unicode
+
+[source,ocaml]
+--------------
+Js.log "你好"
+--------------
+
+It will be translated into 
+
+[source,js]
+-----------
+console.log("\xe4\xbd\xa0\xe5\xa5\xbd");
+-----------
+
+Luckily, OCaml allows customized multiple-line string support, BuckleScript *reserves* the delimiter `js` and `j` (`j` is unused so far). 
+
+[source,ocaml]
+--------------
+Js.log {js|你好，
+世界|js}
+--------------
+
+.Output
+[source,js]
+--------------
+console.log("你好，\n世界");
+--------------
+
+Inside the `js` delimiter, the escape convention is like JavaScript
+
+[source,ocaml]
+--------------
+Js.log {js|\x3f\u003f\b\t\n\v\f\r\0"'|js}
+--------------
+
+.Output
+[source,js]
+--------------
+console.log("\x3f\u003f\b\t\n\v\f\r\0\"\'");
+--------------
+
+
+### FFI
+
+
 
 Like TypeScript, when building type-safe bindings from JS to OCaml,
 users have to write type declarations.
 In OCaml, unlike TypeScript, users do not need to create a separate
 `.d.ts` file,
-since the type declarations is an integral part of OCaml.
+since the type declarations are an integral part of OCaml.
 
 The FFI is divided into several components:
 
@@ -17,7 +70,7 @@ The FFI is divided into several components:
 - Binding to high-order functions
 - Binding to object literals
 - Binding to classes
-- Extensions to the language for debugger, regex and embedding arbitrary JS
+- Extensions to the language for debugger, regex, and embedding arbitrary JS
 code
 
 ### Binding to simple JS functions values
@@ -52,8 +105,8 @@ it can be a function or plain value.
 
 [NOTE]
 =====
-* If `external-declaration` is the same as `value-name`, user can leave `external-declaration` empty,
-for example:
+* If `external-declaration` is the same as `value-name`, the user can leave `external-declaration` empty.
+For example:
 +
 [source,ocaml]
 -------------
@@ -80,7 +133,7 @@ external imul : int -> int -> int =
 external create_date : unit -> t = "Date" [@@bs.new]
 let date = create_date ()
 ----------
-Output:
+.Output:
 [source,js]
 ----------
 var date = new Date();
@@ -90,7 +143,7 @@ var date = new Date();
 
 #### Binding to a value from a module: bs.module
 
-Input:
+.Input:
 [source,ocaml]
 --------
 external add : int -> int -> int = "add" [@@bs.module "x"]
@@ -100,7 +153,7 @@ let g = add2 3 4
 --------
 <1> "U" will hint the compiler to generate a better name for the module, see output
 
-Output:
+.Output:
 [source,js]
 -----------
 var U = require("y");
@@ -131,7 +184,7 @@ external http : http = "http" [@@bs.module] // <1>
 
 [NOTE]
 ======
-*  if `external-declaration` is the same as value-name, it can be left empty, for example,
+*  if `external-declaration` is the same as value-name, it can be left empty, for example:
 +
 [source,ocaml]
 --------------
@@ -142,7 +195,7 @@ external http : http = "" [@@bs.module]
 
 #### Binding to method: bs.send, bs.send.pipe
 
-`bs.send` helps the user send a message to a JS object
+`bs.send` helps the user send a message to a JS object.
 
 [source,ocaml]
 ---------
@@ -153,13 +206,13 @@ external get_by_id : dom -> string -> id =
 
 The object is always the first argument and actual arguments follow.
 
-Input:
+.Input:
 [source,ocaml]
 --------
 get_by_id dom "xx"
 --------
 
-Output:
+.Output:
 [source,js]
 --------
 dom.getElementById("xx")
@@ -183,7 +236,7 @@ let test arr =
 
 [NOTE]
 ======
-*  if `external-declaration` is the same as value-name, it can be left empty, for example,
+*  if `external-declaration` is the same as value-name, it can be left empty, for example:
 +
 [source,ocaml]
 --------------
@@ -218,8 +271,8 @@ external get_name : textarea -> string = "name" [@@bs.get]
 
 ### Splice calling convention: bs.splice
 
-In JS, it is quite common to have a function take variadic arguments,
-BuckleScript support typing homogeneous variadic arguments. For example,
+In JS, it is quite common to have a function take variadic arguments.
+BuckleScript supports typing homogeneous variadic arguments. For example,
 
 [source,ocaml]
 --------------
@@ -237,15 +290,15 @@ var v = Path.join("a","b")
 [NOTE]
 ======
 For the external call, if the `array` arguments is not a compile time array,
-the compiler will emit an error message
+the compiler will emit an error message.
 ======
 
 
 ### Special types on external declarations: bs.string, bs.int, bs.ignore, bs.as
 
 #### Using polymorphic variant to model enums and string types
-There are several patterns heavily used in existing JavaScript codebase, for example,
-string type is used a lot. BuckleScript FFI allows to model string type in a safe
+There are several patterns heavily used in existing JavaScript codebases, for example,
+the string type is used a lot. BuckleScript FFI allows the user to model string type in a safe
 way by using annotated polymorphic variant.
 
 [source,ocaml]
@@ -288,7 +341,7 @@ external test_int_type :
 
 #### Using polymorphic variant to model event listener
 
-BuckleScript model this in a type-safe way by using annotated polymorphic variants
+BuckleScript models this in a type-safe way by using annotated polymorphic variants.
 
 [source,ocaml]
 --------------
@@ -305,9 +358,9 @@ let register rl =
   |> on (`close (fun event -> () ))
   |> on (`line (fun line -> print_endline line))
 --------------
-<1> This is a very powerful typing: each event can have its _different types_
+<1> This is a very powerful typing: each event can have its own _different types_.
 
-Output:
+.Output:
 [source,js]
 ----------
 function register(rl) {
@@ -345,7 +398,7 @@ let v = add 0 1 2 // <1>
 -------------
 <1> the first argument will be erased
 
-Output:
+.Output:
 [source,javascript]
 -----------
 var v = add (1,2)
@@ -397,7 +450,7 @@ let () =
         Js.log( "error code: " ^ string_of_int exit_code ))      
 --------------
 
-Output
+.Output
 [source,js]
 -----------
 process.on("exit", function (exit_code) {
@@ -419,7 +472,7 @@ let register (p : process) =
 
 --------------
 
-Output
+.Output
 [source,js]
 -----------
 function register(p) {
@@ -430,7 +483,7 @@ function register(p) {
 }
 -----------
 
-Input
+.Input
 [source,ocaml]
 --------------
 external io_config : 
@@ -439,7 +492,7 @@ external io_config :
 let config = io_config ~cwd:"." ()   
 --------------
 
-Output
+.Output
 [source,js]
 -----------
 var config = {
@@ -448,19 +501,53 @@ var config = {
 };
 -----------
 
+### Fixed Arguments with arbitrary JSON literal (@since 1.6.1)
+
+So the payload can be more flexiblie with JSON literal support
+
+[source,ocaml]
+--------------
+external on_exit_slice5 : 
+    int 
+    -> (_ [@bs.as 3]) 
+    -> (_ [@bs.as {json|true|json}])
+    -> (_ [@bs.as {json|false|json}])
+    -> (_ [@bs.as {json|"你好"|json}])
+    -> (_ [@bs.as {json| ["你好",1,2,3] |json}])
+    -> (_ [@bs.as {json| [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] |json}])
+    -> (_ [@bs.as {json| [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] |json}])
+    -> (_ [@bs.as "xxx"]) 
+    -> ([`a|`b|`c] [@bs.int])
+    -> (_ [@bs.as "yyy"]) 
+    -> ([`a|`b|`c] [@bs.string])
+    -> int array
+    -> unit 
+    = 
+    "xx" [@@bs.send.pipe: t] [@@bs.splice]
+
+let _ = x |> on_exit_slice5 __LINE__ `a `b [|1;2;3;4;5|]
+--------------
+
+.Output
+[source,js]
+-----------
+x.xx(114, 3, true, false, ("你好"), ( ["你好",1,2,3] ), ( [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] ), ( [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] ), "xxx", 0, "yyy", "b", 1, 2, 3, 4, 5)
+-----------
+
+
 ### Binding to NodeJS special variables: bs.node
 
-NodeJS has several file local variables: `__dirname`, `__filename`, `module_`, and `require`,
-their semantics are more like macros instead of functions.
+NodeJS has several file local variables: `__dirname`, `__filename`, `_module`, and `require`.
+Their semantics are more like macros instead of functions.
 
 BuckleScript provides built-in macro support for these variables:
 
 [source,ocaml]
 -------------
-let dirname : string Js.undefined = [%bs.node __dirname]
-let filename : string Js.undefined = [%bs.node __filename]
-let module_ : Node.node_module Js.undefined = [%bs.node module_]
-let require : Node.node_require Js.undefined = [%bs.node require]
+let dirname : string option = [%bs.node __dirname]
+let filename : string option = [%bs.node __filename]
+let _module : Node.node_module option = [%bs.node _module]
+let require : Node.node_require option = [%bs.node require]
 -------------
 
 
@@ -483,7 +570,7 @@ function map (a, b, f){
 }
 ---------------------------------------
 
-A naive external type declaration would be as below:
+A *naive* external type declaration would be as below:
 
 [source,ocaml]
 --------------------------------------------------------------------------------------
@@ -503,7 +590,7 @@ let f x y = x + y
 let g x  = let z  = x + 1 in fun y -> x + z
 --------------------------------------------
 
-In OCaml, they all have the same type; however,
+In OCaml they all have the same type; however,
 `f` and `g` may be compiled into functions with
 different arities.
 
@@ -543,6 +630,8 @@ function f(x,y){
 
 No matter which strategy we use, existing typing rules *cannot
 guarantee a function of type `'a -> 'b -> 'c` will have arity 2.*
+
+#### [@bs] for explicit uncurried callback
 
 To solve this problem introduced by OCaml's curried calling convention,
 we support a special attribute `[@bs]` at the type level.
@@ -594,8 +683,40 @@ type 'a u2 = int -> string -> (int -> 'a [@bs]) [@bs] // <3>
 <1>  `u0` has arity of 2, return a function
    with arity 1
 <2>  `u1` has arity of 3
-<3>  `u2` has arity of 2, reutrn a function  with arity 1
+<3>  `u2` has arity of 2, return a function with arity 1
 
+#### [@bs.uncurry] for implicit uncurried callback (@since 1.5.0)
+
+Note the `[@bs]` annotation already solved the problem completely, but it has a drawback 
+that it requires users to write `[@bs]` both in definition site and call site.
+
+For example:
+
+[source,ocaml]
+--------------
+external map : 'a array -> ('a -> 'b[@bs]) -> 'b array = "" [@@bs.send] // <1>
+map [|1;2;3|] (fun [@bs] x -> x + 1) // <2>
+--------------
+<1> `[@bs]` annotation in definition site
+<2> `[@bs]` annotation in call site 
+
+This is less convenient for end users, so we introduce another implicit annotation `[@bs.uncurry]` so that the compiler will automatically wrap the curried callback (from OCaml side) to JS uncurried callback. In this way, the `[@bs.uncurry]` annotation is defined 
+only once.
+
+[source,ocaml]
+--------------
+external map : 'a array -> ('a -> 'b [@bs.uncurry]) -> 'b array = "" [@@bs.send] // <1>
+map [|1;2;3|] (fun x -> x+ 1) // <2>
+--------------
+<1> `[@bs.uncurry]` annotation in definition site 
+<2> Idiomatic OCaml code
+
+[NOTE]
+======
+In general, `bs.uncurry` is recommended, and compiler will do lots of optimizations to resolve the `curry` to `uncurry` calling convention at compile time. However, there are some cases the compiler optimizer could not do it, in that case, it will be converted runtime. 
+
+This means `[@bs]` are completely static behavior (no any runtime cost), while `[@bs.uncurry]` is more convenient for end users but in some very rare cases it might be slower than `[@bs]`
+======
 
 
 #### Uncurried calling convention as an optimization
@@ -725,7 +846,7 @@ set_onload x begin fun [@bs.this] o v ->
 end
 -----------------------
 
-Output:
+.Output:
 [source,js]
 ------------------------------
 x.onload = function(v){
@@ -771,11 +892,11 @@ object method dispatch.
 
 OCaml supports object oriented style natively and provides structural type system.
 OCaml's object system has different runtime semantics from JS object, but they
-share the same type system, all JS objects of type `'a` is typed as `'a Js.t`
+share the same type system, all JS objects of type `'a` are typed as `'a Js.t`
 
-OCaml provide two kinds of syntaxes to mode structural typing: `< p1 : t1 >` style and
-`class type` style, they are mostly the same except that the latter is more feature rich
-(support inheritance) but more verbose.
+OCaml provides two kinds of syntaxes to model structural typing: `< p1 : t1 >` style and
+`class type` style. They are mostly the same except that the latter is more feature rich
+(supporting inheritance) but more verbose.
 
 #### Simple object type
 
@@ -796,7 +917,7 @@ here we use OCaml objects to model module `demo`
 external demo : < height : int ; width : int > Js.t = "" [@@bs.module]
 -------------
 
-There are too kinds of types on the method name:
+There are two kinds of types on the method name:
 
   * normal type
 +
@@ -815,7 +936,7 @@ There are too kinds of types on the method name:
 < label : int -> int [@bs.meth] >
 --------------
 
-The difference is that for `method`, the type system will force users to full-fil
+The difference is that for `method`, the type system will force users to fulfill
 its arguments all at the same time, since its semantics depends on `this` in JavaScript.
 
 For example:
@@ -839,7 +960,7 @@ val test : < hi : int -> 'a [@bs.meth]; .. > -> 'a // <1>
 val test2 : < hi : int -> 'a ; .. > -> 'a
 val test3 : < hi : int -> 'a [@bs]; .. >
 --------------
-<1> `..` is a row variable, which means the object can contain more methods
+<1> `..` is a row variable, which means the object can contain more methods.
 
 
 #### Complex object type
@@ -856,7 +977,7 @@ end [@bs] // <1>
 type rect = _rect Js.t
 --------------------------------
 <1> `class type` annotated with `[@bs]` is treated as a JS class type,
-it needs to be lifted to `Js.t` too
+it needs to be lifted to `Js.t` too.
 
 For JS classes, methods with arrow types are treated as real methods
 (automatically annotated with `[@bs.meth]`)
@@ -881,8 +1002,8 @@ f##property // <1>
 f##property#= v
 f##js_method args0 args1 args2 <2>
 -------------------------------------------------------------
-<1> property get should not come with any argument as we discussed above, which will be checked by the compiler
-<2> Here `method` is of arity 3
+<1> property get should not come with any argument as we discussed above, which will be checked by the compiler.
+<2> Here `method` is of arity 3.
 
 [NOTE]
 =====
@@ -977,7 +1098,7 @@ NOTE: Getter/Setter also applies to class type label
 #### Create JS objects using bs.obj
 
 Not only can we create bindings to JS objects, but also we can
-create JS objects in a type safe way in OCaml side:
+create JS objects in a type safe way on the OCaml side:
 
 
 [source,ocaml]
@@ -986,13 +1107,13 @@ let u = [%bs.obj { x = { y = { z = 3}}} ] // <1>
 --------------
 <1> `bs.obj` extension is used to mark `{}` as JS objects
 
-Output:
+.Output:
 [source,js]
 --------------------------------
 var u = { x : { y : { z : 3 }}}}
 --------------------------------
 
-The compiler would infer `u` as type
+The compiler would infer `u` as type:
 
 [source,ocaml]
 --------------------
@@ -1000,7 +1121,7 @@ val u : < x :  < y : < z : int > Js.t >  Js.t > Js.t
 --------------------
 
 To make it more symmetric,  extension `bs.obj` can also be applied
-into the type level, so you can write
+into the type level, so you can write:
 
 [source,ocaml]
 --------------
@@ -1022,7 +1143,7 @@ let xs = [%bs.obj [| { x = 3 } ; { x = 3 } |] : < x : int  > array  ]
 let ys = [%bs.obj [| { x = 3 } ; { x = 4 } |] ]
 -------------
 
-Output:
+.Output:
 [source,js]
 ---------------------------------
 var xs = [ { x : 3 } , { x : 3 } ]
@@ -1038,7 +1159,7 @@ external make_config : hi:int -> lo:int -> unit -> t = "" [@@bs.obj]
 let v = make_config ~hi:2 ~lo:3
 --------------
 
-Output:
+.Output:
 [source,js]
 -----------------------
 var v = { hi : 2 , lo : 3 }
@@ -1053,9 +1174,9 @@ let v = make_config ~lo:2 ~hi:3  ()
 ---------------------------------------------------------------------
 <1> In OCaml, the order of label does not matter, and the evaluation order
     of arguments is undefined. Since the order does not matter, to make sure the compiler realize all the arguments
-    are full-filled (including optional arguments), it is common to have a `unit` type before the result
+    are fulfilled (including optional arguments), it is common to have a `unit` type before the result.
 
-Output:
+.Output:
 [source,js]
 ------------------------
 var u = {hi : 3}
@@ -1071,19 +1192,19 @@ let u = [%bs.obj {
   fn = fun [@bs] u v -> u + v // <1>
   } ]
 let h = u##x##y##z
-let a = h##fn
+let a = u##fn
 let b = a 1 2 [@bs]
 --------------
-<1> `fn` property is not method, it does not rely on `this`,
-we will show how to create JS method in OCaml later.
+<1> `fn` property is not method, it does not rely on `this`.
+We will show how to create JS method in OCaml later.
 
-Output:
+.Output:
 [source,js]
 -----------------------------------------------------------------
 
 var u = { x : { y : { z : 3 } }, fn : function (u, v) {return u + v}}
 var h = u.x.y.z
-var a = h.fn
+var a = u.fn
 var b = a(1,2)
 -----------------------------------------------------------------
 
@@ -1126,7 +1247,7 @@ let v2  =
 <1> `self` is bound to `this` in generated JS code
 <2> `[@bs]` marks `object .. end` as a JS object
 
-Output:
+.Output:
 [source,js]
 -----------
 var v2 = {
@@ -1144,7 +1265,7 @@ var v2 = {
 };
 -----------
 
-Compiler  infer the type of `v2` as below:
+Compiler infers the type of `v2` as below:
 [source,ocaml]
 --------------
 val v2 : object
@@ -1156,7 +1277,7 @@ end [@bs]
 
 
 
-Below is another example to consume JS object :
+Below is another example to consume a JS object :
 
 [source,ocaml]
 --------------
@@ -1171,7 +1292,7 @@ let f (u : rect) =
    u##draw ()
 --------------
 
-Output:
+.Output:
 [source,js]
 -----------
 function f(u){
@@ -1195,15 +1316,34 @@ f
 
 #### Object label translation convention
 
-In JS, it is quite common to have several types for a single method, to model
+There are two cases, where we might want to do name mangling for a JS object method name.
+
+First, in OCaml, some names are keywords, so we want to add an underscore to avoid a syntax
+error. 
+
+.Key-word method:
+[source,ocaml]
+--------------
+f##_open
+f##_MAX_LENGTH
+--------------
+
+.OUTPUT:
+[source,js]
+-----------
+f.open
+f.MAX_LENGTH
+-----------
+
+Second, it is common to have several types for a single method. To model
 this ad-hoc polymorphism, we introduced a small convention when translating
-object labels, this is useful as below
+object labels, which is _occasionally_ useful as below
 
 .Ad-hoc polymorphism
 [source,ocaml]
 -------------
-f##draw_cat (x,y)
-f##draw_dog (x,y)
+f##draw__cat (x,y)
+f##draw__dog (x,y)
 -------------
 
 .OUTPUT:
@@ -1216,30 +1356,159 @@ f.draw(x,y)
 [NOTE]
 .Rules
 =======
-. If `_` apperas in the first char,
-   * The first char `_` will be discarded
-   * If there is `\_` in the rest chars,
-      chars after last `_` will be discarded
-. Else if there is `\_` in the rest chars,
-  chars after last `_` will be discarded
+. If `__[rest]` appears in the label, index from the right to left.
+   * If index = 0, nothing mangled 
+   * If index > 0, `__[rest]` is dropped
+. Else if `_` is the first char 
+   * If the following char is not 'a' .. 'z',
+      drop the first '_'
+   * Else if the rest happens to be a keyword,
+      drop the first '_'
+   * Else, nothing mangled       
 =======
 
 
+### Return value checking (@since 1.5.1)
+
+In general, the FFI code is error prone, and potentially will leak in
+`undefined` or `null` values. 
+
+So we introduced auto coercion for return values to gain two benefits:
+
+1. More safety for FFI code without performance cost (explained later).
+
+2. More idiomatic OCaml code for users to consume the FFI.
+
+Below is a contrived core example:
+
+[source,ocaml]
+-------------
+type element
+type dom
+external getElementById : string -> element option = "" 
+[@@bs.send.pipe:dom] [@@bs.return null_to_opt] // <1>
+
+let test dom = 
+    let elem = dom |> getElementById "haha"  in
+    match elem with 
+    | None -> 1 
+    | Some ui -> Js.log ui ; 2   
+-------------
+<1> `null_to_opt` attribute will automatically convert null to `option`
+
+.Output
+[source,js]
+-------------
+function test(dom) {
+  var elem = dom.getElementById("haha");
+  if (elem !== null) { // <1>
+    console.log(elem);
+    return 2;
+  }
+  else {
+    return 1;
+  }
+}
+-------------
+<1> nullable checking without boxing due to compiler optimizations
+
+Currently 4 directives are supported: `null_to_opt`, `undefined_to_opt`, 
+`null_undefined_to_opt` and `identity`.
+
+[NOTE]
+======
+`null_to_opt`, `undefined_to_opt` and `null_undefined_to_opt` will *semantically*
+convert a nullable value to `option` which is a boxed value, but the compiler will 
+do smart optimizations to *remove such boxing overhead* when the returned value is destructed 
+in the same routine.
+
+The three directives above require users to write literally `_ option`. It is
+in theory not necessary, but it is required to reduce user errors.
+
+When the return type is `unit`: the compiler will append its return value 
+with an OCaml `unit` literal to make sure it does return `unit`. Its main purpose
+is to make the user consume FFI in idiomatic OCaml code, the cost is *very very small* and 
+the compiler will do smart optimizations to remove it when the returned value is not used (mostly likely).
+ 
+When the return type is `bool`, the compiler will coerce its return value from 
+JS boolean to OCaml boolean. The cost is also *very small* and compiler will remove
+such coercion when it is not needed. Note even if your external FFI does return OCaml `bool` or `unit`, 
+such implicit coercion will *cause no harm*.
+
+`identity` will make sure that compiler will do nothing about the returned value. It 
+is rarely used, but introduced here for debugging purpose.
+======
 
 
 
-### Embedding raw Javascript code
+
+### Embedding untyped Javascript code
 
 
 [WARNING]
 =========
 This is not encouraged. The user should minimize and
 localize use cases
-of embedding raw Javascript code, however, sometimes it's necessary to
+of embedding raw JavaScript code, however, sometimes it's necessary to
 get the job done.
 =========
 
-#### Embedding raw JS code as an expression
+
+####  Detect global variable existence `bs.external` (@since 1.5.1)
+
+Before we dive into embedding arbitrary JS code, a quite common use case of embedding untyped JS code is detect a global variable (feature detection), Bucklescript provides a relatively type safe approach for such use case: `bs.external` (or `extenral`),
+ `[%bs.external a_single_identifier]` is a value of `_ option` type, see examples below 
+
+[source,ocaml]
+--------------
+let test () = 
+  match [%external __DEV__] with 
+  | Some _ -> Js.log "dev mode"
+  | None -> Js.log "producton mode"
+--------------
+
+.Output
+[source,js]
+-----------
+function test() {
+  var match = typeof (__DEV__) === "undefined" ? undefined : (__DEV__);
+  if (match !== undefined) {
+    console.log("dev mode");
+    return /* () */0;
+  }
+  else {
+    console.log("producton mode");
+    return /* () */0;
+  }
+}
+-----------
+
+[source,ocaml]
+--------------
+let test2 () = 
+  match [%external __filename] with 
+  | Some f -> Js.log f 
+  | None -> Js.log "non node environment"
+--------------
+
+.Output
+[source,js]
+--------------
+function test2() {
+  var match = typeof (__filename) === "undefined" ? undefined : (__filename);
+  if (match !== undefined) {
+    console.log(match);
+    return /* () */0;
+  }
+  else {
+    console.log("non node environment");
+    return /* () */0;
+  }
+}
+--------------
+
+
+#### Embedding arbitrary JS code as an expression
 
 [source,ocaml]
 --------------
@@ -1321,7 +1590,7 @@ which will be compiled into:
 ### Regex support
 
 
-We introduced `bs.re` for Javascript regex expression:
+We introduced `bs.re` for Javascript regex expressions:
 
 [source,ocaml]
 ------------------------
@@ -1329,22 +1598,21 @@ let f  = [%bs.re "/b/g"]
 ------------------------
 
 The compiler will infer `f` has type `Js.Re.t` and generate code as
-below
+below:
 
 ------------
 var f = /b/g
 ------------
 
 
-NOTE:  `Js.Re.t` is an abstract type, we are working on providing
-bindings for it.
+NOTE: `Js.Re.t` can be accessed and manipulated using the functions available in the `Js.Re` module.
 
 
 
 ### Examples
 
 
-Below is a simple example for https://mochajs.org/[mocha] library. For
+Below is a simple example for the https://mochajs.org/[mocha] library. For
 more examples, please visit
 https://github.com/bloomberg/bucklescript-addons
 
@@ -1364,7 +1632,7 @@ external it : string -> (unit -> unit [@bs]) -> unit = "" [@@bs.val]
 
 Since, `mochajs` is a test framework, we also need some assertion
  tests. We can also describe the bindings to `assert.deepEqual` from
- nodejs `assert` library:
+ the nodejs `assert` library:
 
 [source,ocaml]
 ----------

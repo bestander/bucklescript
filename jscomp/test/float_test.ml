@@ -47,7 +47,8 @@ let () =
   eq __LOC__ (classify_float 3. ) FP_normal;
   eq __LOC__ (modf (-3.125)) (-0.125, -3.);
   eq __LOC__ (let a,b = modf nan in Js_float.isNaN a,
-                                    Js_float.isNaN b) (Js.true_,Js.true_);
+                                    Js_float.isNaN b) (true,true);
+  (* modf nan => (nan,nan) *)
   eq __LOC__ 
     (Array.map (fun (x,y) -> float_compare x y) [|1., 3. ; 2., 1. ; 3., 2. |]
   |> Array.map (fun x -> if x > 0 then 1 else if x <0 then -1 else 0 ))
@@ -56,6 +57,7 @@ let () =
   eq __LOC__  (copysign (3.) (0.)) 3.;
   eq __LOC__ (log10 10.) 1.;
   eq __LOC__ (expm1 0.) 0. ;
+  eq __LOC__ (Js_float.of_any "3.0") 3.0;
   approx __LOC__ (expm1 2.) 6.38905609893065
 ;;
 

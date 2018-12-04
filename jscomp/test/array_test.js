@@ -1,11 +1,11 @@
 'use strict';
 
-var Mt         = require("./mt");
-var List       = require("../../lib/js/list");
-var $$Array    = require("../../lib/js/array");
-var Block      = require("../../lib/js/block");
-var Caml_obj   = require("../../lib/js/caml_obj");
-var Caml_array = require("../../lib/js/caml_array");
+var Mt         = require("./mt.js");
+var List       = require("../../lib/js/list.js");
+var $$Array    = require("../../lib/js/array.js");
+var Block      = require("../../lib/js/block.js");
+var Caml_obj   = require("../../lib/js/caml_obj.js");
+var Caml_array = require("../../lib/js/caml_array.js");
 
 function is_sorted(x) {
   var len = x.length;
@@ -14,13 +14,11 @@ function is_sorted(x) {
     var i = _i;
     if (i >= (len - 1 | 0)) {
       return /* true */1;
-    }
-    else if (Caml_obj.caml_lessthan(x[i], x[i + 1 | 0])) {
+    } else if (Caml_obj.caml_lessthan(Caml_array.caml_array_get(x, i), Caml_array.caml_array_get(x, i + 1 | 0))) {
       _i = i + 1 | 0;
       continue ;
       
-    }
-    else {
+    } else {
       return /* false */0;
     }
   };

@@ -23,26 +23,38 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-type bs_dependency = 
+type dependency = 
   {
     package_name : string ; 
     package_install_path : string ; 
   }
-type bs_dependencies =
-  bs_dependency list 
+type dependencies = dependency list 
+
+(* `string` is a path to the entrypoint *)
+type entries_t = JsTarget of string | NativeTarget of string | BytecodeTarget of string
+
 type t = 
   {
-    package_name : string option ; 
+    package_name : string ; 
     ocamllex : string ; 
     external_includes : string list ; 
     bsc_flags : string list ;
     ppx_flags : string list ;
-    bs_dependencies : bs_dependencies;
-    refmt : string ;
+    bs_dependencies : dependencies;
+    bs_dev_dependencies : dependencies;
+    built_in_dependency : dependency option; 
+    (*TODO: maybe we should always resolve bs-platform 
+      so that we can calculate correct relative path in 
+      [.merlin]
+    *)
+    refmt : string option;
     refmt_flags : string list;
     js_post_build_cmd : string option;
     package_specs : Bsb_config.package_specs ; 
     globbed_dirs : string list;
     bs_file_groups : Bsb_build_ui.file_group list ;
     files_to_install : String_hash_set.t ;
+    generate_merlin : bool ; 
+    reason_react_jsx : bool ; (* whether apply PPX transform or not*)
+    entries : entries_t list ;
   }

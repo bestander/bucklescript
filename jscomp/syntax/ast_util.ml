@@ -94,7 +94,7 @@ let js_property loc obj name =
     ((Exp.apply ~loc
         (Exp.ident ~loc
            {loc;
-            txt = Ldot (Ast_literal.Lid.js_unsafe, Literals.js_unsafe_downgrade)})
+            txt = Ldot (Ast_literal.Lid.js_unsafe, Literals.unsafe_downgrade)})
         ["",obj]), name)
 
 (* TODO: 
@@ -111,7 +111,7 @@ let generic_apply  kind loc
   let args =
     List.map (fun (label,e) ->
         if label <> "" then
-          Location.raise_errorf ~loc "label is not allowed here"        ;
+          Bs_syntaxerr.err loc Label_in_uncurried_bs_attribute;
         self.expr self e
       ) args in
   let len = List.length args in 
@@ -128,10 +128,10 @@ let generic_apply  kind loc
       match kind with 
       | `Fn | `PropertyFn ->  
         Longident.Ldot (Ast_literal.Lid.js_unsafe, 
-                        Literals.js_fn_run ^ string_of_int arity)
+                        Literals.fn_run ^ string_of_int arity)
       | `Method -> 
         Longident.Ldot(Ast_literal.Lid.js_unsafe,
-                       Literals.js_method_run ^ string_of_int arity
+                       Literals.method_run ^ string_of_int arity
                       ) in 
     Parsetree.Pexp_apply (Exp.ident {txt ; loc}, ("",fn) :: List.map (fun x -> "",x) args)
   else 
@@ -140,10 +140,10 @@ let generic_apply  kind loc
     let pval_prim, pval_type = 
       match kind with 
       | `Fn | `PropertyFn -> 
-        [Literals.js_fn_run; string_arity], 
+        ["#fn_run"; string_arity], 
         arrow ~loc ""  (lift_curry_type loc args_type result_type ) fn_type
       | `Method -> 
-        [Literals.js_method_run ; string_arity], 
+        ["#method_run" ; string_arity], 
         arrow ~loc "" (lift_method_type loc args_type result_type) fn_type
     in
     Ast_external.create_local_external loc ~pval_prim ~pval_type 
@@ -165,7 +165,7 @@ let generic_to_uncurry_type  kind loc (mapper : Ast_mapper.mapper) label
     (first_arg : Parsetree.core_type) 
     (typ : Parsetree.core_type)  =
   if label <> "" then
-    Location.raise_errorf ~loc "label is not allowed";                 
+    Bs_syntaxerr.err loc Label_in_uncurried_bs_attribute;
 
   let rec aux acc (typ : Parsetree.core_type) = 
     (* in general, 
@@ -179,7 +179,7 @@ let generic_to_uncurry_type  kind loc (mapper : Ast_mapper.mapper) label
         | Ptyp_arrow (label, arg, body)
           -> 
           if label <> "" then
-            Location.raise_errorf ~loc:typ.ptyp_loc "label is not allowed";
+            Bs_syntaxerr.err typ.ptyp_loc Label_in_uncurried_bs_attribute;
           aux (mapper.typ mapper arg :: acc) body 
         | _ -> mapper.typ mapper typ, acc 
       end
@@ -223,13 +223,21 @@ let generic_to_uncurry_exp kind loc (self : Ast_mapper.mapper)  pat body
         | Pexp_fun (label,_, arg, body)
           -> 
           if label <> "" then
-            Location.raise_errorf ~loc "label is not allowed";
+            Bs_syntaxerr.err loc Label_in_uncurried_bs_attribute;
           aux (self.pat self arg :: acc) body 
         | _ -> self.expr self body, acc 
       end 
     | _, _ -> self.expr self body, acc  
   in 
   let first_arg = self.pat self pat in  
+  let () = 
+    match kind with 
+    | `Method_callback -> 
+      if not @@ Ast_pat.is_single_variable_pattern_conservative first_arg then
+        Bs_syntaxerr.err first_arg.ppat_loc  Bs_this_simple_pattern
+    | _ -> ()
+  in 
+
   let result, rev_extra_args = aux [first_arg] body in 
   let body = 
     List.fold_left (fun e p -> Ast_comb.fun_no_label ~loc p e )
@@ -250,16 +258,16 @@ let generic_to_uncurry_exp kind loc (self : Ast_mapper.mapper)  pat body
     let txt = 
       match kind with 
       | `Fn -> 
-        Longident.Ldot ( Ast_literal.Lid.js_unsafe, Literals.js_fn_mk ^ string_of_int arity)
+        Longident.Ldot ( Ast_literal.Lid.js_unsafe, Literals.fn_mk ^ string_of_int arity)
       | `Method_callback -> 
-        Longident.Ldot (Ast_literal.Lid.js_unsafe,  Literals.js_fn_method ^ string_of_int arity) in
+        Longident.Ldot (Ast_literal.Lid.js_unsafe,  Literals.fn_method ^ string_of_int arity) in
     Parsetree.Pexp_apply (Exp.ident {txt;loc} , ["",body])
 
   else 
     let pval_prim =
       [ (match kind with 
-            | `Fn -> Literals.js_fn_mk
-            | `Method_callback -> Literals.js_fn_method); 
+            | `Fn -> "#fn_mk"
+            | `Method_callback -> "#fn_method"); 
         string_of_int arity]  in
     let fn_type , args_type, result_type  = Ast_comb.tuple_type_pair ~loc `Make arity  in 
     let pval_type = arrow ~loc "" fn_type (
@@ -277,51 +285,124 @@ let to_uncurry_fn   =
 let to_method_callback  = 
   generic_to_uncurry_exp `Method_callback 
 
+(**
+   {[ fun  pat ->  body ]}
+   --
+   [pat] has to be simple pattern 
+   {[
+     fun e -> 
+       let e = Js.Exn.internalToOCamlException (Obj.repr pat) in 
+       body
+   ]}
+*)
+let to_exn_fn (_all_loc : Location.t)
+    (self : Ast_mapper.mapper) (pat : Ast_pat.t) body = 
+  let loc  = pat.ppat_loc in 
+  match pat.ppat_desc with 
+  | Ppat_var ({txt } ) -> 
+    let body = self.expr self body in 
+    Parsetree.Pexp_fun
+      (Ext_string.empty, None, pat, 
+       Ast_helper.Exp.let_ ~loc Nonrecursive
+         [ Ast_helper.Vb.mk ~loc pat 
+             (
+               Exp.apply ~loc
+                 (
+                   Exp.ident  ~loc
+                     {txt =
+                        Ldot (Ldot (Lident "Js", "Exn"),
+                              "internalToOCamlException"); 
+                      loc })
+                 [("",Exp.ident ~loc {txt = Lident txt ; loc})]
+             )
+
+         ] body 
+      )
+      
+  | _ -> 
+    Bs_syntaxerr.err loc Bs_exn_single_variable 
+
+
 
 let handle_debugger loc payload = 
   if Ast_payload.as_empty_structure payload then
     Parsetree.Pexp_apply
-      (Exp.ident {txt = Ldot(Ast_literal.Lid.js_unsafe, Literals.js_debugger ); loc}, 
+      (Exp.ident {txt = Ldot(Ast_literal.Lid.js_unsafe, Literals.debugger ); loc}, 
        ["", Ast_literal.val_unit ~loc ()])
   else Location.raise_errorf ~loc "bs.raw can only be applied to a string"
 
 
-let handle_raw loc payload = 
-  begin match Ast_payload.as_string_exp payload with 
-    | None ->
+let handle_raw ?(check_js_regex = false) loc payload =
+  begin match Ast_payload.as_string_exp ~check_js_regex payload with
+    | Not_String_Lteral ->
       Location.raise_errorf ~loc
-        "bs.raw can only be applied to a string "
-
-    | Some exp -> 
+        "bs.raw can only be applied to a string"
+    | Ast_payload.JS_Regex_Check_Failed ->
+      Location.raise_errorf ~loc "this is an invalid js regex"
+    | Correct exp ->
       let pexp_desc = 
         Parsetree.Pexp_apply (
           Exp.ident {loc; 
                      txt = 
                        Ldot (Ast_literal.Lid.js_unsafe, 
-                             Literals.js_pure_expr)},
+                             Literals.raw_expr)},
           ["",exp]
         )
       in
       { exp with pexp_desc }
   end
 
+let handle_external loc x = 
+  let raw_exp : Ast_exp.t = 
+    Ast_helper.Exp.apply 
+    (Exp.ident ~loc 
+         {loc; txt = Ldot (Ast_literal.Lid.js_unsafe, 
+                           Literals.raw_expr)})
+      ~loc 
+      [Ext_string.empty, 
+        Exp.constant ~loc (Const_string (x,Some Ext_string.empty))] in 
+  let empty = 
+    Exp.ident ~loc 
+    {txt = Ldot (Ldot(Lident"Js", "Undefined"), "empty");loc}    
+  in 
+  let undefined_typeof = 
+    Exp.ident {loc ; txt = Ldot (Ldot(Lident "Js","Undefined"),"to_opt")} in 
+  let typeof = 
+    Exp.ident {loc ; txt = Ldot(Lident "Js","typeof")} in 
 
+  Exp.apply ~loc undefined_typeof [
+    Ext_string.empty,
+    Exp.ifthenelse ~loc
+    (Exp.apply ~loc 
+      (Exp.ident ~loc {loc ; txt = Ldot (Lident "Pervasives", "=")} )
+      [ 
+        Ext_string.empty,
+        (Exp.apply ~loc typeof [Ext_string.empty,raw_exp]);
+        Ext_string.empty, 
+        Exp.constant ~loc (Const_string ("undefined",None))  
+        ])      
+      (empty)
+      (Some raw_exp)
+      ]
 
 
 let handle_raw_structure loc payload = 
   begin match Ast_payload.as_string_exp payload with 
-    | Some exp 
+    | Correct exp 
       -> 
       let pexp_desc = 
         Parsetree.Pexp_apply(
-          Exp.ident {txt = Ldot (Ast_literal.Lid.js_unsafe,  Literals.js_pure_stmt); loc},
+          Exp.ident {txt = Ldot (Ast_literal.Lid.js_unsafe,  Literals.raw_stmt); loc},
           ["",exp]) in 
       Ast_helper.Str.eval 
         { exp with pexp_desc }
 
-    | None
+    | Not_String_Lteral
       -> 
       Location.raise_errorf ~loc "bs.raw can only be applied to a string"
+    | JS_Regex_Check_Failed 
+      ->
+      Location.raise_errorf ~loc "this is an invalid js regex"
   end
 
 

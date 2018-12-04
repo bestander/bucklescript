@@ -24,8 +24,12 @@
 
 
 type module_system = 
-  | NodeJS | AmdJS | Goog  (* This will be serliazed *)
+  | NodeJS 
+  | AmdJS
+  | Goog  (* This will be serliazed *)
   | Es6
+  | Es6_global
+  | AmdJS_global
 
 type package_info = 
  (module_system * string )
@@ -102,7 +106,7 @@ val no_builtin_ppx_ml : bool ref
 val no_builtin_ppx_mli : bool ref 
 val no_warn_ffi_type : bool ref 
 val no_warn_unused_bs_attribute : bool ref 
-
+val no_error_unused_bs_attribute : bool ref 
 (** check-div-by-zero option *)
 val check_div_by_zero : bool ref 
 val get_check_div_by_zero : unit -> bool 
@@ -144,7 +148,8 @@ val hash : string
 val weak : string
 val js_primitive : string
 val module_ : string
-
+val missing_polyfill : string
+val exn : string
 (** Debugging utilies *)
 val set_current_file : string -> unit 
 val get_current_file : unit -> string

@@ -1,10 +1,11 @@
 'use strict';
 
-var Mt                      = require("./mt");
-var Lazy                    = require("../../lib/js/lazy");
-var Block                   = require("../../lib/js/block");
-var CamlinternalLazy        = require("../../lib/js/camlinternalLazy");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Mt                      = require("./mt.js");
+var Lazy                    = require("../../lib/js/lazy.js");
+var Block                   = require("../../lib/js/block.js");
+var Js_exn                  = require("../../lib/js/js_exn.js");
+var CamlinternalLazy        = require("../../lib/js/camlinternalLazy.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var u = [3];
 
@@ -51,8 +52,7 @@ function f(param) {
     var match$3 = param[2][/* contents */0];
     if (match$3) {
       return 1;
-    }
-    else {
+    } else {
       throw [
             Caml_builtin_exceptions.match_failure,
             [
@@ -62,8 +62,7 @@ function f(param) {
             ]
           ];
     }
-  }
-  else {
+  } else {
     return 0;
   }
 }
@@ -89,11 +88,11 @@ try {
         s
       ]);
 }
-catch (exn){
+catch (raw_exn){
+  var exn = Js_exn.internalToOCamlException(raw_exn);
   if (exn[0] === Caml_builtin_exceptions.match_failure) {
     h = 2;
-  }
-  else {
+  } else {
     throw exn;
   }
 }
@@ -118,11 +117,9 @@ function exotic(param) {
   var tag = param.tag | 0;
   if (tag === 250) {
     return param[0];
-  }
-  else if (tag === 246) {
+  } else if (tag === 246) {
     return CamlinternalLazy.force_lazy_block(param);
-  }
-  else {
+  } else {
     return param;
   }
 }

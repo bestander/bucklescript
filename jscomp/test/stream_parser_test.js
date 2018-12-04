@@ -1,13 +1,13 @@
 'use strict';
 
-var Mt              = require("./mt");
-var Block           = require("../../lib/js/block");
-var Curry           = require("../../lib/js/curry");
-var Queue           = require("../../lib/js/queue");
-var Genlex          = require("../../lib/js/genlex");
-var Stream          = require("../../lib/js/stream");
-var Caml_int32      = require("../../lib/js/caml_int32");
-var Caml_exceptions = require("../../lib/js/caml_exceptions");
+var Mt              = require("./mt.js");
+var Block           = require("../../lib/js/block.js");
+var Curry           = require("../../lib/js/curry.js");
+var Queue           = require("../../lib/js/queue.js");
+var Genlex          = require("../../lib/js/genlex.js");
+var Stream          = require("../../lib/js/stream.js");
+var Caml_int32      = require("../../lib/js/caml_int32.js");
+var Caml_exceptions = require("../../lib/js/caml_exceptions.js");
 
 var Parse_error = Caml_exceptions.create("Stream_parser_test.Parse_error");
 
@@ -19,8 +19,7 @@ function parse(token) {
   var token$1 = function () {
     if (look_ahead[/* length */0]) {
       return Queue.pop(look_ahead);
-    }
-    else {
+    } else {
       try {
         return Curry._1(token, /* () */0);
       }
@@ -41,18 +40,15 @@ function parse(token) {
                     Parse_error,
                     "Unbalanced parens"
                   ];
-            }
-            else if (match[0] === ")") {
+            } else if (match[0] === ")") {
               return v;
-            }
-            else {
+            } else {
               throw [
                     Parse_error,
                     "Unbalanced parens"
                   ];
             }
-          }
-          else {
+          } else {
             Queue.push(e, look_ahead);
             throw [
                   Parse_error,
@@ -75,8 +71,7 @@ function parse(token) {
     if (e.tag) {
       Queue.push(e, look_ahead);
       return e1;
-    }
-    else {
+    } else {
       switch (e[0]) {
         case "*" : 
             return Caml_int32.imul(e1, parse_term_aux(parse_atom(/* () */0)));
@@ -93,8 +88,7 @@ function parse(token) {
     if (e.tag) {
       Queue.push(e, look_ahead);
       return e1;
-    }
-    else {
+    } else {
       switch (e[0]) {
         case "+" : 
             return e1 + parse_expr_aux(parse_term_aux(parse_atom(/* () */0))) | 0;
@@ -153,8 +147,7 @@ function l_parse(token) {
   var token$1 = function () {
     if (look_ahead[/* length */0]) {
       return Queue.pop(look_ahead);
-    }
-    else {
+    } else {
       try {
         return Curry._1(token, /* () */0);
       }
@@ -175,18 +168,15 @@ function l_parse(token) {
                     Parse_error,
                     "Unbalanced )"
                   ];
-            }
-            else if (t$1[0] === ")") {
+            } else if (t$1[0] === ")") {
               return v;
-            }
-            else {
+            } else {
               throw [
                     Parse_error,
                     "Unbalanced )"
                   ];
             }
-          }
-          else {
+          } else {
             throw [
                   Parse_error,
                   "Unexpected token"
@@ -209,8 +199,7 @@ function l_parse(token) {
       if (t.tag) {
         Queue.push(t, look_ahead);
         return a;
-      }
-      else {
+      } else {
         switch (t[0]) {
           case "*" : 
               _a = Caml_int32.imul(a, parse_f(/* () */0));
@@ -232,8 +221,7 @@ function l_parse(token) {
       if (t.tag) {
         Queue.push(t, look_ahead);
         return a;
-      }
-      else {
+      } else {
         switch (t[0]) {
           case "+" : 
               _a = a + parse_f_aux(parse_f(/* () */0)) | 0;
@@ -283,7 +271,7 @@ function eq(loc, x, y) {
 
 var match = parse(token(Stream.of_string("1 + 2 + (3  - 2) * 3 * 3  - 2 a")));
 
-eq('File "stream_parser_test.ml", line 132, characters 5-12', /* tuple */[
+eq("File \"stream_parser_test.ml\", line 132, characters 5-12", /* tuple */[
       match[0],
       match[1]
     ], /* tuple */[
@@ -294,7 +282,7 @@ eq('File "stream_parser_test.ml", line 132, characters 5-12', /* tuple */[
       ]
     ]);
 
-eq('File "stream_parser_test.ml", line 133, characters 5-12', /* tuple */[
+eq("File \"stream_parser_test.ml\", line 133, characters 5-12", /* tuple */[
       2,
       /* :: */[
         /* Kwd */Block.__(0, ["=="]),
@@ -302,7 +290,7 @@ eq('File "stream_parser_test.ml", line 133, characters 5-12', /* tuple */[
       ]
     ], parse(token(Stream.of_string("3 - 2  - 1"))));
 
-eq('File "stream_parser_test.ml", line 134, characters 5-12', /* tuple */[
+eq("File \"stream_parser_test.ml\", line 134, characters 5-12", /* tuple */[
       0,
       /* :: */[
         /* Kwd */Block.__(0, ["=="]),

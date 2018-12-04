@@ -49,12 +49,12 @@ let suites =
 
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ @@
-      List.for_all Ext_string.is_valid_source_name
+      List.for_all (fun x -> Ext_string.is_valid_source_name x = Good)
         ["x.ml"; "x.mli"; "x.re"; "x.rei"; "x.mll"; 
          "A_x.ml"; "ab.ml"; "a_.ml"; "a__.ml";
          "ax.ml"];
       OUnit.assert_bool __LOC__ @@ not @@
-      List.exists Ext_string.is_valid_source_name
+      List.exists (fun x -> Ext_string.is_valid_source_name x = Good)
         [".re"; ".rei";"..re"; "..rei"; "..ml"; ".mll~"; 
          "...ml"; "_.mli"; "_x.ml"; "__.ml"; "__.rei"; 
          ".#hello.ml"; ".#hello.rei"; "a-.ml"; "a-b.ml"; "-a-.ml"
@@ -230,6 +230,16 @@ let suites =
         (Ext_string.equal
            (Ext_string.inter4 "a0" "a1" "a2" "a3") "a0 a1 a2 a3"
         );
+    end;
+    __LOC__ >:: begin fun _ -> 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx" < 0);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/g/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "/xxx/g/" = 0)
     end;
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__

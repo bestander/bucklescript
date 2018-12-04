@@ -1,13 +1,14 @@
 'use strict';
 
-var Block                   = require("../../lib/js/block");
-var Curry                   = require("../../lib/js/curry");
-var Scanf                   = require("../../lib/js/scanf");
-var Printf                  = require("../../lib/js/printf");
-var Caml_io                 = require("../../lib/js/caml_io");
-var Caml_obj                = require("../../lib/js/caml_obj");
-var Pervasives              = require("../../lib/js/pervasives");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Block                   = require("../../lib/js/block.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Scanf                   = require("../../lib/js/scanf.js");
+var Js_exn                  = require("../../lib/js/js_exn.js");
+var Printf                  = require("../../lib/js/printf.js");
+var Caml_io                 = require("../../lib/js/caml_io.js");
+var Caml_obj                = require("../../lib/js/caml_obj.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var all_tests_ok = [/* true */1];
 
@@ -16,8 +17,7 @@ function finish() {
   if (match !== 0) {
     console.log("\nAll tests succeeded.");
     return /* () */0;
-  }
-  else {
+  } else {
     console.log("\n\n********* Test suite failed. ***********\n");
     return /* () */0;
   }
@@ -76,8 +76,7 @@ function test(b) {
   print_test_number(/* () */0);
   if (b) {
     return 0;
-  }
-  else {
+  } else {
     all_tests_ok[0] = /* false */0;
     return Pervasives.print_string(Curry._1(Printf.sprintf(/* Format */[
                         /* String_literal */Block.__(11, [
@@ -105,11 +104,11 @@ function test_raises_exc_p(pred, f, x) {
     print_failure_test_succeed(/* () */0);
     return /* false */0;
   }
-  catch (x$1){
+  catch (raw_x){
+    var x$1 = Js_exn.internalToOCamlException(raw_x);
     if (Curry._1(pred, x$1)) {
       return /* true */1;
-    }
-    else {
+    } else {
       print_failure_test_fail(/* () */0);
       return /* false */0;
     }
@@ -148,8 +147,7 @@ function scan_failure_test(f, x) {
   return test_raises_exc_p(function (param) {
               if (param[0] === Scanf.Scan_failure) {
                 return /* true */1;
-              }
-              else {
+              } else {
                 return /* false */0;
               }
             }, f, x);

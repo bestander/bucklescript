@@ -1,13 +1,13 @@
 'use strict';
 
-var Mt         = require("./mt");
-var $$Array    = require("../../lib/js/array");
-var Block      = require("../../lib/js/block");
-var Curry      = require("../../lib/js/curry");
-var Printf     = require("../../lib/js/printf");
-var Mt_global  = require("./mt_global");
-var Caml_float = require("../../lib/js/caml_float");
-var Pervasives = require("../../lib/js/pervasives");
+var Mt         = require("./mt.js");
+var $$Array    = require("../../lib/js/array.js");
+var Block      = require("../../lib/js/block.js");
+var Curry      = require("../../lib/js/curry.js");
+var Printf     = require("../../lib/js/printf.js");
+var Mt_global  = require("./mt_global.js");
+var Caml_float = require("../../lib/js/caml_float.js");
+var Pervasives = require("../../lib/js/pervasives.js");
 
 var match_000 = [0];
 
@@ -133,7 +133,7 @@ function from_pairs(ps) {
                                     "pair %d"
                                   ]), i),
                           function () {
-                            return /* Approx */Block.__(2, [
+                            return /* Approx */Block.__(5, [
                                       a,
                                       b
                                     ]);
@@ -146,51 +146,43 @@ var float_compare = Caml_float.caml_float_compare;
 
 var param = Caml_float.caml_classify_float(3);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 47, characters 5-12', param, /* FP_normal */0);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 47, characters 5-12", param, /* FP_normal */0);
 
 var param$1 = Caml_float.caml_modf_float(-3.125);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 48, characters 5-12', param$1, /* tuple */[
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 48, characters 5-12", param$1, /* tuple */[
       -0.125,
       -3
     ]);
 
-var param_000 = true;
+var match$3 = Caml_float.caml_modf_float(Pervasives.nan);
 
-var param_001 = true;
+var param_000 = +isNaN(match$3[0]);
+
+var param_001 = +isNaN(match$3[1]);
 
 var param$2 = /* tuple */[
   param_000,
   param_001
 ];
 
-var match$3 = Caml_float.caml_modf_float(Pervasives.nan);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 49, characters 5-12", param$2, /* tuple */[
+      /* true */1,
+      /* true */1
+    ]);
 
-var param_000$1 = isNaN(match$3[0]);
-
-var param_001$1 = isNaN(match$3[1]);
-
-var param$3 = /* tuple */[
-  param_000$1,
-  param_001$1
-];
-
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 49, characters 5-12', param$3, param$2);
-
-var param$4 = /* int array */[
+var param$3 = /* int array */[
   -1,
   1,
   1
 ];
 
-var param$5 = $$Array.map(function (x) {
+var param$4 = $$Array.map(function (x) {
       if (x > 0) {
         return 1;
-      }
-      else if (x < 0) {
+      } else if (x < 0) {
         return -1;
-      }
-      else {
+      } else {
         return 0;
       }
     }, $$Array.map(function (param) {
@@ -210,27 +202,31 @@ var param$5 = $$Array.map(function (x) {
           ]
         ]));
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 51, characters 5-12', param$5, param$4);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 52, characters 5-12", param$4, param$3);
 
-var param$6 = Caml_float.caml_copysign_float(-3, 0);
+var param$5 = Caml_float.caml_copysign_float(-3, 0);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 55, characters 5-12', param$6, 3);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 56, characters 5-12", param$5, 3);
 
-var param$7 = Caml_float.caml_copysign_float(3, 0);
+var param$6 = Caml_float.caml_copysign_float(3, 0);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 56, characters 5-12', param$7, 3);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 57, characters 5-12", param$6, 3);
 
-var param$8 = Math.log10(10);
+var param$7 = Math.log10(10);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 57, characters 5-12', param$8, 1);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 58, characters 5-12", param$7, 1);
 
-var param$9 = Caml_float.caml_expm1_float(0);
+var param$8 = Caml_float.caml_expm1_float(0);
 
-Mt_global.collect_eq(test_id, suites, 'File "float_test.ml", line 58, characters 5-12', param$9, 0);
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 59, characters 5-12", param$8, 0);
+
+var param$9 = Number("3.0");
+
+Mt_global.collect_eq(test_id, suites, "File \"float_test.ml\", line 60, characters 5-12", param$9, 3.0);
 
 var param$10 = Caml_float.caml_expm1_float(2);
 
-Mt_global.collect_approx(test_id, suites, 'File "float_test.ml", line 59, characters 9-16', param$10, 6.38905609893065);
+Mt_global.collect_approx(test_id, suites, "File \"float_test.ml\", line 61, characters 9-16", param$10, 6.38905609893065);
 
 var match$4 = Caml_float.caml_modf_float(32.3);
 
@@ -242,7 +238,7 @@ Mt.from_pair_suites("float_test.ml", Pervasives.$at(/* :: */[
           /* tuple */[
             "mod_float",
             function () {
-              return /* Approx */Block.__(2, [
+              return /* Approx */Block.__(5, [
                         3.2 % 0.5,
                         0.200000000000000178
                       ]);
@@ -252,7 +248,7 @@ Mt.from_pair_suites("float_test.ml", Pervasives.$at(/* :: */[
             /* tuple */[
               "modf_float1",
               function () {
-                return /* Approx */Block.__(2, [
+                return /* Approx */Block.__(5, [
                           a,
                           0.299999999999997158
                         ]);
@@ -262,7 +258,7 @@ Mt.from_pair_suites("float_test.ml", Pervasives.$at(/* :: */[
               /* tuple */[
                 "modf_float2",
                 function () {
-                  return /* Approx */Block.__(2, [
+                  return /* Approx */Block.__(5, [
                             b,
                             32
                           ]);

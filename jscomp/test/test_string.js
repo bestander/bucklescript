@@ -1,8 +1,8 @@
 'use strict';
 
-var Caml_bytes              = require("../../lib/js/caml_bytes");
-var Caml_string             = require("../../lib/js/caml_string");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Caml_bytes              = require("../../lib/js/caml_bytes.js");
+var Caml_string             = require("../../lib/js/caml_string.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function f(param) {
   switch (param) {
@@ -37,8 +37,7 @@ function c(x, y) {
 function h(s, b) {
   if (Caml_string.get(s, 0) === /* "a" */97 && Caml_bytes.get(b, 0) === /* "b" */98) {
     return +(Caml_string.get(s, 1) === Caml_bytes.get(b, 2));
-  }
-  else {
+  } else {
     return /* false */0;
   }
 }

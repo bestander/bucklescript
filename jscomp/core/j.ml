@@ -103,7 +103,7 @@ and expression_desc =
   | Char_of_int of expression
   | Char_to_int of expression 
   | Array_of_size of expression 
-    (* used in [js_create_array] primitive, note having
+    (* used in [#create_array] primitive, note having
        uninitilized array is not as bad as in ocaml, 
        since GC does not rely on it
      *)
@@ -219,7 +219,10 @@ and expression_desc =
        don't optimize it, since it does have side effec, 
        examples like "use asm;" and our compiler may generate "error;..." 
        which is better to leave it alone
+       The last argument is passed from as `j` from `{j||j}`
      *)
+  | Unicode of string 
+    (* It is escaped string, print delimited by '"'*)   
   | Raw_js_code of string * code_info
   (* literally raw JS code 
   *)

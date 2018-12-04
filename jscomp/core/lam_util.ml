@@ -58,8 +58,8 @@ let subst_lambda (s : Lam.t Ident_map.t) lam =
     | Lconst sc as l -> l
     | Lapply{fn; args; loc; status} -> 
       Lam.apply (subst fn) (List.map subst args) loc status
-    | Lfunction {arity; kind; params; body} -> 
-      Lam.function_ ~arity ~kind  ~params ~body:(subst body)
+    | Lfunction {arity; function_kind; params; body} -> 
+      Lam.function_ ~arity ~function_kind  ~params ~body:(subst body)
     | Llet(str, id, arg, body) -> 
       Lam.let_ str id (subst arg) (subst body)
     | Lletrec(decl, body) -> 
@@ -110,10 +110,10 @@ let subst_lambda (s : Lam.t Ident_map.t) lam =
     Even so, it's still correct
 *)
 let refine_let
-    ?kind param
+    ~kind param
     (arg : Lam.t) (l : Lam.t)  : Lam.t =
 
-  match (kind : Lambda.let_kind option), arg, l  with 
+  match (kind : Lam.let_kind ), arg, l  with 
   | _, _, Lvar w when Ident.same w param (* let k = xx in k *)
     -> arg (* TODO: optimize here -- it's safe to do substitution here *)
   | _, _, Lprim {primitive ; args =  [Lvar w]; loc ; _} when Ident.same w param 
@@ -135,7 +135,7 @@ let refine_let
         here we remove the definition of [param]
     *)
     Lam.apply fn [arg] loc status
-  | (Some (Strict | StrictOpt ) | None ),
+  | (Strict | StrictOpt ),
     ( Lvar _    | Lconst  _ | 
       Lprim {primitive = Pfield _ ;  
              args = [ Lglobal_module _ ]; _}) , _ ->
@@ -148,7 +148,7 @@ let refine_let
         since function evaluation is always delayed
     *)
     Lam.let_ Alias param arg l
-  | (Some (Strict | StrictOpt ) | None ), (Lfunction _ ), _ ->
+  | ( (Strict | StrictOpt ) ), (Lfunction _ ), _ ->
     (*It can be promoted to [Alias], however, 
         we don't want to do this, since we don't want the 
         function to be inlined to a block, for example
@@ -165,17 +165,17 @@ let refine_let
       | Some Strict, Lprim(Pmakeblock (_,_,Immutable),_) ->  
         Llet(StrictOpt, param, arg, l) 
   *)      
-  | Some Strict, _ ,_  when Lam_analysis.no_side_effects arg ->
+  | Strict, _ ,_  when Lam_analysis.no_side_effects arg ->
     Lam.let_ StrictOpt param arg l
-  | Some Variable, _, _ -> 
+  | Variable, _, _ -> 
     Lam.let_ Variable  param arg l
-  | Some kind, _, _ -> 
+  | kind, _, _ -> 
     Lam.let_ kind  param arg l
-  | None , _, _ -> 
-    Lam.let_ Strict param arg  l
+  (* | None , _, _ -> 
+    Lam.let_ Strict param arg  l *)
 
 let alias_ident_or_global (meta : Lam_stats.meta) (k:Ident.t) (v:Ident.t) 
-    (v_kind : Lam_stats.kind) (let_kind : Lambda.let_kind) =
+    (v_kind : Lam_stats.kind) (let_kind : Lam.let_kind) =
   (** treat rec as Strict, k is assigned to v 
       {[ let k = v ]}
   *)
@@ -328,42 +328,8 @@ let not_function (lam : Lam.t) =
    ]}   
 *)
 
-(*
-  let f x y =  x + y 
-  Invariant: there is no currying 
-  here since f's arity is 2, no side effect 
-  f 3 --> function(y) -> f 3 y 
-*)
-let eta_conversion n loc status fn args = 
-  let extra_args = Ext_list.init n
-      (fun _ ->   (Ident.create Literals.param)) in
-  let extra_lambdas = List.map (fun x -> Lam.var x) extra_args in
-  begin match List.fold_right (fun (lam : Lam.t) (acc, bind) ->
-      match lam with
-      | Lvar _
-      | Lconst (Const_base _ | Const_pointer _ | Const_immstring _ ) 
-      | Lprim {primitive = Pfield _;
-               args =  [ Lglobal_module _ ]; _ }
-      | Lfunction _ 
-        ->
-        (lam :: acc, bind)
-      | _ ->
-        let v = Ident.create Literals.partial_arg in
-        (Lam.var v :: acc),  ((v, lam) :: bind)
-    ) (fn::args) ([],[])   with 
-  | fn::args , bindings ->
 
-    let rest : Lam.t = 
-      Lam.function_ ~arity:n ~kind:Curried ~params:extra_args
-        ~body:(Lam.apply fn (args @ extra_lambdas) 
-                 loc 
-                 status
-              ) in
-    List.fold_left (fun lam (id,x) ->
-        Lam.let_ Strict id x lam
-      ) rest bindings
-  | _, _ -> assert false
-  end
+
 
 
 

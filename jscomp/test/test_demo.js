@@ -1,13 +1,12 @@
 'use strict';
 
-var List  = require("../../lib/js/list");
-var Curry = require("../../lib/js/curry");
+var List  = require("../../lib/js/list.js");
+var Curry = require("../../lib/js/curry.js");
 
 function fib(n) {
   if (n === 2 || n === 1) {
     return 1;
-  }
-  else {
+  } else {
     return fib(n - 1 | 0) + fib(n - 2 | 0) | 0;
   }
 }
@@ -25,8 +24,7 @@ function map(f, param) {
             Curry._1(f, param[0]),
             map(f, param[1])
           ];
-  }
-  else {
+  } else {
     return /* Nil */0;
   }
 }

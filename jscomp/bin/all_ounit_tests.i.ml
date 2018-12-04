@@ -75,7 +75,7 @@ open OUnitTypes
 
 (** Most simple heuristic, just pick the first test. *)
 let simple state =
-  (* 127 *) List.hd state.tests_planned
+  (* 160 *) List.hd state.tests_planned
 
 end
 module OUnitUtils
@@ -98,22 +98,22 @@ let is_success =
 let is_failure = 
   function
     | RFailure _ -> (* 0 *) true
-    | RSuccess _ | RError _  | RSkip _ | RTodo _ -> (* 254 *) false
+    | RSuccess _ | RError _  | RSkip _ | RTodo _ -> (* 320 *) false
 
 let is_error = 
   function 
     | RError _ -> (* 0 *) true
-    | RSuccess _ | RFailure _ | RSkip _ | RTodo _ -> (* 254 *) false
+    | RSuccess _ | RFailure _ | RSkip _ | RTodo _ -> (* 320 *) false
 
 let is_skip = 
   function
     | RSkip _ -> (* 0 *) true
-    | RSuccess _ | RFailure _ | RError _  | RTodo _ -> (* 254 *) false
+    | RSuccess _ | RFailure _ | RError _  | RTodo _ -> (* 320 *) false
 
 let is_todo = 
   function
     | RTodo _ -> (* 0 *) true
-    | RSuccess _ | RFailure _ | RError _  | RSkip _ -> (* 254 *) false
+    | RSuccess _ | RFailure _ | RError _  | RSkip _ -> (* 320 *) false
 
 let result_flavour = 
   function
@@ -145,7 +145,7 @@ let rec was_successful =
     | [] -> (* 3 *) true
     | RSuccess _::t 
     | RSkip _::t -> 
-        (* 381 *) was_successful t
+        (* 480 *) was_successful t
 
     | RFailure _::_
     | RError _::_ 
@@ -155,22 +155,22 @@ let rec was_successful =
 let string_of_node = 
   function
     | ListItem n -> 
-        (* 508 *) string_of_int n
+        (* 640 *) string_of_int n
     | Label s -> 
-        (* 762 *) s
+        (* 960 *) s
 
 (* Return the number of available tests *)
 let rec test_case_count = 
   function
-    | TestCase _ -> (* 127 *) 1 
-    | TestLabel (_, t) -> (* 148 *) test_case_count t
+    | TestCase _ -> (* 160 *) 1 
+    | TestLabel (_, t) -> (* 183 *) test_case_count t
     | TestList l -> 
-        (* 21 *) List.fold_left 
-          (fun c t -> (* 147 *) c + test_case_count t) 
+        (* 23 *) List.fold_left 
+          (fun c t -> (* 182 *) c + test_case_count t) 
           0 l
 
 let string_of_path path =
-  (* 254 *) String.concat ":" (List.rev_map string_of_node path)
+  (* 320 *) String.concat ":" (List.rev_map string_of_node path)
 
 let buff_format_printf f = 
   (* 0 *) let buff = Buffer.create 13 in
@@ -193,13 +193,13 @@ let mapi f l =
     rmapi 0 l
 
 let fold_lefti f accu l =
-  (* 21 *) let rec rfold_lefti cnt accup l = 
-    (* 168 *) match l with
+  (* 23 *) let rec rfold_lefti cnt accup l = 
+    (* 205 *) match l with
       | [] -> 
-          (* 21 *) accup
+          (* 23 *) accup
 
       | h::t -> 
-          (* 147 *) rfold_lefti (cnt + 1) (f accup h cnt) t
+          (* 182 *) rfold_lefti (cnt + 1) (f accup h cnt) t
   in
     rfold_lefti 0 accu l
 
@@ -217,7 +217,7 @@ open OUnitUtils
 type event_type = GlobalEvent of global_event | TestEvent of test_event
 
 let format_event verbose event_type =
-  (* 764 *) match event_type with
+  (* 962 *) match event_type with
     | GlobalEvent e ->
         (* 2 *) begin
           match e with 
@@ -276,31 +276,31 @@ let format_event verbose event_type =
         end
 
     | TestEvent e ->
-        (* 762 *) begin
+        (* 960 *) begin
           let string_of_result = 
             if verbose then
-              (* 381 *) function
-                | RSuccess _      -> (* 127 *) "ok\n"
+              (* 480 *) function
+                | RSuccess _      -> (* 160 *) "ok\n"
                 | RFailure (_, _) -> (* 0 *) "FAIL\n"
                 | RError (_, _)   -> (* 0 *) "ERROR\n"
                 | RSkip (_, _)    -> (* 0 *) "SKIP\n"
                 | RTodo (_, _)    -> (* 0 *) "TODO\n"
             else
-              (* 381 *) function
-                | RSuccess _      -> (* 127 *) "."
+              (* 480 *) function
+                | RSuccess _      -> (* 160 *) "."
                 | RFailure (_, _) -> (* 0 *) "F"
                 | RError (_, _)   -> (* 0 *) "E"
                 | RSkip (_, _)    -> (* 0 *) "S"
                 | RTodo (_, _)    -> (* 0 *) "T"
           in
             if verbose then
-              (* 381 *) match e with 
+              (* 480 *) match e with 
                 | EStart p -> 
-                    (* 127 *) Printf.sprintf "%s start\n" (string_of_path p)
+                    (* 160 *) Printf.sprintf "%s start\n" (string_of_path p)
                 | EEnd p -> 
-                    (* 127 *) Printf.sprintf "%s end\n" (string_of_path p)
+                    (* 160 *) Printf.sprintf "%s end\n" (string_of_path p)
                 | EResult result -> 
-                    (* 127 *) string_of_result result
+                    (* 160 *) string_of_result result
                 | ELog (lvl, str) ->
                     (* 0 *) let prefix = 
                       match lvl with 
@@ -312,21 +312,21 @@ let format_event verbose event_type =
                 | ELogRaw str ->
                     (* 0 *) str
             else 
-              (* 381 *) match e with 
-                | EStart _ | EEnd _ | ELog _ | ELogRaw _ -> (* 254 *) ""
-                | EResult result -> (* 127 *) string_of_result result
+              (* 480 *) match e with 
+                | EStart _ | EEnd _ | ELog _ | ELogRaw _ -> (* 320 *) ""
+                | EResult result -> (* 160 *) string_of_result result
         end
 
 let file_logger fn =
   (* 1 *) let chn = open_out fn in
     (fun ev ->
-       (* 382 *) output_string chn (format_event true ev);
+       (* 481 *) output_string chn (format_event true ev);
        flush chn),
     (fun () -> (* 1 *) close_out chn)
 
 let std_logger verbose =
   (* 1 *) (fun ev -> 
-     (* 382 *) print_string (format_event verbose ev);
+     (* 481 *) print_string (format_event verbose ev);
      flush stdout),
   (fun () -> (* 1 *) ())
 
@@ -343,7 +343,7 @@ let create output_file_opt verbose (log,close) =
           (* 0 *) null_logger
   in
     (fun ev ->
-       (* 382 *) std_log ev; file_log ev; log ev),
+       (* 481 *) std_log ev; file_log ev; log ev),
     (fun () ->
        (* 1 *) std_close (); file_close (); close ())
 
@@ -705,13 +705,13 @@ let assert_failure msg =
   (* 0 *) failwith ("OUnit: " ^ msg)
 
 let assert_bool msg b =
-  (* 2009412 *) if not b then (* 0 *) assert_failure msg
+  (* 2009430 *) if not b then (* 0 *) assert_failure msg
 
 let assert_string str =
   (* 0 *) if not (str = "") then (* 0 *) assert_failure str
 
 let assert_equal ?(cmp = ( = )) ?printer ?pp_diff ?msg expected actual =
-  (* 2001459 *) let get_error_string () =
+  (* 2001508 *) let get_error_string () =
     (* 0 *) let res =
       buff_format_printf
         (fun fmt ->
@@ -887,11 +887,11 @@ let assert_command
       ()
 
 let raises f =
-  (* 7 *) try
+  (* 8 *) try
     f ();
     None
   with e -> 
-    (* 7 *) Some e
+    (* 8 *) Some e
 
 let assert_raises ?msg exn (f: unit -> 'a) = 
   (* 6 *) let pexn = 
@@ -919,7 +919,7 @@ let assert_raises ?msg exn (f: unit -> 'a) =
 
 
 let assert_raise_any ?msg (f: unit -> 'a) = 
-  (* 1 *) let pexn = 
+  (* 2 *) let pexn = 
     Printexc.to_string 
   in
   let get_error_string () =
@@ -940,7 +940,7 @@ let assert_raise_any ?msg (f: unit -> 'a) =
           (* 0 *) assert_failure (get_error_string ())
 
       | Some exn -> 
-          (* 1 *) assert_bool (pexn exn) true
+          (* 2 *) assert_bool (pexn exn) true
 (* Compare floats up to a given relative error *)
 let cmp_float ?(epsilon = 0.00001) a b =
   (* 0 *) abs_float (a -. b) <= epsilon *. (abs_float a) ||
@@ -951,8 +951,8 @@ let (@?) = assert_bool
 
 (* Some shorthands which allows easy test construction *)
 let (>:) s t = (* 0 *) TestLabel(s, t)             (* infix *)
-let (>::) s f = (* 127 *) TestLabel(s, TestCase(f))  (* infix *)
-let (>:::) s l = (* 21 *) TestLabel(s, TestList(l)) (* infix *)
+let (>::) s f = (* 160 *) TestLabel(s, TestCase(f))  (* infix *)
+let (>:::) s l = (* 23 *) TestLabel(s, TestList(l)) (* infix *)
 
 (* Utility function to manipulate test *)
 let rec test_decorate g =
@@ -1087,7 +1087,7 @@ let maybe_backtrace = ""
 (* Run all tests, report starts, errors, failures, and return the results *)
 let perform_test report test =
   (* 1 *) let run_test_case f path =
-    (* 127 *) try 
+    (* 160 *) try 
       f ();
       RSuccess path
     with
@@ -1106,22 +1106,22 @@ let perform_test report test =
   let rec flatten_test path acc = 
     function
       | TestCase(f) -> 
-          (* 127 *) (path, f) :: acc
+          (* 160 *) (path, f) :: acc
 
       | TestList (tests) ->
-          (* 21 *) fold_lefti 
+          (* 23 *) fold_lefti 
             (fun acc t cnt -> 
-               (* 147 *) flatten_test 
+               (* 182 *) flatten_test 
                  ((ListItem cnt)::path) 
                  acc t)
             acc tests
       
       | TestLabel (label, t) -> 
-          (* 148 *) flatten_test ((Label label)::path) acc t
+          (* 183 *) flatten_test ((Label label)::path) acc t
   in
   let test_cases = List.rev (flatten_test [] [] test) in
   let runner (path, f) = 
-    (* 127 *) let result = 
+    (* 160 *) let result = 
       report (EStart path);
       run_test_case f path 
     in
@@ -1130,18 +1130,18 @@ let perform_test report test =
       result
   in
   let rec iter state = 
-    (* 128 *) match state.tests_planned with 
+    (* 161 *) match state.tests_planned with 
       | [] ->
           (* 1 *) state.results
       | _ ->
-          (* 127 *) let (path, f) = !global_chooser state in            
+          (* 160 *) let (path, f) = !global_chooser state in            
           let result = runner (path, f) in
             iter 
               {
                 results = result :: state.results;
                 tests_planned = 
                   List.filter 
-                    (fun (path', _) -> (* 8128 *) path <> path') state.tests_planned
+                    (fun (path', _) -> (* 12880 *) path <> path') state.tests_planned
               }
   in
     iter {results = []; tests_planned = test_cases}
@@ -1171,7 +1171,7 @@ let run_test_tt ?verbose test =
     time_fun 
       perform_test 
       (fun ev ->
-         (* 381 *) log (OUnitLogger.TestEvent ev))
+         (* 480 *) log (OUnitLogger.TestEvent ev))
       test 
   in
     
@@ -1294,6 +1294,12 @@ val map2i : (int -> 'a -> 'b -> 'c ) -> 'a array -> 'b array -> 'c array
 
 val to_list_map : ('a -> 'b option) -> 'a array -> 'b list 
 
+val to_list_map_acc : 
+  ('a -> 'b option) -> 
+  'a array -> 
+  'b list -> 
+  'b list 
+
 val of_list_map : ('a -> 'b) -> 'a list -> 'b array 
 
 val rfind_with_index : 'a array -> ('a -> 'b -> bool) -> 'b -> int
@@ -1414,15 +1420,20 @@ let map2i f a b =
   else
     (* 0 *) Array.mapi (fun i a -> (* 0 *) f i  a ( Array.unsafe_get b i )) a 
 
-let to_list_map f a =
-  (* 0 *) let rec tolist i res =
-    (* 0 *) if i < 0 then (* 0 *) res else
-      (* 0 *) let v = Array.unsafe_get a i in
-      tolist (i - 1)
+
+ let rec tolist_aux a f  i res =
+    (* 14 *) if i < 0 then (* 2 *) res else
+      (* 12 *) let v = Array.unsafe_get a i in
+      tolist_aux a f  (i - 1)
         (match f v with
-         | Some v -> (* 0 *) v :: res
-         | None -> (* 0 *) res) in
-  tolist (Array.length a - 1) []
+         | Some v -> (* 6 *) v :: res
+         | None -> (* 6 *) res) 
+
+let to_list_map f a = 
+  (* 0 *) tolist_aux a f (Array.length a - 1) []
+
+let to_list_map_acc f a acc = 
+  (* 2 *) tolist_aux a f (Array.length a - 1) acc
 
 
 (* TODO: What would happen if [f] raise, memory leak? *)
@@ -1716,12 +1727,19 @@ val rindex_neg : string -> char -> int
 
 val rindex_opt : string -> char -> int option
 
-val is_valid_source_name : string -> bool
+type check_result = 
+    | Good | Invalid_module_name | Suffix_mismatch
+
+val is_valid_source_name :
+   string -> check_result
 
 val no_char : string -> char -> int -> int -> bool 
 
 
 val no_slash : string -> bool 
+
+(** return negative means no slash, otherwise [i] means the place for first slash *)
+val no_slash_idx : string -> int 
 
 (** if no conversion happens, reference equality holds *)
 val replace_slash_backward : string -> string 
@@ -1744,6 +1762,10 @@ val inter4 : string -> string -> string -> string -> string
 val concat_array : string -> string array -> string 
 
 val single_colon : string 
+
+val parent_dir_lit : string
+val current_dir_lit : string
+
 end = struct
 #1 "ext_string.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -1912,7 +1934,7 @@ let for_all_range s ~start ~finish p =
 let for_all (p : char -> bool) s =   
   (* 3 *) unsafe_for_all_range s ~start:0  ~finish:(String.length s - 1) p 
 
-let is_empty s = (* 0 *) String.length s = 0
+let is_empty s = (* 4 *) String.length s = 0
 
 
 let repeat n s  =
@@ -1928,11 +1950,11 @@ let equal (x : string) y  = (* 0 *) x = y
 
 
 let unsafe_is_sub ~sub i s j ~len =
-  (* 699 *) let rec check k =
-    (* 893 *) if k = len
-    then (* 35 *) true
+  (* 990 *) let rec check k =
+    (* 1256 *) if k = len
+    then (* 41 *) true
     else 
-      (* 858 *) String.unsafe_get sub (i+k) = 
+      (* 1215 *) String.unsafe_get sub (i+k) = 
       String.unsafe_get s (j+k) && check (k+1)
   in
   j+len <= String.length s && check 0
@@ -1940,21 +1962,21 @@ let unsafe_is_sub ~sub i s j ~len =
 
 exception Local_exit 
 let find ?(start=0) ~sub s =
-  (* 41 *) let n = String.length sub in
+  (* 47 *) let n = String.length sub in
   let s_len = String.length s in 
   let i = ref start in  
   try
     while !i + n <= s_len do
-      (* 691 *) if unsafe_is_sub ~sub 0 s !i ~len:n then
-        (* 33 *) raise_notrace Local_exit;
+      (* 982 *) if unsafe_is_sub ~sub 0 s !i ~len:n then
+        (* 39 *) raise_notrace Local_exit;
       incr i
     done;
     -1
   with Local_exit ->
-    (* 33 *) !i
+    (* 39 *) !i
 
 let contain_substring s sub = 
-  (* 11 *) find s ~sub >= 0 
+  (* 17 *) find s ~sub >= 0 
 
 (** TODO: optimize 
     avoid nonterminating when string is empty 
@@ -2030,7 +2052,7 @@ let starts_with_and_number s ~offset beg =
     else 
       (* 2 *) -1 
 
-let equal (x : string) y  = (* 8829545 *) x = y
+let equal (x : string) y  = (* 8829971 *) x = y
 
 let unsafe_concat_with_length len sep l =
   (* 0 *) match l with 
@@ -2079,25 +2101,39 @@ let is_valid_module_file (s : string) =
          | _ -> (* 2 *) false )
   | _ -> (* 12 *) false 
 
+type check_result = 
+  | Good 
+  | Invalid_module_name 
+  | Suffix_mismatch
 (** 
    TODO: move to another module 
    Make {!Ext_filename} not stateful
 *)
-let is_valid_source_name name =
+let is_valid_source_name name : check_result =
   (* 27 *) match check_any_suffix_case_then_chop name [
       ".ml"; 
       ".re";
       ".mli"; ".mll"; ".rei"
     ] with 
-  | None -> (* 1 *) false 
-  | Some x -> (* 26 *) is_valid_module_file  x 
+  | None -> (* 1 *) Suffix_mismatch
+  | Some x -> 
+    (* 26 *) if is_valid_module_file  x then
+      (* 10 *) Good
+    else (* 16 *) Invalid_module_name  
 
 (** TODO: can be improved to return a positive integer instead *)
-let rec unsafe_no_char x ch i  len = 
-  (* 34 *) i > len  || 
-  (String.unsafe_get x i <> ch && unsafe_no_char x ch (i + 1)  len)
+let rec unsafe_no_char x ch i  last_idx = 
+  (* 34 *) i > last_idx  || 
+  (String.unsafe_get x i <> ch && unsafe_no_char x ch (i + 1)  last_idx)
 
-let no_char x ch i len =
+let rec unsafe_no_char_idx x ch i last_idx = 
+  (* 13 *) if i > last_idx  then (* 1 *) -1 
+  else 
+    (* 12 *) if String.unsafe_get x i <> ch then 
+      (* 9 *) unsafe_no_char_idx x ch (i + 1)  last_idx
+    else (* 3 *) i
+
+let no_char x ch i len  : bool =
   (* 0 *) let str_len = String.length x in 
   if i < 0 || i >= str_len || len >= str_len then (* 0 *) invalid_arg "Ext_string.no_char"   
   else (* 0 *) unsafe_no_char x ch i len 
@@ -2105,6 +2141,9 @@ let no_char x ch i len =
 
 let no_slash x = 
   (* 5 *) unsafe_no_char x '/' 0 (String.length x - 1)
+
+let no_slash_idx x = 
+  (* 4 *) unsafe_no_char_idx x '/' 0 (String.length x - 1)
 
 let replace_slash_backward (x : string ) = 
   (* 1 *) let len = String.length x in 
@@ -2217,6 +2256,9 @@ let inter4 a b c d =
   (* 1 *) concat_array single_space [| a; b ; c; d|]
   
     
+let parent_dir_lit = ".."    
+let current_dir_lit = "."
+
 end
 module Ounit_array_tests
 = struct
@@ -2257,7 +2299,19 @@ let suites =
         (* 1 *) Ext_array.of_list_map succ [] =~ [||];
         Ext_array.of_list_map succ [1]  =~ [|2|];
         Ext_array.of_list_map succ [1;2;3]  =~ [|2;3;4|];
-    end
+    end; 
+    __LOC__ >:: begin fun _ -> 
+        (* 1 *) Ext_array.to_list_map_acc
+        (fun x -> (* 6 *) if x mod 2 = 0 then (* 3 *) Some x else (* 3 *) None )
+        [|1;2;3;4;5;6|] [1;2;3]
+        =~ [2;4;6;1;2;3]
+    end;
+    __LOC__ >:: begin fun _ -> 
+        (* 1 *) Ext_array.to_list_map_acc
+        (fun x -> (* 6 *) if x mod 2 = 0 then (* 3 *) Some x else (* 3 *) None )
+        [|1;2;3;4;5;6|] []
+        =~ [2;4;6]
+    end;
     ]
 end
 module Ounit_tests_util
@@ -3493,17 +3547,17 @@ val setter_suffix : string
 val setter_suffix_len : int
 
 
-val js_debugger : string
-val js_pure_expr : string
-val js_pure_stmt : string
-val js_unsafe_downgrade : string
-val js_fn_run : string
-val js_method_run : string
-val js_fn_method : string
-val js_fn_mk : string
+val debugger : string
+val raw_expr : string
+val raw_stmt : string
+val unsafe_downgrade : string
+val fn_run : string
+val method_run : string
+val fn_method : string
+val fn_mk : string
 
 (** callback actually, not exposed to user yet *)
-val js_fn_runmethod : string 
+(* val js_fn_runmethod : string *)
 
 val bs_deriving : string
 val bs_deriving_dot : string
@@ -3522,6 +3576,9 @@ val suffix_ml : string
 val suffix_mlast : string 
 val suffix_mliast : string
 val suffix_mll : string
+val suffix_re : string
+val suffix_rei : string 
+
 val suffix_d : string
 val suffix_mlastd : string
 val suffix_mliastd : string
@@ -3534,7 +3591,22 @@ val commonjs : string
 val amdjs : string 
 val goog : string 
 val es6 : string 
+val es6_global : string
+val amdjs_global : string 
 val unused_attribute : string 
+val dash_nostdlib : string
+
+val reactjs_jsx_ppx_exe : string 
+
+val unescaped_j_delimiter : string 
+val escaped_j_delimiter : string 
+
+val unescaped_js_delimiter : string 
+
+val native : string
+val bytecode : string
+val js : string
+
 end = struct
 #1 "literals.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -3593,16 +3665,16 @@ let imul = "imul" (* signed int32 mul *)
 let setter_suffix = "#="
 let setter_suffix_len = String.length setter_suffix
 
-let js_debugger = "js_debugger"
-let js_pure_expr = "js_pure_expr"
-let js_pure_stmt = "js_pure_stmt"
-let js_unsafe_downgrade = "js_unsafe_downgrade"
-let js_fn_run = "js_fn_run"
-let js_method_run = "js_method_run"
+let debugger = "debugger"
+let raw_expr = "raw_expr"
+let raw_stmt = "raw_stmt"
+let unsafe_downgrade = "unsafe_downgrade"
+let fn_run = "fn_run"
+let method_run = "method_run"
 
-let js_fn_method = "js_fn_method"
-let js_fn_mk = "js_fn_mk"
-let js_fn_runmethod = "js_fn_runmethod"
+let fn_method = "fn_method"
+let fn_mk = "fn_mk"
+(*let js_fn_runmethod = "js_fn_runmethod"*)
 
 let bs_deriving = "bs.deriving"
 let bs_deriving_dot = "bs.deriving."
@@ -3621,6 +3693,9 @@ let suffix_cmi = ".cmi"
 let suffix_mll = ".mll"
 let suffix_ml = ".ml"
 let suffix_mli = ".mli"
+let suffix_re = ".re"
+let suffix_rei = ".rei"
+
 let suffix_cmt = ".cmt" 
 let suffix_cmti = ".cmti" 
 let suffix_mlast = ".mlast"
@@ -3634,8 +3709,21 @@ let commonjs = "commonjs"
 let amdjs = "amdjs"
 let goog = "goog"
 let es6 = "es6"
-
+let es6_global = "es6-global"
+let amdjs_global = "amdjs-global"
 let unused_attribute = "Unused attribute " 
+let dash_nostdlib = "-nostdlib"
+
+let reactjs_jsx_ppx_exe  = "reactjs_jsx_ppx.exe"
+
+let unescaped_j_delimiter = "j"
+let unescaped_js_delimiter = "js"
+let escaped_j_delimiter =  "*j" (* not user level syntax allowed *)
+
+let native = "native"
+let bytecode = "bytecode"
+let js = "js"
+
 end
 module Ounit_cmd_util : sig 
 #1 "ounit_cmd_util.mli"
@@ -3684,7 +3772,7 @@ let rec safe_dup fd =
   end
 
 let safe_close fd =
-  (* 22 *) try Unix.close fd with Unix.Unix_error(_,_,_) -> (* 0 *) ()
+  (* 42 *) try Unix.close fd with Unix.Unix_error(_,_,_) -> (* 0 *) ()
 
 
 type output = {
@@ -3694,7 +3782,7 @@ type output = {
 }
 
 let perform command args = 
-  (* 11 *) let new_fd_in, new_fd_out = Unix.pipe () in 
+  (* 21 *) let new_fd_in, new_fd_out = Unix.pipe () in 
   let err_fd_in, err_fd_out = Unix.pipe () in 
   match Unix.fork () with 
   | 0 -> 
@@ -3713,7 +3801,7 @@ let perform command args =
        when all the descriptiors on a pipe's output are closed, a call to 
        [write] on its input kills the writing process (EPIPE).
     *)
-    (* 11 *) safe_close new_fd_out ; 
+    (* 21 *) safe_close new_fd_out ; 
     safe_close err_fd_out ; 
     let in_chan = Unix.in_channel_of_descr new_fd_in in 
     let err_in_chan = Unix.in_channel_of_descr err_fd_in in 
@@ -3721,20 +3809,20 @@ let perform command args =
     let err_buf = Buffer.create 1024 in 
     (try 
        while true do 
-         (* 69 *) Buffer.add_string buf (input_line in_chan );             
+         (* 80 *) Buffer.add_string buf (input_line in_chan );             
          Buffer.add_char buf '\n'
        done;
      with
-       End_of_file -> (* 11 *) ()) ; 
+       End_of_file -> (* 21 *) ()) ; 
     (try 
        while true do 
-         (* 114 *) Buffer.add_string err_buf (input_line err_in_chan );
+         (* 156 *) Buffer.add_string err_buf (input_line err_in_chan );
          Buffer.add_char err_buf '\n'
        done;
      with
-       End_of_file -> (* 11 *) ()) ; 
+       End_of_file -> (* 21 *) ()) ; 
     let exit_code = match snd @@ Unix.waitpid [] pid with 
-      | Unix.WEXITED exit_code -> (* 11 *) exit_code 
+      | Unix.WEXITED exit_code -> (* 21 *) exit_code 
       | Unix.WSIGNALED _signal_number 
       | Unix.WSTOPPED _signal_number  -> (* 0 *) 127 in 
     {
@@ -3745,7 +3833,7 @@ let perform command args =
 
 
 let perform_bsc args = 
-  (* 11 *) perform bsc_exe 
+  (* 21 *) perform bsc_exe 
     (Array.append 
        [|bsc_exe ; 
          "-bs-package-name" ; "bs-platform"; 
@@ -3762,7 +3850,7 @@ let perform_bsc args =
        |] args)
 
 let bsc_eval str = 
-  (* 8 *) perform_bsc [|"-bs-eval"; str|]        
+  (* 18 *) perform_bsc [|"-bs-eval"; str|]        
 
   let debug_output o = 
   (* 0 *) Printf.printf "\nexit_code:%d\nstdout:%s\nstderr:%s\n"
@@ -3874,6 +3962,106 @@ external ff :
       (Ext_string.contain_substring should_err.stderr
       "Ill defined"
       )
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+(** used in return value 
+    This should fail, we did not 
+    support uncurry return value yet
+*)
+    (* 1 *) let should_err = bsc_eval {|
+    external v3 :
+    int -> int -> (int -> int -> int [@bs.uncurry])
+    = ""[@@bs.val]
+
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err;*)
+    OUnit.assert_bool __LOC__
+    (Ext_string.contain_substring 
+    should_err.stderr "bs.uncurry")
+    end ;
+
+    __LOC__ >:: begin fun _ -> 
+    (* 1 *) let should_err = bsc_eval {|
+    external v4 :  
+    (int -> int -> int [@bs.uncurry]) = ""
+    [@@bs.val]
+
+    |} in 
+    (* Ounit_cmd_util.debug_output should_err ; *)
+    OUnit.assert_bool __LOC__
+    (Ext_string.contain_substring 
+    should_err.stderr "bs.uncurry")
+  end ;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+      {js| \uFFF|js}
+      |} in 
+      OUnit.assert_bool __LOC__ (not @@ Ext_string.is_empty should_err.stderr)
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+      external mk : int -> ([`a|`b] [@bs.string]) = "" [@@bs.val]
+      |} in 
+      OUnit.assert_bool __LOC__ (not @@ Ext_string.is_empty should_err.stderr)
+    end;
+    
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+      external mk : int -> ([`a|`b] ) = "" [@@bs.val]
+      |} in 
+      OUnit.assert_bool __LOC__ ( Ext_string.is_empty should_err.stderr)
+      (* give a warning or ? 
+         ( [`a | `b ] [@bs.string] ) 
+         (* auto-convert to ocaml poly-variant *)
+      *)
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+      type t 
+      external mk : int -> (_ [@bs.as {json| { x : 3 } |json}]) ->  t = "" [@@bs.val]
+      |} in 
+      OUnit.assert_bool __LOC__ (Ext_string.contain_substring should_err.stderr "Invalid json literal")
+    end
+    ;
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+      type t 
+      external mk : int -> (_ [@bs.as {json| { "x" : 3 } |json}]) ->  t = "" [@@bs.val]
+      |} in 
+      OUnit.assert_bool __LOC__ (Ext_string.is_empty should_err.stderr)
+    end
+    ;
+    (* #1510 *)
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+       let should_fail = fun [@bs.this] (Some x) y u -> y + u 
+      |} in 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring  should_err.stderr "simple")
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+       let should_fail = fun [@bs.this] (Some x as v) y u -> y + u 
+      |} in 
+      (* Ounit_cmd_util.debug_output should_err; *)
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring  should_err.stderr "simple")
+    end;
+    
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let should_err = bsc_eval {|
+let handler2 = fun [@bs.exn] (a,b) x -> 
+  match a with 
+  | _ -> x + 1
+
+|} in 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.contain_substring should_err.stderr "identifier")
     end
   ]
 
@@ -4138,12 +4326,12 @@ let stats h =
    bucket_histogram = histo }
 
 let rec small_bucket_mem eq_key key lst =
-  (* 26191 *) match lst with 
-  | [] -> (* 2022 *) false 
+  (* 26203 *) match lst with 
+  | [] -> (* 2032 *) false 
   | key1::rest -> 
-    (* 24169 *) eq_key key   key1 ||
+    (* 24171 *) eq_key key   key1 ||
     match rest with 
-    | [] -> (* 1964 *) false 
+    | [] -> (* 1965 *) false 
     | key2 :: rest -> 
       (* 7398 *) eq_key key   key2 ||
       match rest with 
@@ -4171,6 +4359,7 @@ sig
   val copy: t -> t
   val remove:  t -> key -> unit
   val add :  t -> key -> unit
+  val of_array : key array -> t 
   val check_add : t -> key -> bool
   val mem :  t -> key -> bool
   val iter: (key -> unit) ->  t -> unit
@@ -4291,6 +4480,15 @@ let add (h : _ Hash_set_gen.t) key =
       if h.size > Array.length h_data lsl 1 then (* 5 *) Hash_set_gen.resize key_index h
     end
 
+let of_array arr = 
+  (* 0 *) let len = Array.length arr in 
+  let tbl = create len in 
+  for i = 0 to len - 1  do
+    (* 0 *) add tbl (Array.unsafe_get arr i);
+  done ;
+  tbl 
+  
+    
 let check_add (h : _ Hash_set_gen.t) key =
   (* 0 *) let i = key_index h key  in 
   let h_data = h.data in  
@@ -4308,7 +4506,7 @@ let check_add (h : _ Hash_set_gen.t) key =
 let mem (h :  _ Hash_set_gen.t) key =
   (* 3102 *) Hash_set_gen.small_bucket_mem eq_key key (Array.unsafe_get h.data (key_index h key)) 
 
-# 113
+# 122
 end
   
 
@@ -4432,6 +4630,15 @@ let add (h : _ Hash_set_gen.t) key =
       if h.size > Array.length h_data lsl 1 then (* 9 *) Hash_set_gen.resize key_index h
     end
 
+let of_array arr = 
+  (* 0 *) let len = Array.length arr in 
+  let tbl = create len in 
+  for i = 0 to len - 1  do
+    (* 0 *) add tbl (Array.unsafe_get arr i);
+  done ;
+  tbl 
+  
+    
 let check_add (h : _ Hash_set_gen.t) key =
   (* 0 *) let i = key_index h key  in 
   let h_data = h.data in  
@@ -4887,7 +5094,7 @@ end = struct
 # 31
 type key = string 
 let key_index (h :  _ Hash_set_gen.t ) (key : key) =
-  (* 214 *) (Bs_hash_stubs.hash_string  key) land (Array.length h.data - 1)
+  (* 226 *) (Bs_hash_stubs.hash_string  key) land (Array.length h.data - 1)
 let eq_key = Ext_string.equal 
 type  t = key  Hash_set_gen.t 
 
@@ -4916,16 +5123,25 @@ let remove (h : _ Hash_set_gen.t) key =
 
 
 let add (h : _ Hash_set_gen.t) key =
-  (* 204 *) let i = key_index h key  in 
+  (* 216 *) let i = key_index h key  in 
   let h_data = h.data in 
   let old_bucket = (Array.unsafe_get h_data i) in
   if not (Hash_set_gen.small_bucket_mem eq_key key old_bucket) then 
-    (* 203 *) begin 
+    (* 214 *) begin 
       Array.unsafe_set h_data i (key :: old_bucket);
       h.size <- h.size + 1 ;
       if h.size > Array.length h_data lsl 1 then (* 0 *) Hash_set_gen.resize key_index h
     end
 
+let of_array arr = 
+  (* 0 *) let len = Array.length arr in 
+  let tbl = create len in 
+  for i = 0 to len - 1  do
+    (* 0 *) add tbl (Array.unsafe_get arr i);
+  done ;
+  tbl 
+  
+    
 let check_add (h : _ Hash_set_gen.t) key =
   (* 8 *) let i = key_index h key  in 
   let h_data = h.data in  
@@ -5180,6 +5396,15 @@ let add (h : _ Hash_set_gen.t) key =
       if h.size > Array.length h_data lsl 1 then (* 0 *) Hash_set_gen.resize key_index h
     end
 
+let of_array arr = 
+  (* 0 *) let len = Array.length arr in 
+  let tbl = create len in 
+  for i = 0 to len - 1  do
+    (* 0 *) add tbl (Array.unsafe_get arr i);
+  done ;
+  tbl 
+  
+    
 let check_add (h : _ Hash_set_gen.t) key =
   (* 0 *) let i = key_index h key  in 
   let h_data = h.data in  
@@ -5973,17 +6198,29 @@ let reserved_words =
    "parseFloat";
    "parseInt";
    
-   (** reserved for commonjs *)   
+   (** reserved for commonjs and NodeJS globals*)   
    "require";
    "exports";
-   "module"
+   "module";
+    "clearImmediate";
+    "clearInterval";
+    "clearTimeout";
+    "console";
+    "global";
+    "process";
+    "require";
+    "setImmediate";
+    "setInterval";
+    "setTimeout";
+    "__dirname";
+    "__filename"
   |]
 
 let reserved_map = 
   let len = Array.length reserved_words in 
   let set =  String_hash_set.create 1024 in (* large hash set for perfect hashing *)
   for i = 0 to len - 1 do 
-    (* 103 *) String_hash_set.add set reserved_words.(i);
+    (* 115 *) String_hash_set.add set reserved_words.(i);
   done ;
   set 
 
@@ -6032,6 +6269,7 @@ let convert keyword (name : string) =
           | '.' -> (* 0 *) Buffer.add_string buffer "$dot"
           | '%' -> (* 0 *) Buffer.add_string buffer "$percent"
           | '~' -> (* 0 *) Buffer.add_string buffer "$tilde"
+          | '#' -> (* 0 *) Buffer.add_string buffer "$hash"
           | 'a'..'z' | 'A'..'Z'| '_'|'$' |'0'..'9'-> (* 0 *) Buffer.add_char buffer  c
           | _ -> (* 0 *) Buffer.add_string buffer "$unknown"
         done; Buffer.contents buffer)
@@ -6068,6 +6306,7 @@ let equal ( x : Ident.t) ( y : Ident.t) =
   (* 9498 *) if x.stamp <> 0 then (* 9498 *) x.stamp = y.stamp
   else (* 0 *) y.stamp = 0 && x.name = y.name
    
+
 end
 module Hash_set_ident_mask : sig 
 #1 "hash_set_ident_mask.mli"
@@ -7018,6 +7257,293 @@ let suites =
         end
     ]
 end
+module Ext_utf8 : sig 
+#1 "ext_utf8.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+type byte =
+  | Single of int
+  | Cont of int
+  | Leading of int * int
+  | Invalid
+
+
+val classify : char -> byte 
+
+val follow : 
+    string -> 
+    int -> 
+    int -> 
+    int ->
+    int * int 
+
+
+(** 
+  return [-1] if failed 
+*)
+val next :  string -> remaining:int -> int -> int 
+
+
+exception Invalid_utf8 of string 
+ 
+ 
+val decode_utf8_string : string -> int list
+end = struct
+#1 "ext_utf8.ml"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+type byte =
+  | Single of int
+  | Cont of int
+  | Leading of int * int
+  | Invalid
+
+(** [classify chr] returns the {!byte} corresponding to [chr] *)
+let classify chr =
+  (* 71 *) let c = int_of_char chr in
+  (* Classify byte according to leftmost 0 bit *)
+  if c land 0b1000_0000 = 0 then (* 46 *) Single c else
+    (* c 0b0____*)
+  (* 25 *) if c land 0b0100_0000 = 0 then (* 17 *) Cont (c land 0b0011_1111) else
+    (* c 0b10___*)
+  (* 8 *) if c land 0b0010_0000 = 0 then (* 0 *) Leading (1, c land 0b0001_1111) else
+    (* c 0b110__*)
+  (* 8 *) if c land 0b0001_0000 = 0 then (* 7 *) Leading (2, c land 0b0000_1111) else
+    (* c 0b1110_ *)
+  (* 1 *) if c land 0b0000_1000 = 0 then (* 1 *) Leading (3, c land 0b0000_0111) else
+    (* c 0b1111_0___*)
+  (* 0 *) if c land 0b0000_0100 = 0 then (* 0 *) Leading (4, c land 0b0000_0011) else
+    (* c 0b1111_10__*)
+  (* 0 *) if c land 0b0000_0010 = 0 then (* 0 *) Leading (5, c land 0b0000_0001)
+  (* c 0b1111_110__ *)
+  else (* 0 *) Invalid
+
+exception Invalid_utf8 of string 
+
+(* when the first char is [Leading],
+  TODO: need more error checking 
+  when out of bond
+ *)
+let rec follow s n (c : int) offset = 
+  (* 25 *) if n = 0 then (* 8 *) (c, offset)
+  else 
+    (* 17 *) begin match classify s.[offset+1] with
+      | Cont cc -> (* 17 *) follow s (n-1) ((c lsl 6) lor (cc land 0x3f)) (offset+1)
+      | _ -> (* 0 *) raise (Invalid_utf8 "Continuation byte expected")
+    end
+
+
+let rec next s ~remaining  offset = 
+  (* 0 *) if remaining = 0 then (* 0 *) offset 
+  else 
+    (* 0 *) begin match classify s.[offset+1] with
+      | Cont cc -> (* 0 *) next s ~remaining:(remaining-1) (offset+1)
+      | _ ->  (* 0 *) -1 
+      | exception _ ->  (* 0 *) -1 (* it can happen when out of bound *)
+    end
+
+
+
+
+let decode_utf8_string s =
+  (* 11 *) let lst = ref [] in
+  let add elem = (* 54 *) lst := elem :: !lst in
+  let rec  decode_utf8_cont s i s_len =
+    (* 65 *) if i = s_len  then (* 11 *) ()
+    else 
+      (* 54 *) begin 
+        match classify s.[i] with
+        | Single c -> 
+          (* 46 *) add c; decode_utf8_cont s (i+1) s_len
+        | Cont _ -> (* 0 *) raise (Invalid_utf8 "Unexpected continuation byte")
+        | Leading (n, c) ->
+          (* 8 *) let (c', i') = follow s n c i in add c';
+          decode_utf8_cont s (i' + 1) s_len
+        | Invalid -> (* 0 *) raise (Invalid_utf8 "Invalid byte")
+      end
+  in decode_utf8_cont s 0 (String.length s); 
+  List.rev !lst
+
+
+(** To decode {j||j} we need verify in the ast so that we have better error 
+    location, then we do the decode later
+*)  
+
+let verify s loc = 
+  (* 0 *) assert false
+end
+module Ext_js_regex : sig 
+#1 "ext_js_regex.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+(* This is a module that checks if js regex is valid or not *)
+
+val js_regex_checker : string -> bool
+end = struct
+#1 "ext_js_regex.ml"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+let check_from_end al =
+  (* 7 *) let rec aux l seen =
+    (* 10 *) match l with
+    | [] -> (* 0 *) false
+    | (e::r) ->
+      (* 10 *) if e < 0 || e > 255 then (* 0 *) false
+      else (* 10 *) (let c = Char.chr e in
+            if c = '/' then (* 4 *) true
+            else (* 6 *) (if List.exists (fun x -> (* 2 *) x = c) seen then (* 1 *) false (* flag should not be repeated *)
+                  else (* 5 *) (if c = 'i' || c = 'g' || c = 'm' || c = 'y' || c ='u' then (* 3 *) aux r (c::seen) 
+                        else (* 2 *) false)))
+  in aux al []
+
+let js_regex_checker s =
+  (* 9 *) match Ext_utf8.decode_utf8_string s with 
+  | [] -> (* 1 *) false 
+  | 47 (* [Char.code '/' = 47 ]*)::tail -> 
+    (* 7 *) check_from_end (List.rev tail)       
+  | _ :: _ -> (* 1 *) false 
+  | exception Ext_utf8.Invalid_utf8 _ -> (* 0 *) false 
+
+end
+module Ounit_js_regex_checker_tests
+= struct
+#1 "ounit_js_regex_checker_tests.ml"
+let ((>::),
+    (>:::)) = OUnit.((>::),(>:::))
+
+open Ext_js_regex
+
+let suites =
+    __FILE__
+    >:::
+    [
+        "test_empty_string" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "" in
+        OUnit.assert_equal b false
+        end;
+        "test_normal_regex" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/abc/" in
+        OUnit.assert_equal b true
+        end;
+        "test_wrong_regex_last" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/abc" in 
+        OUnit.assert_equal b false
+        end;
+        "test_regex_with_flag" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/ss/ig" in
+        OUnit.assert_equal b true
+        end;
+        "test_regex_with_invalid_flag" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/ss/j" in
+        OUnit.assert_equal b false
+        end;
+        "test_regex_invalid_regex" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "abc/i" in 
+        OUnit.assert_equal b false
+        end;
+        "test_regex_empty_pattern" >:: begin fun _  ->
+        (* 1 *) let b = js_regex_checker "//" in 
+        OUnit.assert_equal b true
+        end;
+        "test_regex_with_utf8" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/😃/" in
+        OUnit.assert_equal b true
+        end;
+        "test_regex_repeated_flags" >:: begin fun _ ->
+        (* 1 *) let b = js_regex_checker "/abc/gg" in
+        OUnit.assert_equal b false
+        end;
+    ]
+end
 module Map_gen
 = struct
 #1 "map_gen.ml"
@@ -7592,6 +8118,138 @@ let of_array xs =
   (* 0 *) Array.fold_left (fun acc (k,v) -> (* 0 *) add k v acc) empty xs
 
 end
+module Ext_json_types
+= struct
+#1 "ext_json_types.ml"
+(* Copyright (C) 2015-2017 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+type loc = Lexing.position
+type json_str = 
+  { str : string ; loc : loc}
+
+type json_flo  =
+  { str : string ; loc : loc}
+type json_array =
+  { content : t array ; 
+    loc_start : loc ; 
+    loc_end : loc ; 
+  }
+
+and json_map = 
+  { map : t String_map.t ; loc :  loc }
+and t = 
+  | True of loc 
+  | False of loc 
+  | Null of loc 
+  | Flo of json_flo
+  | Str of json_str
+  | Arr  of json_array
+  | Obj of json_map
+   
+
+end
+module Ext_position : sig 
+#1 "ext_position.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+type t = Lexing.position = {
+    pos_fname : string ;
+    pos_lnum : int ;
+    pos_bol : int ;
+    pos_cnum : int
+}
+
+
+val print : Format.formatter -> t -> unit 
+end = struct
+#1 "ext_position.ml"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+
+type t = Lexing.position = {
+    pos_fname : string ;
+    pos_lnum : int ;
+    pos_bol : int ;
+    pos_cnum : int
+}
+
+
+let print fmt (pos : t) = 
+  (* 0 *) Format.fprintf fmt "(%d,%d)" pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+
+
+
+
+
+
+end
 module Ext_json : sig 
 #1 "ext_json.mli"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -7618,33 +8276,11 @@ module Ext_json : sig
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-type js_array =  
-  { content : t array ; 
-    loc_start : Lexing.position ; 
-    loc_end : Lexing.position ; 
-  }
-and js_str = 
-  { str : string ; loc : Lexing.position}
-and t = 
-  [
-    `True
-  | `False
-  | `Null
-  | `Flo of string 
-  | `Str of js_str
-  | `Arr of js_array
-  | `Obj of t String_map.t 
-  ]
-
-val parse_json : Lexing.lexbuf -> t 
-val parse_json_from_string : string -> t 
-val parse_json_from_chan : in_channel -> t 
-val parse_json_from_file  : string -> t
 
 type path = string list 
 type status = 
   | No_path
-  | Found of t 
+  | Found of Ext_json_types.t 
   | Wrong_type of path 
 
 
@@ -7654,23 +8290,142 @@ type callback =
   | `Str_loc of (string -> Lexing.position -> unit)
   | `Flo of (string -> unit )
   | `Bool of (bool -> unit )
-  | `Obj of (t String_map.t -> unit)
-  | `Arr of (t array -> unit )
-  | `Arr_loc of (t array -> Lexing.position -> Lexing.position -> unit)
+  | `Obj of (Ext_json_types.t String_map.t -> unit)
+  | `Arr of (Ext_json_types.t array -> unit )
+  | `Arr_loc of 
+    (Ext_json_types.t array -> Lexing.position -> Lexing.position -> unit)
   | `Null of (unit -> unit)
   | `Not_found of (unit -> unit)
-  | `Id of (t -> unit )
+  | `Id of (Ext_json_types.t -> unit )
   ]
 
 val test:
   ?fail:(unit -> unit) ->
-  string -> callback -> t String_map.t -> t String_map.t
+  string -> callback 
+  -> Ext_json_types.t String_map.t
+   -> Ext_json_types.t String_map.t
 
-val query : path -> t ->  status
+val query : path -> Ext_json_types.t ->  status
+
+val loc_of : Ext_json_types.t -> Ext_position.t
 
 end = struct
 #1 "ext_json.ml"
-# 1 "ext/ext_json.mll"
+
+
+type callback = 
+  [
+    `Str of (string -> unit) 
+  | `Str_loc of (string -> Lexing.position -> unit)
+  | `Flo of (string -> unit )
+  | `Bool of (bool -> unit )
+  | `Obj of (Ext_json_types.t String_map.t -> unit)
+  | `Arr of (Ext_json_types.t array -> unit )
+  | `Arr_loc of (Ext_json_types.t array -> Lexing.position -> Lexing.position -> unit)
+  | `Null of (unit -> unit)
+  | `Not_found of (unit -> unit)
+  | `Id of (Ext_json_types.t -> unit )
+  ]
+
+  
+type path = string list 
+
+type status = 
+  | No_path
+  | Found  of Ext_json_types.t 
+  | Wrong_type of path 
+
+let test   ?(fail=(fun () -> ())) key 
+    (cb : callback) (m  : Ext_json_types.t String_map.t)
+     =
+     (* 2 *) begin match String_map.find_exn key m, cb with 
+       | exception Not_found  ->
+        (* 0 *) begin match cb with `Not_found f ->  (* 0 *) f ()
+        | _ -> (* 0 *) fail ()
+        end      
+       | True _, `Bool cb -> (* 0 *) cb true
+       | False _, `Bool cb  -> (* 0 *) cb false 
+       | Flo {str = s} , `Flo cb  -> (* 2 *) cb s 
+       | Obj {map = b} , `Obj cb -> (* 0 *) cb b 
+       | Arr {content}, `Arr cb -> (* 0 *) cb content 
+       | Arr {content; loc_start ; loc_end}, `Arr_loc cb -> 
+         (* 0 *) cb content  loc_start loc_end 
+       | Null _, `Null cb  -> (* 0 *) cb ()
+       | Str {str = s }, `Str cb  -> (* 0 *) cb s 
+       | Str {str = s ; loc }, `Str_loc cb -> (* 0 *) cb s loc 
+       |  any  , `Id  cb -> (* 0 *) cb any
+       | _, _ -> (* 0 *) fail () 
+     end;
+     m
+let query path (json : Ext_json_types.t ) =
+  (* 0 *) let rec aux acc paths json =
+    (* 0 *) match path with 
+    | [] ->  (* 0 *) Found json
+    | p :: rest -> 
+      (* 0 *) begin match json with 
+        | Obj {map = m} -> 
+          (* 0 *) begin match String_map.find_exn p m with 
+            | m'  -> (* 0 *) aux (p::acc) rest m'
+            | exception Not_found ->  (* 0 *) No_path
+          end
+        | _ -> (* 0 *) Wrong_type acc 
+      end
+  in aux [] path json
+
+
+let loc_of (x : Ext_json_types.t) =
+  (* 0 *) match x with
+  | True p | False p | Null p -> (* 0 *) p 
+  | Str p -> (* 0 *) p.loc 
+  | Arr p -> (* 0 *) p.loc_start
+  | Obj p -> (* 0 *) p.loc
+  | Flo p -> (* 0 *) p.loc
+ 
+
+end
+module Ext_json_parse : sig 
+#1 "ext_json_parse.mli"
+(* Copyright (C) 2015-2016 Bloomberg Finance L.P.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * In addition to the permissions granted to you by the LGPL, you may combine
+ * or link a "work that uses the Library" with a publicly distributed version
+ * of this file to produce a combined library or application, then distribute
+ * that combined work under the terms of your choosing, with no requirement
+ * to comply with the obligations normally placed on you by section 4 of the
+ * LGPL version 3 (or the corresponding section of a later version of the LGPL
+ * should you choose to use a later version).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+type error_info
+
+exception Error of error_info
+
+val pp_error : Format.formatter -> error_info -> unit 
+
+val parse_json : Lexing.lexbuf -> Ext_json_types.t 
+val parse_json_from_string : string -> Ext_json_types.t 
+
+val parse_json_from_chan : in_channel -> Ext_json_types.t 
+
+val parse_json_from_file  : string -> Ext_json_types.t
+
+
+end = struct
+#1 "ext_json_parse.ml"
+# 1 "ext/ext_json_parse.mll"
  
 type error =
   | Illegal_character of char
@@ -7715,21 +8470,34 @@ let report_error ppf = function
   | Unterminated_comment 
     -> (* 0 *) fprintf ppf "Unterminated_comment"
          
-let print_position fmt (pos : Lexing.position) = 
-  (* 0 *) Format.fprintf fmt "(%d,%d)" pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+
+type  error_info  = 
+  { error : error ;
+    loc_start : Lexing.position; 
+    loc_end :Lexing.position;
+  }
+
+let pp_error fmt {error; loc_start ; loc_end } = 
+  (* 0 *) Format.fprintf fmt "@[%a:@ %a@ -@ %a)@]" 
+    report_error error
+    Ext_position.print loc_start
+    Ext_position.print loc_end
+
+exception Error of error_info
+
 
 
 let () = 
   Printexc.register_printer
     (function x -> 
-     (* 1 *) match x with 
-     | Error (e , a, b) -> 
-       (* 0 *) Some (Format.asprintf "@[%a:@ %a@ -@ %a)@]" report_error e 
-               print_position a print_position b)
-     | _ -> (* 1 *) None
+     (* 2 *) match x with 
+     | Error error_info -> 
+       (* 0 *) Some (Format.asprintf "%a" pp_error error_info)
+
+     | _ -> (* 2 *) None
     )
-  
-type path = string list 
+
+
 
 
 
@@ -7747,9 +8515,11 @@ type token =
   | String of string
   | True   
   
-
 let error  (lexbuf : Lexing.lexbuf) e = 
-  (* 5 *) raise (Error (e, lexbuf.lex_start_p, lexbuf.lex_curr_p))
+  (* 5 *) raise (Error { error =  e; 
+                 loc_start =  lexbuf.lex_start_p; 
+                 loc_end = lexbuf.lex_curr_p})
+
 
 let lexeme_len (x : Lexing.lexbuf) =
   (* 0 *) x.lex_curr_pos - x.lex_start_pos
@@ -7787,7 +8557,7 @@ let hex_code c1 c2 =
 
 let lf = '\010'
 
-# 119 "ext/ext_json.ml"
+# 134 "ext/ext_json_parse.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base = 
    "\000\000\239\255\240\255\241\255\000\000\025\000\011\000\244\255\
@@ -7975,80 +8745,80 @@ let rec lex_json buf lexbuf =
 and __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state =
   (* 86 *) match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 137 "ext/ext_json.mll"
+# 152 "ext/ext_json_parse.mll"
           (* 31 *) ( lex_json buf lexbuf)
-# 309 "ext/ext_json.ml"
+# 324 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 138 "ext/ext_json.mll"
+# 153 "ext/ext_json_parse.mll"
                    (* 0 *) ( 
     update_loc lexbuf 0;
     lex_json buf  lexbuf
   )
-# 317 "ext/ext_json.ml"
+# 332 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 142 "ext/ext_json.mll"
+# 157 "ext/ext_json_parse.mll"
                 (* 0 *) ( comment buf lexbuf)
-# 322 "ext/ext_json.ml"
+# 337 "ext/ext_json_parse.ml"
 
   | 3 ->
-# 143 "ext/ext_json.mll"
+# 158 "ext/ext_json_parse.mll"
          (* 0 *) ( True)
-# 327 "ext/ext_json.ml"
+# 342 "ext/ext_json_parse.ml"
 
   | 4 ->
-# 144 "ext/ext_json.mll"
+# 159 "ext/ext_json_parse.mll"
           (* 0 *) (False)
-# 332 "ext/ext_json.ml"
+# 347 "ext/ext_json_parse.ml"
 
   | 5 ->
-# 145 "ext/ext_json.mll"
+# 160 "ext/ext_json_parse.mll"
          (* 0 *) (Null)
-# 337 "ext/ext_json.ml"
+# 352 "ext/ext_json_parse.ml"
 
   | 6 ->
-# 146 "ext/ext_json.mll"
+# 161 "ext/ext_json_parse.mll"
        (* 5 *) (Lbracket)
-# 342 "ext/ext_json.ml"
+# 357 "ext/ext_json_parse.ml"
 
   | 7 ->
-# 147 "ext/ext_json.mll"
+# 162 "ext/ext_json_parse.mll"
        (* 3 *) (Rbracket)
-# 347 "ext/ext_json.ml"
+# 362 "ext/ext_json_parse.ml"
 
   | 8 ->
-# 148 "ext/ext_json.mll"
+# 163 "ext/ext_json_parse.mll"
        (* 6 *) (Lbrace)
-# 352 "ext/ext_json.ml"
+# 367 "ext/ext_json_parse.ml"
 
   | 9 ->
-# 149 "ext/ext_json.mll"
+# 164 "ext/ext_json_parse.mll"
        (* 3 *) (Rbrace)
-# 357 "ext/ext_json.ml"
+# 372 "ext/ext_json_parse.ml"
 
   | 10 ->
-# 150 "ext/ext_json.mll"
+# 165 "ext/ext_json_parse.mll"
        (* 13 *) (Comma)
-# 362 "ext/ext_json.ml"
+# 377 "ext/ext_json_parse.ml"
 
   | 11 ->
-# 151 "ext/ext_json.mll"
+# 166 "ext/ext_json_parse.mll"
         (* 4 *) (Colon)
-# 367 "ext/ext_json.ml"
+# 382 "ext/ext_json_parse.ml"
 
   | 12 ->
-# 152 "ext/ext_json.mll"
+# 167 "ext/ext_json_parse.mll"
                       (* 0 *) (lex_json buf lexbuf)
-# 372 "ext/ext_json.ml"
+# 387 "ext/ext_json_parse.ml"
 
   | 13 ->
-# 154 "ext/ext_json.mll"
+# 169 "ext/ext_json_parse.mll"
          (* 11 *) ( Number (Lexing.lexeme lexbuf))
-# 377 "ext/ext_json.ml"
+# 392 "ext/ext_json_parse.ml"
 
   | 14 ->
-# 156 "ext/ext_json.mll"
+# 171 "ext/ext_json_parse.mll"
       (* 4 *) (
   let pos = Lexing.lexeme_start_p lexbuf in
   scan_string buf pos lexbuf;
@@ -8056,22 +8826,22 @@ and __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state =
   Buffer.clear buf ;
   String content 
 )
-# 388 "ext/ext_json.ml"
+# 403 "ext/ext_json_parse.ml"
 
   | 15 ->
-# 163 "ext/ext_json.mll"
+# 178 "ext/ext_json_parse.mll"
        (* 6 *) (Eof )
-# 393 "ext/ext_json.ml"
+# 408 "ext/ext_json_parse.ml"
 
   | 16 ->
 (* 0 *) let
-# 164 "ext/ext_json.mll"
+# 179 "ext/ext_json_parse.mll"
        c
-# 399 "ext/ext_json.ml"
+# 414 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf lexbuf.Lexing.lex_start_pos in
-# 164 "ext/ext_json.mll"
+# 179 "ext/ext_json_parse.mll"
           ( error lexbuf (Illegal_character c ))
-# 403 "ext/ext_json.ml"
+# 418 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> (* 0 *) lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_lex_json_rec buf lexbuf __ocaml_lex_state
@@ -8081,19 +8851,19 @@ and comment buf lexbuf =
 and __ocaml_lex_comment_rec buf lexbuf __ocaml_lex_state =
   (* 0 *) match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 166 "ext/ext_json.mll"
+# 181 "ext/ext_json_parse.mll"
               (* 0 *) (lex_json buf lexbuf)
-# 415 "ext/ext_json.ml"
+# 430 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 167 "ext/ext_json.mll"
+# 182 "ext/ext_json_parse.mll"
      (* 0 *) (comment buf lexbuf)
-# 420 "ext/ext_json.ml"
+# 435 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 168 "ext/ext_json.mll"
+# 183 "ext/ext_json_parse.mll"
        (* 0 *) (error lexbuf Unterminated_comment)
-# 425 "ext/ext_json.ml"
+# 440 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> (* 0 *) lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_comment_rec buf lexbuf __ocaml_lex_state
@@ -8103,64 +8873,64 @@ and scan_string buf start lexbuf =
 and __ocaml_lex_scan_string_rec buf start lexbuf __ocaml_lex_state =
   (* 8 *) match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 172 "ext/ext_json.mll"
+# 187 "ext/ext_json_parse.mll"
       (* 4 *) ( () )
-# 437 "ext/ext_json.ml"
+# 452 "ext/ext_json_parse.ml"
 
   | 1 ->
-# 174 "ext/ext_json.mll"
+# 189 "ext/ext_json_parse.mll"
   (* 0 *) (
         let len = lexeme_len lexbuf - 2 in
         update_loc lexbuf len;
 
         scan_string buf start lexbuf
       )
-# 447 "ext/ext_json.ml"
+# 462 "ext/ext_json_parse.ml"
 
   | 2 ->
-# 181 "ext/ext_json.mll"
+# 196 "ext/ext_json_parse.mll"
       (* 0 *) (
         let len = lexeme_len lexbuf - 3 in
         update_loc lexbuf len;
         scan_string buf start lexbuf
       )
-# 456 "ext/ext_json.ml"
+# 471 "ext/ext_json_parse.ml"
 
   | 3 ->
 (* 0 *) let
-# 186 "ext/ext_json.mll"
+# 201 "ext/ext_json_parse.mll"
                                                c
-# 462 "ext/ext_json.ml"
+# 477 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 187 "ext/ext_json.mll"
+# 202 "ext/ext_json_parse.mll"
       (
         Buffer.add_char buf (char_for_backslash c);
         scan_string buf start lexbuf
       )
-# 469 "ext/ext_json.ml"
+# 484 "ext/ext_json_parse.ml"
 
   | 4 ->
 (* 0 *) let
-# 191 "ext/ext_json.mll"
+# 206 "ext/ext_json_parse.mll"
                  c1
-# 475 "ext/ext_json.ml"
+# 490 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1)
 and
-# 191 "ext/ext_json.mll"
+# 206 "ext/ext_json_parse.mll"
                                c2
-# 480 "ext/ext_json.ml"
+# 495 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 2)
 and
-# 191 "ext/ext_json.mll"
+# 206 "ext/ext_json_parse.mll"
                                              c3
-# 485 "ext/ext_json.ml"
+# 500 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 3)
 and
-# 191 "ext/ext_json.mll"
+# 206 "ext/ext_json_parse.mll"
                                                     s
-# 490 "ext/ext_json.ml"
+# 505 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos (lexbuf.Lexing.lex_start_pos + 4) in
-# 192 "ext/ext_json.mll"
+# 207 "ext/ext_json_parse.mll"
       (
         let v = dec_code c1 c2 c3 in
         if v > 255 then
@@ -8169,55 +8939,55 @@ and
 
         scan_string buf start lexbuf
       )
-# 501 "ext/ext_json.ml"
+# 516 "ext/ext_json_parse.ml"
 
   | 5 ->
 (* 0 *) let
-# 200 "ext/ext_json.mll"
+# 215 "ext/ext_json_parse.mll"
                         c1
-# 507 "ext/ext_json.ml"
+# 522 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 2)
 and
-# 200 "ext/ext_json.mll"
+# 215 "ext/ext_json_parse.mll"
                                          c2
-# 512 "ext/ext_json.ml"
+# 527 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 3) in
-# 201 "ext/ext_json.mll"
+# 216 "ext/ext_json_parse.mll"
       (
         let v = hex_code c1 c2 in
         Buffer.add_char buf (Char.chr v);
 
         scan_string buf start lexbuf
       )
-# 521 "ext/ext_json.ml"
+# 536 "ext/ext_json_parse.ml"
 
   | 6 ->
 (* 0 *) let
-# 207 "ext/ext_json.mll"
+# 222 "ext/ext_json_parse.mll"
              c
-# 527 "ext/ext_json.ml"
+# 542 "ext/ext_json_parse.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 208 "ext/ext_json.mll"
+# 223 "ext/ext_json_parse.mll"
       (
         Buffer.add_char buf '\\';
         Buffer.add_char buf c;
 
         scan_string buf start lexbuf
       )
-# 536 "ext/ext_json.ml"
+# 551 "ext/ext_json_parse.ml"
 
   | 7 ->
-# 215 "ext/ext_json.mll"
+# 230 "ext/ext_json_parse.mll"
       (* 0 *) (
         update_loc lexbuf 0;
         Buffer.add_char buf lf;
 
         scan_string buf start lexbuf
       )
-# 546 "ext/ext_json.ml"
+# 561 "ext/ext_json_parse.ml"
 
   | 8 ->
-# 222 "ext/ext_json.mll"
+# 237 "ext/ext_json_parse.mll"
       (* 4 *) (
         let ofs = lexbuf.lex_start_pos in
         let len = lexbuf.lex_curr_pos - ofs in
@@ -8225,45 +8995,25 @@ and
 
         scan_string buf start lexbuf
       )
-# 557 "ext/ext_json.ml"
+# 572 "ext/ext_json_parse.ml"
 
   | 9 ->
-# 230 "ext/ext_json.mll"
+# 245 "ext/ext_json_parse.mll"
       (* 0 *) (
         error lexbuf Unterminated_string
       )
-# 564 "ext/ext_json.ml"
+# 579 "ext/ext_json_parse.ml"
 
   | __ocaml_lex_state -> (* 0 *) lexbuf.Lexing.refill_buff lexbuf; 
       __ocaml_lex_scan_string_rec buf start lexbuf __ocaml_lex_state
 
 ;;
 
-# 234 "ext/ext_json.mll"
+# 249 "ext/ext_json_parse.mll"
  
 
-type js_array =
-  { content : t array ; 
-    loc_start : Lexing.position ; 
-    loc_end : Lexing.position ; 
-  }
-and js_str = 
-  { str : string ; loc : Lexing.position}
-and t = 
-  [  
-    `True
-  | `False
-  | `Null
-  | `Flo of string 
-  | `Str of js_str
-  | `Arr  of js_array
-  | `Obj of t String_map.t 
-   ]
 
-type status = 
-  | No_path
-  | Found  of t 
-  | Wrong_type of path 
+
 
 
 
@@ -8279,52 +9029,65 @@ let rec parse_json lexbuf =
       x 
   in
   let push e = (* 8 *) look_ahead := Some e in 
-  let rec json (lexbuf : Lexing.lexbuf) : t = 
+  let rec json (lexbuf : Lexing.lexbuf) : Ext_json_types.t = 
     (* 23 *) match token () with 
-    | True -> (* 0 *) `True
-    | False -> (* 0 *) `False
-    | Null -> (* 0 *) `Null
-    | Number s ->  (* 10 *) `Flo s 
-    | String s -> (* 0 *) `Str { str = s; loc =    lexbuf.lex_start_p}
-    | Lbracket -> (* 5 *) parse_array false lexbuf.lex_start_p lexbuf.lex_curr_p [] lexbuf
-    | Lbrace -> (* 6 *) parse_map false String_map.empty lexbuf
+    | True -> (* 0 *) True lexbuf.lex_start_p
+    | False -> (* 0 *) False lexbuf.lex_start_p
+    | Null -> (* 0 *) Null lexbuf.lex_start_p
+    | Number s ->  (* 10 *) Flo {str = s; loc = lexbuf.lex_start_p}  
+    | String s -> (* 0 *) Str { str = s; loc =    lexbuf.lex_start_p}
+    | Lbracket -> (* 5 *) parse_array  lexbuf.lex_start_p lexbuf.lex_curr_p [] lexbuf
+    | Lbrace -> (* 6 *) parse_map lexbuf.lex_start_p String_map.empty lexbuf
     |  _ -> (* 2 *) error lexbuf Unexpected_token
-  and parse_array  trailing_comma loc_start loc_finish acc lexbuf : t =
+(** Note if we remove [trailing_comma] support 
+    we should report errors (actually more work), for example 
+    {[
+    match token () with 
+    | Rbracket ->
+      if trailing_comma then
+        error lexbuf Trailing_comma_in_array
+      else
+    ]} 
+    {[
+    match token () with 
+    | Rbrace -> 
+      if trailing_comma then
+        error lexbuf Trailing_comma_in_obj
+      else
+
+    ]}   
+ *)
+  and parse_array   loc_start loc_finish acc lexbuf 
+    : Ext_json_types.t =
     (* 10 *) match token () with 
     | Rbracket ->
-      (* if trailing_comma then  *)
-      (*   error lexbuf Trailing_comma_in_array *)
-      (* else  *)
-        (* 2 *) `Arr {loc_start ; content = Ext_array.reverse_of_list acc ; 
+        (* 2 *) Arr {loc_start ; content = Ext_array.reverse_of_list acc ; 
               loc_end = lexbuf.lex_curr_p }
     | x -> 
       (* 8 *) push x ;
       let new_one = json lexbuf in 
       begin match token ()  with 
       | Comma -> 
-          (* 5 *) parse_array true loc_start loc_finish (new_one :: acc) lexbuf 
+          (* 5 *) parse_array  loc_start loc_finish (new_one :: acc) lexbuf 
       | Rbracket 
-        -> (* 1 *) `Arr {content = (Ext_array.reverse_of_list (new_one::acc));
+        -> (* 1 *) Arr {content = (Ext_array.reverse_of_list (new_one::acc));
                      loc_start ; 
                      loc_end = lexbuf.lex_curr_p }
       | _ -> 
         (* 0 *) error lexbuf Expect_comma_or_rbracket
       end
-  and parse_map trailing_comma acc lexbuf : t = 
+  and parse_map loc_start  acc lexbuf : Ext_json_types.t = 
     (* 10 *) match token () with 
     | Rbrace -> 
-      (* if trailing_comma then  *)
-      (*   error lexbuf Trailing_comma_in_obj *)
-      (* else  *)
-        (* 3 *) `Obj acc 
+        (* 3 *) Obj { map = acc ; loc = loc_start}
     | String key -> 
       (* 4 *) begin match token () with 
       | Colon ->
         (* 4 *) let value = json lexbuf in
         begin match token () with 
-        | Rbrace -> (* 0 *) `Obj (String_map.add key value acc )
+        | Rbrace -> (* 0 *) Obj {map = String_map.add key value acc ; loc = loc_start}
         | Comma -> 
-          (* 4 *) parse_map true  (String_map.add key value acc) lexbuf 
+          (* 4 *) parse_map loc_start  (String_map.add key value acc) lexbuf 
         | _ -> (* 0 *) error lexbuf Expect_comma_or_rbrace
         end
       | _ -> (* 0 *) error lexbuf Expect_colon
@@ -8352,58 +9115,9 @@ let parse_json_from_file s =
 
 
 
-type callback = 
-  [
-    `Str of (string -> unit) 
-  | `Str_loc of (string -> Lexing.position -> unit)
-  | `Flo of (string -> unit )
-  | `Bool of (bool -> unit )
-  | `Obj of (t String_map.t -> unit)
-  | `Arr of (t array -> unit )
-  | `Arr_loc of (t array -> Lexing.position -> Lexing.position -> unit)
-  | `Null of (unit -> unit)
-  | `Not_found of (unit -> unit)
-  | `Id of (t -> unit )
-  ]
 
-let test   ?(fail=(fun () -> ())) key 
-    (cb : callback) m 
-     =
-     (* 2 *) begin match String_map.find_exn key m, cb with 
-       | exception Not_found  ->
-        (* 0 *) begin match cb with `Not_found f ->  (* 0 *) f ()
-        | _ -> (* 0 *) fail ()
-        end      
-       | `True, `Bool cb -> (* 0 *) cb true
-       | `False, `Bool cb  -> (* 0 *) cb false 
-       | `Flo s , `Flo cb  -> (* 2 *) cb s 
-       | `Obj b , `Obj cb -> (* 0 *) cb b 
-       | `Arr {content}, `Arr cb -> (* 0 *) cb content 
-       | `Arr {content; loc_start ; loc_end}, `Arr_loc cb -> 
-         (* 0 *) cb content  loc_start loc_end 
-       | `Null, `Null cb  -> (* 0 *) cb ()
-       | `Str {str = s }, `Str cb  -> (* 0 *) cb s 
-       | `Str {str = s ; loc }, `Str_loc cb -> (* 0 *) cb s loc 
-       |  any  , `Id  cb -> (* 0 *) cb any
-       | _, _ -> (* 0 *) fail () 
-     end;
-     m
-let query path (json : t ) =
-  (* 0 *) let rec aux acc paths json =
-    (* 0 *) match path with 
-    | [] ->  (* 0 *) Found json
-    | p :: rest -> 
-      (* 0 *) begin match json with 
-        | `Obj m -> 
-          (* 0 *) begin match String_map.find_exn p m with 
-            | m' -> (* 0 *) aux (p::acc) rest m'
-            | exception Not_found ->  (* 0 *) No_path
-          end
-        | _ -> (* 0 *) Wrong_type acc 
-      end
-  in aux [] path json
 
-# 735 "ext/ext_json.ml"
+# 694 "ext/ext_json_parse.ml"
 
 end
 module Ounit_json_tests
@@ -8413,7 +9127,7 @@ module Ounit_json_tests
 let ((>::),
     (>:::)) = OUnit.((>::),(>:::))
 
-open Ext_json
+open Ext_json_parse
 let (|?)  m (key, cb) =
     (* 2 *) m  |> Ext_json.test key cb 
 
@@ -8425,14 +9139,14 @@ let suites =
     "empty_json" >:: begin fun _ -> 
       (* 1 *) let v =parse_json_from_string "{}" in
       match v with 
-      | `Obj v -> (* 1 *) OUnit.assert_equal (String_map.is_empty v ) true
+      | Obj {map = v} -> (* 1 *) OUnit.assert_equal (String_map.is_empty v ) true
       | _ -> (* 0 *) OUnit.assert_failure "should be empty"
     end
     ;
     "empty_arr" >:: begin fun _ -> 
       (* 1 *) let v =parse_json_from_string "[]" in
       match v with 
-      | `Arr {content = [||]} -> (* 1 *) ()
+      | Arr {content = [||]} -> (* 1 *) ()
       | _ -> (* 0 *) OUnit.assert_failure "should be empty"
     end
     ;
@@ -8457,9 +9171,9 @@ let suites =
     "trail comma obj" >:: begin fun _ -> 
       (* 1 *) let v =  parse_json_from_string {| { "x" : 3 , }|} in 
       let v1 =  parse_json_from_string {| { "x" : 3 , }|} in 
-      let test v = 
+      let test (v : Ext_json_types.t)  = 
         (* 2 *) match v with 
-        |`Obj v -> 
+        | Obj {map = v} -> 
           (* 2 *) v
           |? ("x" , `Flo (fun x -> (* 2 *) OUnit.assert_equal x "3"))
           |> ignore 
@@ -8471,9 +9185,9 @@ let suites =
     "trail comma arr" >:: begin fun _ -> 
       (* 1 *) let v = parse_json_from_string {| [ 1, 3, ]|} in
       let v1 = parse_json_from_string {| [ 1, 3 ]|} in
-      let test v = 
+      let test (v : Ext_json_types.t) = 
         (* 2 *) match v with 
-        | `Arr { content = [|`Flo "1" ; `Flo "3" |] } -> (* 2 *) ()
+        | Arr { content = [| Flo {str = "1"} ; Flo { str = "3"} |] } -> (* 2 *) ()
         | _ -> (* 0 *) OUnit.assert_failure "trailing comma array" in 
       test v ;
       test v1
@@ -8533,6 +9247,18 @@ val try_take : int -> 'a list -> 'a list * int * 'a list
 
 val exclude_tail : 'a list -> 'a * 'a list
 
+val length_compare : 'a list -> int -> [`Gt | `Eq | `Lt ]
+
+(**
+
+  {[length xs = length ys + n ]}
+  input n should be positive 
+  TODO: input checking
+*)
+
+val length_larger_than_n : 
+  int -> 'a list -> 'a list -> bool
+
 val filter_map2 : ('a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
 
 val filter_map2i : (int -> 'a -> 'b -> 'c option) -> 'a list -> 'b list -> 'c list
@@ -8571,6 +9297,8 @@ val rev_map_append : ('a -> 'b) -> 'a list -> 'b list -> 'b list
 
 val rev_map_acc : 'a list -> ('b -> 'a) -> 'b list -> 'a list
 
+val map_acc : 'a list -> ('b -> 'a) -> 'b list -> 'a list
+
 val rev_iter : ('a -> unit) -> 'a list -> unit
 
 val for_all2_no_exn : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
@@ -8607,7 +9335,14 @@ val sort_via_array :
 val last : 'a list -> 'a
 
 
+(** When [key] is not found unbox the default, 
+  if it is found return that, otherwise [assert false ]
+ *)
+val assoc_by_string : 
+  'a  option -> string -> (string * 'a) list -> 'a 
 
+val assoc_by_int : 
+  'a  option -> int -> (int * 'a) list -> 'a   
 end = struct
 #1 "ext_list.ml"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
@@ -8792,10 +9527,10 @@ let init n f =
   (* 0 *) Array.to_list (Array.init n f)
 
 let take n l = 
-  (* 0 *) let arr = Array.of_list l in 
+  (* 2 *) let arr = Array.of_list l in 
   let arr_length =  Array.length arr in
   if arr_length  < n then (* 0 *) invalid_arg "Ext_list.take"
-  else (* 0 *) (Array.to_list (Array.sub arr 0 n ), 
+  else (* 2 *) (Array.to_list (Array.sub arr 0 n ), 
         Array.to_list (Array.sub arr n (arr_length - n)))
 
 let try_take n l = 
@@ -8804,6 +9539,29 @@ let try_take n l =
   if arr_length  <= n then 
     (* 0 *) l,  arr_length, []
   else (* 0 *) Array.to_list (Array.sub arr 0 n ), n, (Array.to_list (Array.sub arr n (arr_length - n)))
+
+
+let rec length_compare l n = 
+  (* 19 *) if n < 0 then (* 2 *) `Gt 
+  else 
+  (* 17 *) begin match l with 
+    | _ ::xs -> (* 11 *) length_compare xs (n - 1)
+    | [] ->  
+      (* 6 *) if n = 0 then (* 5 *) `Eq 
+      else (* 1 *) `Lt 
+  end
+(**
+
+  {[length xs = length ys + n ]}
+*)
+let rec length_larger_than_n n xs ys =
+  (* 6 *) match xs, ys with 
+  | _, [] -> (* 3 *) length_compare xs n = `Eq   
+  | _::xs, _::ys -> 
+    (* 3 *) length_larger_than_n n xs ys
+  | [], _ -> (* 0 *) false 
+  
+
 
 let exclude_tail (x : 'a list) = 
   (* 0 *) let rec aux acc x = 
@@ -8869,6 +9627,13 @@ let rev_map_acc  acc f l =
     | a::l -> (* 0 *) rmap_f (f a :: accu) l
   in
   rmap_f acc l
+
+let rec map_acc acc f l =   
+  (* 4 *) match l with 
+  | [] -> (* 1 *) acc 
+  | h::hs -> (* 3 *) f h :: map_acc  acc  f hs 
+
+
 
 let rec rev_iter f xs =
   (* 0 *) match xs with    
@@ -8974,6 +9739,32 @@ let rec last xs =
   | [] -> (* 0 *) invalid_arg "Ext_list.last"
 
 
+let rec assoc_by_string def (k : string) lst = 
+  (* 0 *) match lst with 
+  | [] -> 
+    (* 0 *) begin match def with 
+    | None -> (* 0 *) assert false 
+    | Some x -> (* 0 *) x end
+  | (k1,v1)::rest -> 
+    (* 0 *) if Ext_string.equal k1 k then (* 0 *) v1 else 
+    (* 0 *) assoc_by_string def k rest 
+
+let rec assoc_by_int def (k : int) lst = 
+  (* 7 *) match lst with 
+  | [] -> 
+    (* 1 *) begin match def with
+    | None -> (* 1 *) assert false 
+    | Some x -> (* 0 *) x end
+  | (k1,v1)::rest -> 
+    (* 6 *) if k1 = k then (* 1 *) v1 else 
+    (* 5 *) assoc_by_int def k rest     
+
+(** `modulo [1;2;3;4] [1;2;3]` => [1;2;3], Some [4] `
+  modulo [1;2;3] [1;2;3;4] => [1;2;3] None 
+  modulo [1;2;3] [1;2;3] => [1;2;3] Some []
+ *)
+
+
 end
 module Ounit_list_test
 = struct
@@ -8996,11 +9787,55 @@ let suites =
     end;
     __LOC__ >:: begin fun _ ->
       (* 1 *) OUnit.assert_equal (
-          Ext_list.flat_map_acc (fun x -> (* 2 *) if x mod 2 = 0 then (* 1 *) [true] else (* 1 *) [])
-            [false;false] [1;2]
+        Ext_list.flat_map_acc (fun x -> (* 2 *) if x mod 2 = 0 then (* 1 *) [true] else (* 1 *) [])
+          [false;false] [1;2]
       )  [true;false;false]
     end;
-    
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_equal (
+        Ext_list.map_acc ["1";"2";"3"] (fun x -> (* 3 *) string_of_int x) [0;1;2] 
+
+      )
+        ["0";"1";"2"; "1";"2";"3"]
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) let (a,b) = Ext_list.take 3 [1;2;3;4;5;6] in 
+      OUnit.assert_equal (a,b)
+        ([1;2;3],[4;5;6]);
+      OUnit.assert_equal (Ext_list.take 1 [1])
+      ([1],[])  
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_equal (Ext_list.assoc_by_int None 1 [2,"x"; 3,"y"; 1, "z"]) "z"
+    end;
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_raise_any
+        (fun _ -> (* 1 *) Ext_list.assoc_by_int None 11 [2,"x"; 3,"y"; 1, "z"])
+    end ;
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_equal
+       (Ext_list.length_compare [0;0;0] 3) `Eq ;
+      OUnit.assert_equal
+       (Ext_list.length_compare [0;0;0] 1) `Gt ;   
+     OUnit.assert_equal
+       (Ext_list.length_compare [0;0;0] 4) `Lt ;   
+     OUnit.assert_equal
+       (Ext_list.length_compare [] (-1)) `Gt ;   
+      OUnit.assert_equal
+       (Ext_list.length_compare [] (0)) `Eq ;          
+    end;
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_bool __LOC__ 
+      (Ext_list.length_larger_than_n 1 [1;2] [1]);
+      OUnit.assert_bool __LOC__ 
+      (Ext_list.length_larger_than_n 0 [1;2] [1;2]);
+            OUnit.assert_bool __LOC__ 
+      (Ext_list.length_larger_than_n 2 [1;2] [])
+
+    end
+
   ]
 end
 module Int_map : sig 
@@ -9429,7 +10264,7 @@ val bad_argf : ('a, unit, string, 'b) format4 -> 'a
 
 
 val dump : 'a -> string 
-
+val pp_any : Format.formatter -> 'a -> unit 
 external id : 'a -> 'a = "%identity"
 
 (** Copied from {!Btype.hash_variant}:
@@ -9589,6 +10424,9 @@ let rec dump r =
 
 let dump v = (* 0 *) dump (Obj.repr v)
 
+let pp_any fmt v = 
+  (* 0 *) Format.fprintf fmt "@[%s@]"
+  (dump v )
 external id : 'a -> 'a = "%identity"
 
 
@@ -9658,7 +10496,7 @@ val path_as_directory : string -> string
     just treat it as a library instead
  *)
 
-val node_relative_path : t -> [`File of string] -> string
+val node_relative_path : bool -> t -> [`File of string] -> string
 
 val chop_extension : ?loc:string -> string -> string
 
@@ -9867,12 +10705,15 @@ let relative_path file_or_dir_1 file_or_dir_2 =
 
     [file1] is currently compilation file 
     [file2] is the dependency
+    
+    TODO: this is a hackish function: FIXME
 *)
-let node_relative_path (file1 : t) 
+let node_relative_path node_modules_shorten (file1 : t) 
     (`File file2 as dep_file : [`File of string]) = 
   (* 0 *) let v = Ext_string.find  file2 ~sub:Literals.node_modules in 
   let len = String.length file2 in 
-  if v >= 0 then
+  if node_modules_shorten && v >= 0 then
+    
     (* 0 *) let rec skip  i =       
       (* 0 *) if i >= len then
         (* 0 *) Ext_pervasives.failwithf ~loc:__LOC__ "invalid path: %s"  file2
@@ -9905,7 +10746,7 @@ let node_relative_path (file1 : t)
        | `File x -> (* 0 *) `File (absolute_path x)
        | `Dir x -> (* 0 *) `Dir(absolute_path x))
     ^ node_sep ^
-    chop_extension_if_any (Filename.basename file2)
+    (* chop_extension_if_any *) (Filename.basename file2)
 
 
 
@@ -9958,34 +10799,64 @@ let combine p1 p2 =
      split_aux "//ghosg//ghsogh/";;
      - : string * string list = ("/", ["ghosg"; "ghsogh"])
    ]}
+   Note that 
+   {[
+     Filename.dirname "/a/" = "/"
+       Filename.dirname "/a/b/" = Filename.dirname "/a/b" = "/a"
+   ]}
+   Special case:
+   {[
+     basename "//" = "/"
+       basename "///"  = "/"
+   ]}
+   {[
+     basename "" =  "."
+       basename "" = "."
+       dirname "" = "."
+       dirname "" =  "."
+   ]}  
 *)
 let split_aux p =
-  (* 12 *) let rec go p acc =
-    (* 77 *) let dir = Filename.dirname p in
-    if dir = p then (* 12 *) dir, acc
-    else (* 65 *) go dir (Filename.basename p :: acc)
+  (* 66 *) let rec go p acc =
+    (* 300 *) let dir = Filename.dirname p in
+    if dir = p then (* 66 *) dir, acc
+    else
+      (* 234 *) let new_path = Filename.basename p in 
+      if Ext_string.equal new_path Filename.dir_sep then 
+        (* 3 *) go dir acc 
+        (* We could do more path simplification here
+           leave to [rel_normalized_absolute_path]
+        *)
+      else 
+        (* 231 *) go dir (new_path :: acc)
+
   in go p []
+
+
 
 (** 
    TODO: optimization
    if [from] and [to] resolve to the same path, a zero-length string is returned 
 *)
 let rel_normalized_absolute_path from to_ =
-  (* 0 *) let root1, paths1 = split_aux from in 
+  (* 27 *) let root1, paths1 = split_aux from in 
   let root2, paths2 = split_aux to_ in 
-  if root1 <> root2 then (* 0 *) root2 else
-    (* 0 *) let rec go xss yss =
-      (* 0 *) match xss, yss with 
+  if root1 <> root2 then (* 0 *) root2
+  else
+    (* 27 *) let rec go xss yss =
+      (* 75 *) match xss, yss with 
       | x::xs, y::ys -> 
-        (* 0 *) if x = y then (* 0 *) go xs ys 
+        (* 49 *) if Ext_string.equal x  y then (* 48 *) go xs ys 
         else 
-          (* 0 *) let start = 
-            List.fold_left (fun acc _ -> (* 0 *) acc // ".." ) ".." xs in 
-          List.fold_left (fun acc v -> (* 0 *) acc // v) start yss
-      | [], [] -> (* 0 *) ""
-      | [], y::ys -> (* 0 *) List.fold_left (fun acc x -> (* 0 *) acc // x) y ys
+          (* 1 *) let start = 
+            List.fold_left (fun acc _ -> (* 3 *) acc // Ext_string.parent_dir_lit )
+              Ext_string.parent_dir_lit  xs in 
+          List.fold_left (fun acc v -> (* 2 *) acc // v) start yss
+      | [], [] -> (* 0 *) Ext_string.empty
+      | [], y::ys -> (* 8 *) List.fold_left (fun acc x -> (* 8 *) acc // x) y ys
       | x::xs, [] ->
-        (* 0 *) List.fold_left (fun acc _ -> (* 0 *) acc // ".." ) ".." xs in
+        (* 18 *) List.fold_left (fun acc _ -> (* 30 *) acc // Ext_string.parent_dir_lit )
+          Ext_string.parent_dir_lit xs in
     go paths1 paths2
 
 (*TODO: could be hgighly optimized later 
@@ -10007,6 +10878,7 @@ let rel_normalized_absolute_path from to_ =
     normalize_absolute_path "/a";;
   ]}
 *)
+(** See tests in {!Ounit_path_tests} *)
 let normalize_absolute_path x =
   (* 12 *) let drop_if_exist xs =
     (* 11 *) match xs with 
@@ -10015,11 +10887,13 @@ let normalize_absolute_path x =
   let rec normalize_list acc paths =
     (* 77 *) match paths with 
     | [] -> (* 12 *) acc 
-    | "." :: xs -> (* 16 *) normalize_list acc xs
-    | ".." :: xs -> 
-      (* 11 *) normalize_list (drop_if_exist acc ) xs 
     | x :: xs -> 
-      (* 38 *) normalize_list (x::acc) xs 
+      (* 65 *) if Ext_string.equal x Ext_string.current_dir_lit then 
+        (* 16 *) normalize_list acc xs 
+      else (* 49 *) if Ext_string.equal x Ext_string.parent_dir_lit then 
+        (* 11 *) normalize_list (drop_if_exist acc ) xs 
+      else   
+        (* 38 *) normalize_list (x::acc) xs 
   in
   let root, paths = split_aux x in
   let rev_paths =  normalize_list [] paths in 
@@ -10043,18 +10917,19 @@ let simple_convert_node_path_to_os_path =
   else (* 0 *) if Sys.win32 || Sys.cygwin then 
     (* 0 *) Ext_string.replace_slash_backward 
   else (* 0 *) failwith ("Unknown OS : " ^ Sys.os_type)
+
 end
 module Ounit_path_tests
 = struct
 #1 "ounit_path_tests.ml"
 let ((>::),
-    (>:::)) = OUnit.((>::),(>:::))
+     (>:::)) = OUnit.((>::),(>:::))
 
 
 let normalize = Ext_filename.normalize_absolute_path
 let (=~) x y = 
-  (* 2 *) OUnit.assert_equal ~cmp:(fun x y ->   (* 2 *) Ext_string.equal x y ) x y
-    
+  (* 29 *) OUnit.assert_equal ~cmp:(fun x y ->   (* 29 *) Ext_string.equal x y ) x y
+
 let suites = 
   __FILE__ 
   >:::
@@ -10093,7 +10968,68 @@ let suites =
     end;
     __LOC__ >:: begin fun _ -> 
       (* 1 *) normalize "/./a/.////////j/k//../////..///././b/./c/d/././../" =~ "/a/b/c"
-    end
+    end;
+
+    __LOC__ >:: begin fun _ -> 
+    (* 1 *) let aux a b result = 
+        
+         (* 6 *) Ext_filename.rel_normalized_absolute_path
+        a b =~ result ; 
+        
+        Ext_filename.rel_normalized_absolute_path
+        (String.sub a 0 (String.length a - 1)) 
+        b  =~ result ;
+        
+        Ext_filename.rel_normalized_absolute_path
+        a
+        (String.sub b 0 (String.length b - 1))  =~ result
+        ;
+        
+
+        Ext_filename.rel_normalized_absolute_path
+        (String.sub a 0 (String.length a - 1 ))
+        (String.sub b 0 (String.length b - 1))
+        =~ result  
+       in   
+      aux
+        "/a/b/c/"
+        "/a/b/c/d/"  "d";
+      aux
+        "/a/b/c/"
+        "/a/b/c/d/e/f/" "d/e/f" ;
+      aux
+        "/a/b/c/d/"
+        "/a/b/c/"  ".."  ;
+      aux
+        "/a/b/c/d/"
+        "/a/b/"  "../.."  ;  
+      aux
+        "/a/b/c/d/"
+        "/a/"  "../../.."  ;  
+       aux
+        "/a/b/c/d/"
+        "//"  "../../../.."  ;  
+     
+     
+    end;
+    (* This is still correct just not optimal depends 
+      on user's perspective *)
+    __LOC__ >:: begin fun _ -> 
+      (* 1 *) Ext_filename.rel_normalized_absolute_path 
+        "/a/b/c/d"
+        "/x/y" =~ "../../../../x/y"  
+
+    end;
+    
+    __LOC__ >:: begin fun _ -> 
+    (* 1 *) Ext_filename.rel_normalized_absolute_path
+    "/usr/local/lib/node_modules/"
+    "//" =~ "../../../..";
+    Ext_filename.rel_normalized_absolute_path
+    "/usr/local/lib/node_modules/"
+    "/" =~ "../../../.."
+    end;
+    
   ]
 
 end
@@ -11900,12 +12836,12 @@ let suites =
 
     __LOC__ >:: begin fun _ -> 
       (* 1 *) OUnit.assert_bool __LOC__ @@
-      List.for_all Ext_string.is_valid_source_name
+      List.for_all (fun x -> (* 10 *) Ext_string.is_valid_source_name x = Good)
         ["x.ml"; "x.mli"; "x.re"; "x.rei"; "x.mll"; 
          "A_x.ml"; "ab.ml"; "a_.ml"; "a__.ml";
          "ax.ml"];
       OUnit.assert_bool __LOC__ @@ not @@
-      List.exists Ext_string.is_valid_source_name
+      List.exists (fun x -> (* 17 *) Ext_string.is_valid_source_name x = Good)
         [".re"; ".rei";"..re"; "..rei"; "..ml"; ".mll~"; 
          "...ml"; "_.mli"; "_x.ml"; "__.ml"; "__.rei"; 
          ".#hello.ml"; ".#hello.rei"; "a-.ml"; "a-b.ml"; "-a-.ml"
@@ -12083,6 +13019,16 @@ let suites =
         );
     end;
     __LOC__ >:: begin fun _ -> 
+      (* 1 *) OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx" < 0);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/g/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "/xxx/g/" = 0)
+    end;
+    __LOC__ >:: begin fun _ -> 
       (* 1 *) OUnit.assert_bool __LOC__
         (Ext_string.equal 
            (Ext_string.concat_array Ext_string.single_space [||])
@@ -12126,6 +13072,7 @@ let suites =
   
     end
   ]
+
 end
 module Ext_topsort : sig 
 #1 "ext_topsort.mli"
@@ -13416,6 +14363,33 @@ let suites =
 
   ]
 end
+module Ounit_utf8_test
+= struct
+#1 "ounit_utf8_test.ml"
+
+
+(* https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+*)
+
+let ((>::),
+    (>:::)) = OUnit.((>::),(>:::))
+
+let (=~) = OUnit.assert_equal
+let suites = 
+    __FILE__
+    >:::
+    [
+        __LOC__ >:: begin fun _ -> 
+            (* 1 *) Ext_utf8.decode_utf8_string
+            "hello 你好，中华民族 hei" =~
+            [104; 101; 108; 108; 111; 32; 20320; 22909; 65292; 20013; 21326; 27665; 26063; 32; 104; 101; 105]
+        end ;
+        __LOC__ >:: begin fun _ -> 
+            (* 1 *) Ext_utf8.decode_utf8_string
+            "" =~ []
+        end
+    ]
+end
 module Ounit_vec_test
 = struct
 #1 "ounit_vec_test.ml"
@@ -13618,6 +14592,8 @@ let suites =
     Ounit_ident_mask_tests.suites;
     Ounit_cmd_tests.suites;
     Ounit_ffi_error_debug_test.suites;
+    Ounit_js_regex_checker_tests.suites;
+    Ounit_utf8_test.suites;
   ]
 let _ = 
   OUnit.run_test_tt_main suites

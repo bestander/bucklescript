@@ -1,9 +1,9 @@
 'use strict';
 
-var $$Array                 = require("../../lib/js/array");
-var Curry                   = require("../../lib/js/curry");
-var Caml_array              = require("../../lib/js/caml_array");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var $$Array                 = require("../../lib/js/array.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_array              = require("../../lib/js/caml_array.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var v = [0];
 
@@ -12,12 +12,12 @@ function f() {
         return /* () */0;
       });
   for(var i = 0; i <= 9; ++i){
-    arr[i] = (function(i){
-    return function () {
-      v[0] = v[0] + i | 0;
-      return /* () */0;
-    }
-    }(i));
+    Caml_array.caml_array_set(arr, i, (function(i){
+        return function () {
+          v[0] = v[0] + i | 0;
+          return /* () */0;
+        }
+        }(i)));
   }
   return arr;
 }

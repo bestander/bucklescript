@@ -23,150 +23,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
-module Rules = struct
-
-  let rule_id = ref 0
-  let rule_names = ref String_set.empty
-  let ask_name name =
-    let current_id = !rule_id in
-    let () = incr rule_id in
-    match String_set.find name !rule_names with
-    | exception Not_found ->
-      rule_names := String_set.add name !rule_names ;
-      name
-    | _ ->
-      begin (* could be improved later
-               1. instead of having a global id, having a unique id per rule name
-               2. the rule id is increased only when actually used
-            *)
-        let new_name =  (name ^ Printf.sprintf "_%d" current_id) in
-        rule_names := String_set.add new_name  !rule_names ;
-        new_name
-      end
-  type t = { mutable used : bool; rule_name : string  ; name : out_channel -> string }
-  let get_name (x : t) oc = x.name oc
-  let print_rule oc ~description ?restat ?depfile ~command   name  =
-    output_string oc "rule "; output_string oc name ; output_string oc "\n";
-    output_string oc "  command = "; output_string oc command; output_string oc "\n";
-    begin match depfile with
-      | None -> ()
-      | Some f ->
-        output_string oc "  depfile = "; output_string oc f; output_string oc  "\n"
-    end;
-    begin match restat with
-      | None -> ()
-      | Some () ->
-        output_string oc "  restat = 1"; output_string oc  "\n"
-    end;
-
-    output_string oc "  description = " ; output_string oc description; output_string oc "\n"
-
-
-  let define
-      ~command
-      ?depfile
-      ?restat
-      ?(description = "Building ${out}")
-      name
-    =
-    let rec self = {
-      used  = false;
-      rule_name = ask_name name ;
-      name = fun oc ->
-        if not self.used then
-          begin
-            print_rule oc ~description ?depfile ?restat ~command name;
-            self.used <- true
-          end ;
-        self.rule_name
-    } in self
-
-
-  let build_ast_and_deps =
-    define
-      ~command:"${bsc}  ${pp_flags} ${ppx_flags} ${bsc_flags} -c -o ${out} -bs-syntax-only -bs-binary-ast ${in}"
-      "build_ast_and_deps"
-
-  let build_ast_and_deps_from_reason_impl =
-    define
-      ~command:"${bsc} -pp \"${refmt} ${refmt_flags}\" ${ppx_flags} ${bsc_flags} -c -o ${out} -bs-syntax-only -bs-binary-ast -impl ${in}"
-      "build_ast_and_deps_from_reason_impl"
-
-  let build_ast_and_deps_from_reason_intf =
-    (* we have to do this way,
-       because it need to be ppxed by bucklescript
-    *)
-    define
-      ~command:"${bsc} -pp \"${refmt} ${refmt_flags}\" ${ppx_flags} ${bsc_flags} -c -o ${out} -bs-syntax-only -bs-binary-ast -intf ${in}"
-      "build_ast_and_deps_from_reason_intf"
-
-
-  let build_bin_deps =
-    define
-      ~command:"${bsdep} -g ${bsb_dir_group} -MD ${in}"
-      "build_deps"
-
-  let reload =
-    define
-      ~command:"${bsbuild} -init"
-      "reload"
-  let copy_resources =
-    let name = "copy_resource" in
-    if Ext_sys.is_windows_or_cygwin then
-      define ~command:"cmd.exe /C copy /Y ${in} ${out} > null"
-      name
-    else
-    define
-      ~command:"cp ${in} ${out}"
-      name
-
-
-
-  (* only generate mll no mli generated *)
-  (* actually we would prefer generators in source ?
-     generator are divided into two categories:
-     1. not system dependent (ocamllex,ocamlyacc)
-     2. system dependent - has to be run on client's machine
-  *)
-
-  let build_ml_from_mll =
-    define
-      ~command:"${ocamllex} -o ${out} ${in}"
-      "build_ml_from_mll"
-  (**************************************)
-  (* below are rules not local any more *)
-  (**************************************)
-
-  (* [bsc_lib_includes] are fixed for libs
-     [bsc_extra_includes] are for app test etc
-     it wil be
-     {[
-       bsc_extra_includes = ${bsc_group_1_includes}
-     ]}
-     where [bsc_group_1_includes] will be pre-calcuated
-  *)
-  let build_cmj_js =
-    define
-      ~command:"${bsc} ${bs_package_flags} -bs-assume-has-mli -bs-no-builtin-ppx-ml -bs-no-implicit-include  \
-                ${bs_package_includes} ${bsc_lib_includes} ${bsc_extra_includes} ${bsc_flags} -o ${in} -c  ${in} ${postbuild}"
-
-      ~depfile:"${in}.d"
-      "build_cmj_only"
-
-  let build_cmj_cmi_js =
-    define
-      ~command:"${bsc} ${bs_package_flags} -bs-assume-no-mli -bs-no-builtin-ppx-ml -bs-no-implicit-include \
-                ${bs_package_includes} ${bsc_lib_includes} ${bsc_extra_includes} ${bsc_flags} -o ${in} -c  ${in} ${postbuild}"
-      ~depfile:"${in}.d"
-      "build_cmj_cmi" (* the compiler should never consult [.cmi] when [.mli] does not exist *)
-  let build_cmi =
-    define
-      ~command:"${bsc} ${bs_package_flags} -bs-no-builtin-ppx-mli -bs-no-implicit-include \
-                ${bs_package_includes} ${bsc_lib_includes} ${bsc_extra_includes} ${bsc_flags} -o ${out} -c  ${in}"
-      ~depfile:"${in}.d"
-      "build_cmi" (* the compiler should always consult [.cmi], current the vanilla ocaml compiler only consult [.cmi] when [.mli] found*)
-end
-
+module Rules = Bsb_rule 
 let output_build
     ?(order_only_deps=[])
     ?(implicit_deps=[])
@@ -179,7 +36,7 @@ let output_build
     ~input
     ~rule
     oc =
-  let rule = Rules.get_name rule  oc in
+  let rule = Rules.get_name rule  oc in (* Trigger building if not used *)
   output_string oc "build ";
   output_string oc output ;
   outputs |> List.iter (fun s -> output_string oc Ext_string.single_space ; output_string oc s  );
@@ -298,13 +155,12 @@ let (++) (us : info) (vs : info) =
 let install_file (file : string) files_to_install =
   String_hash_set.add  files_to_install (Ext_filename.chop_extension_if_any file )
 
-let handle_file_group oc ~package_specs ~js_post_build_cmd  files_to_install acc (group: Bsb_build_ui.file_group) : info =
+let handle_file_group oc ~package_specs ~js_post_build_cmd  
+    (files_to_install : String_hash_set.t) acc (group: Bsb_build_ui.file_group) : info =
   let handle_module_info  oc  module_name
       ( module_info : Binary_cache.module_info)
-      bs_dependencies
       info  =
     let installable =
-      !Bsb_config.install &&
       match group.public with
       | Export_all -> true
       | Export_none -> false
@@ -329,31 +185,23 @@ let handle_file_group oc ~package_specs ~js_post_build_cmd  files_to_install acc
       (* let output_mldeps = output_file_sans_extension ^ Literals.suffix_mldeps in  *)
       (* let output_mlideps = output_file_sans_extension ^ Literals.suffix_mlideps in  *)
       let shadows =
-        let package_flags =
-          ( "bs_package_flags",
-            `Append
-              (String_set.fold (fun s acc ->
-                  Ext_string.inter2 acc (Bsb_config.package_flag ~format:s (Filename.dirname output_cmi))
+        ( "bs_package_flags",
+          `Append
+            (String_set.fold (fun s acc ->
+                 Ext_string.inter2 acc (Bsb_config.package_flag ~format:s (Filename.dirname output_cmi))
 
-                 ) package_specs Ext_string.empty)
-          ) ::
-          (if group.dir_index = 0 then [] else
-             [("bsc_extra_includes",
-               `Overwrite
-                 ("${" ^ Bsb_build_util.string_of_bsb_dev_include group.dir_index ^ "}")
-              )]
-          )
-        in
-
-        match bs_dependencies with
-        | [] -> package_flags
-        | _ ->
-          (
-            "bs_package_includes",
-            `Append
-              (Bsb_build_util.flag_concat "-bs-package-include" bs_dependencies)
-          )
-          :: package_flags
+               ) package_specs Ext_string.empty)
+        ) ::
+        (if group.dir_index = 0 then [] else
+           [
+             "bs_package_includes", `Append "$bs_package_dev_includes"
+             ;
+             ("bsc_extra_includes",
+              `Overwrite
+                ("${" ^ Bsb_build_util.string_of_bsb_dev_include group.dir_index ^ "}")
+             )
+           ]
+        )
       in
       if kind = `Mll then
         output_build oc
@@ -466,12 +314,12 @@ let handle_file_group oc ~package_specs ~js_post_build_cmd  files_to_install acc
 
   in
   String_map.fold (fun  k v  acc ->
-      handle_module_info  oc k v group.bs_dependencies acc
+      handle_module_info  oc k v acc
     ) group.sources  acc
 
 
 let handle_file_groups
- oc ~package_specs ~js_post_build_cmd 
+ oc ~package_specs ~js_post_build_cmd
   ~files_to_install
   (file_groups  :  Bsb_build_ui.file_group list) st =
   List.fold_left (handle_file_group oc ~package_specs ~js_post_build_cmd files_to_install ) st  file_groups

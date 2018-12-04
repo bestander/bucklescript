@@ -1,11 +1,11 @@
 'use strict';
 
-var Block                   = require("../../lib/js/block");
-var Curry                   = require("../../lib/js/curry");
-var Caml_obj                = require("../../lib/js/caml_obj");
-var Pervasives              = require("../../lib/js/pervasives");
-var Caml_exceptions         = require("../../lib/js/caml_exceptions");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Block                   = require("../../lib/js/block.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_obj                = require("../../lib/js/caml_obj.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_exceptions         = require("../../lib/js/caml_exceptions.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var Bad = Caml_exceptions.create("Test_seq.Bad");
 
@@ -20,14 +20,12 @@ function assoc3(x, _l) {
       var match = l[0];
       if (Caml_obj.caml_equal(match[0], x)) {
         return match[1];
-      }
-      else {
+      } else {
         _l = l[1];
         continue ;
         
       }
-    }
-    else {
+    } else {
       throw Caml_builtin_exceptions.not_found;
     }
   };
@@ -65,8 +63,7 @@ function add_help(speclist) {
         ],
         /* [] */0
       ];
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -85,8 +82,7 @@ function add_help(speclist) {
         ],
         /* [] */0
       ];
-    }
-    else {
+    } else {
       throw exn$1;
     }
   }

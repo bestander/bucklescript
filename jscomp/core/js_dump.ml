@@ -118,6 +118,7 @@ module L = struct
   let minus_minus = "--"
   let caml_block = "Block"
   let caml_block_create = "__"
+  let case = "case" 
 end
 let return_indent = (String.length L.return / Ext_pp.indent_length) 
 
@@ -193,8 +194,8 @@ let array_conv =
 
 
 (* https://mathiasbynens.be/notes/javascript-escapes *)
-let pp_string f ?(quote='"') ?(utf=false) s =
-  let pp_raw_string f ?(utf=false) s = 
+let pp_string f  (* ?(utf=false)*) s =
+  let pp_raw_string f (* ?(utf=false)*) s = 
     let l = String.length s in
     for i = 0 to l - 1 do
       let c = String.unsafe_get s i in
@@ -214,7 +215,7 @@ let pp_string f ?(quote='"') ?(utf=false) s =
       | '\000' when i = l - 1 || (let next = String.unsafe_get s (i + 1) in (next < '0' || next > '9'))
         -> P.string f "\\0"
 
-      | '\\' when not utf -> P.string f "\\\\"
+      | '\\' (* when not utf*) -> P.string f "\\\\"
 
 
       | '\000' .. '\031'  | '\127'->
@@ -222,36 +223,52 @@ let pp_string f ?(quote='"') ?(utf=false) s =
         P.string f "\\x";
         P.string f (Array.unsafe_get array_conv (c lsr 4));
         P.string f (Array.unsafe_get array_conv (c land 0xf))
-      | '\128' .. '\255' when not utf ->
+      | '\128' .. '\255' (* when not utf*) ->
         let c = Char.code c in
         P.string f "\\x";
         P.string f (Array.unsafe_get array_conv (c lsr 4));
         P.string f (Array.unsafe_get array_conv (c land 0xf))
-      (* | '\'' -> P.string f "\\'" *)
-      (* | '\"' -> P.string f "\\\"" *)
+      | '\"' -> P.string f "\\\"" (* quote*)
       | _ ->
-        begin 
-          (if c = quote  then
-             P.string f "\\");           
           P.string f (Array.unsafe_get array_str1 (Char.code c))
-        end
     done
   in
-  let quote_s = String.make 1 quote in
-  P.string f quote_s;
-  pp_raw_string f ~utf s ;
-  P.string f quote_s
+  P.string f "\"";
+  pp_raw_string f (*~utf*) s ;
+  P.string f "\""
 ;;
 
+(** used in printing keys 
+    {[
+      {"x" : x};;
+      {x : x }
+    ]}
+*)
 let property_string f s = 
   if Ext_ident.property_no_need_convert s  then 
     P.string f s
   else 
-    pp_string f ~utf:true ~quote:(best_string_quote s) s
+    pp_string f s
 
-(* TODO: check utf's correct semantics *)
-let pp_quote_string f s = 
-  pp_string f ~utf:false ~quote:(best_string_quote s ) s 
+(** used in property access 
+    {[
+      f.x ;;
+      f["x"];;
+    ]}
+*)
+let property_access f s = 
+  if Ext_ident.property_no_need_convert s  then
+    begin 
+      P.string f L.dot;
+      P.string f s; 
+    end
+  else
+    begin 
+      P.bracket_group f 1 @@ fun _ ->
+      pp_string f s
+    end
+
+
 
 let rec comma_idents  cxt f (ls : Ident.t list)  =
   match ls with
@@ -310,10 +327,28 @@ type name =
   | Name_non_top of Ident.t
 
 
+(**
+   Turn [function f (x,y) { return a (x,y)} ] into [Curry.__2(a)],
+   The idea is that [Curry.__2] will guess the arity of [a], if it does 
+   hit, then there is no cost when passed
+*)
+
+
 (* TODO: refactoring 
    Note that {!pp_function} could print both statement and expression when [No_name] is given 
 *)
-let rec pp_function method_
+let rec
+
+  try_optimize_curry cxt f len function_ = 
+  begin           
+    P.string f Js_config.curry;
+    P.string f L.dot;
+    P.string f "__";
+    P.string f (Printf.sprintf "%d" len);
+    P.paren_group f 1 (fun _ -> expression 1 cxt f function_  )             
+  end              
+
+and  pp_function method_
     cxt (f : P.t) ?(name=No_name)  return 
     (l : Ident.t list) (b : J.block) (env : Js_fun_env.t ) =  
   match b, (name,  return)  with 
@@ -334,14 +369,7 @@ let rec pp_function method_
           | Var (Id i) -> Ident.same a i 
           | _ -> false) l ls ->
     let optimize  len p cxt f v =
-      if p then
-        begin           
-          P.string f Js_config.curry;
-          P.string f L.dot;
-          P.string f "__";
-          P.string f (Printf.sprintf "%d" len);
-          P.paren_group f 1 (fun _ -> arguments cxt f [function_])            
-        end              
+      if p then try_optimize_curry cxt f len function_      
       else
         vident cxt f v
     in
@@ -531,8 +559,9 @@ and output_one : 'a .
     let cxt = 
       P.group f 1 @@ fun _ -> 
       P.group f 1 @@ (fun _ -> 
-          P.string f "case ";
-          pp_cond  f e;
+          P.string f L.case;
+          P.space f ;
+          pp_cond  f e; (* could be integer or string*)
           P.space f ;
           P.string f L.colon  );
 
@@ -570,11 +599,16 @@ and vident cxt f  (v : J.vident) =
   begin match v with 
     | Id v | Qualified(v, _, None) ->  
       ident cxt f v
-    | Qualified (id,_, Some name) ->
+    | Qualified (id, (Ml | Runtime),  Some name) ->
       let cxt = ident cxt f id in
       P.string f L.dot;
       P.string f (Ext_ident.convert true name);
       cxt
+    | Qualified (id, External _, Some name) ->
+      let cxt = ident cxt f id in
+      property_access f name ;
+      cxt
+
   end
 
 and expression l cxt  f (exp : J.expression) : Ext_pp_scope.t = 
@@ -751,13 +785,18 @@ and
         P.string f name;
         P.paren_group f 1 (fun _ -> arguments cxt f el)
       )
-
+  | Unicode s -> 
+    P.string f "\"";
+    P.string f s ; 
+    P.string f "\"";
+    cxt 
   | Str (_, s) ->
     (*TODO --
        when utf8-> it will not escape '\\' which is definitely not we want
     *)
-    let quote = best_string_quote s in 
-    pp_string f (* ~utf:(kind = `Utf8) *) ~quote s; cxt 
+    pp_string f  s;
+    cxt 
+
   | Raw_js_code (s,info) -> 
     begin match info with 
       | Exp -> 
@@ -944,7 +983,7 @@ and
     (* Note that we should not apply any smart construtor here, 
        it's purely  a convenice for pretty-printing
     *)    
-    expression_desc cxt l f (Bin (Plus, {expression_desc = Str (true,""); comment = None}, e))    
+    expression_desc cxt l f (Bin (Plus, E.empty_string_literal , e))    
 
   | Bin (Minus, {expression_desc = Number (Int {i=0l;_} | Float {f = "0."})}, e) 
     (* TODO:
@@ -1056,16 +1095,7 @@ and
   | Dot (e, s,normal) ->
     let action () = 
       let cxt = expression 15 cxt f e in
-      if Ext_ident.property_no_need_convert s  then
-        begin 
-          P.string f L.dot;
-          P.string f s; 
-        end
-      else
-        begin 
-          P.bracket_group f 1 @@ fun _ ->
-          pp_string f (* ~utf:(kind = `Utf8) *) ~quote:( best_string_quote s) s
-        end;
+      property_access f s ;
       (* See [Js_program_loader.obj_of_exports] 
          maybe in the ast level we should have 
          refer and export
@@ -1295,6 +1325,7 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
       | Math _
       | Var _ 
       | Str _ 
+      | Unicode _
       | Array _ 
       | Caml_block  _ 
       | FlatCall _ 
@@ -1334,12 +1365,12 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
       | Some [{statement_desc = If _} as nest]
       | Some [{statement_desc = Block [ {statement_desc = If _ ; _} as nest] ; _}]
         ->
-        P.newline f;
+        P.space f;
         P.string f L.else_;
         P.space f;
         statement false cxt f nest 
       | Some s2 -> 
-        P.newline f;
+        P.space f;
         P.string f L.else_;
         P.space f ;
         block  cxt f s2 
@@ -1550,7 +1581,7 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
     in
     P.space f;
     P.brace_vgroup f 1 @@ fun _ -> 
-    let cxt = loop cxt f (fun f i -> pp_quote_string f i ) cc in
+    let cxt = loop cxt f (fun f i -> pp_string f i ) cc in
     (match def with
      | None -> cxt
      | Some def ->
@@ -1683,7 +1714,7 @@ let requires require_lit cxt f (modules : (Ident.t * string) list ) =
       P.space f;
       P.string f require_lit;
       P.paren_group f 0 @@ (fun _ ->
-          pp_string f ~utf:true ~quote:(best_string_quote s) file  );
+          pp_string f file  );
       semi f ;
       P.newline f ;
     ) reversed_list;
@@ -1701,6 +1732,7 @@ let imports  cxt f (modules : (Ident.t * string) list ) =
       (cxt, [], 0)  modules in
   P.force_newline f ;    
   Ext_list.rev_iter (fun (s,file) ->
+      
       P.string f L.import;
       P.space f ;
       P.string f L.star ;
@@ -1711,9 +1743,7 @@ let imports  cxt f (modules : (Ident.t * string) list ) =
       P.nspace f (margin - String.length s + 1) ;      
       P.string f L.from;
       P.space f;
-      (* P.paren_group f 0 @@ (fun _ -> *)
-          pp_string f ~utf:true ~quote:(best_string_quote s) file  
-          (* ) *);
+      pp_string f file ;
       semi f ;
       P.newline f ;
     ) reversed_list;
@@ -1766,7 +1796,7 @@ let node_program ~output_prefix f ( x : J.deps_program) =
   program f cxt x.program  
 
 
-let amd_program ~output_prefix f (  x : J.deps_program) = 
+let amd_program ~output_prefix kind f (  x : J.deps_program) = 
   P.newline f ; 
   let cxt = Ext_pp_scope.empty in
   P.vgroup f 1 @@ fun _ -> 
@@ -1775,10 +1805,10 @@ let amd_program ~output_prefix f (  x : J.deps_program) =
   P.string f (Printf.sprintf "%S" L.exports);
 
   List.iter (fun x ->
-      let s = Js_program_loader.string_of_module_id ~output_prefix AmdJS x in
+      let s = Js_program_loader.string_of_module_id ~output_prefix kind x in
       P.string f L.comma ;
       P.space f; 
-      pp_string f ~utf:true ~quote:(best_string_quote s) s;
+      pp_string f  s;
     ) x.modules ;
   P.string f "]";
   P.string f L.comma;
@@ -1804,9 +1834,9 @@ let amd_program ~output_prefix f (  x : J.deps_program) =
   v
 
 
-let es6_program ~output_prefix f (  x : J.deps_program) = 
+let es6_program  ~output_prefix fmt f (  x : J.deps_program) = 
   let cxt = 
-     imports
+    imports
       Ext_pp_scope.empty
       f
       (List.map 
@@ -1814,7 +1844,7 @@ let es6_program ~output_prefix f (  x : J.deps_program) =
             Lam_module_ident.id x,
             Js_program_loader.string_of_module_id
               ~output_prefix
-              Es6 x)
+              fmt x)
          x.modules)
   in
   let () = P.force_newline f in 
@@ -1823,17 +1853,13 @@ let es6_program ~output_prefix f (  x : J.deps_program) =
   es6_export cxt f x.program.exports
 
 
-  
+
 (** Make sure github linguist happy
     {[
       require('Linguist')
         Linguist::FileBlob.new('jscomp/test/test_u.js').generated?
     ]}
 *)
-let bs_header = 
-  "// Generated by BUCKLESCRIPT VERSION " ^
-  Bs_version.version ^
-  " , PLEASE EDIT WITH CARE"
 
 let pp_deps_program
     ~output_prefix
@@ -1842,16 +1868,16 @@ let pp_deps_program
   begin
     if not !Js_config.no_version_header then 
       begin 
-        P.string f bs_header;
+        P.string f Bs_version.header;
         P.newline f
       end ; 
     P.string f L.strict_directive; 
     P.newline f ;    
     ignore (match kind with 
-        | Es6 -> 
-          es6_program ~output_prefix f program
-        | AmdJS -> 
-          amd_program ~output_prefix f program
+        | Es6 | Es6_global -> 
+          es6_program ~output_prefix kind f program
+        | AmdJS | AmdJS_global -> 
+          amd_program ~output_prefix kind f program
         | NodeJS -> 
           node_program ~output_prefix f program
         | Goog  -> 

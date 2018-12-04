@@ -1,12 +1,12 @@
 'use strict';
 
-var Mt                      = require("./mt");
-var List                    = require("../../lib/js/list");
-var Block                   = require("../../lib/js/block");
-var Curry                   = require("../../lib/js/curry");
-var Stream                  = require("../../lib/js/stream");
-var Caml_bytes              = require("../../lib/js/caml_bytes");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Mt                      = require("./mt.js");
+var List                    = require("../../lib/js/list.js");
+var Block                   = require("../../lib/js/block.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Stream                  = require("../../lib/js/stream.js");
+var Caml_bytes              = require("../../lib/js/caml_bytes.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function classify(chr) {
   if (chr & 128) {
@@ -17,47 +17,40 @@ function classify(chr) {
             if (chr & 4) {
               if (chr & 2) {
                 return /* Invalid */0;
-              }
-              else {
+              } else {
                 return /* Leading */Block.__(2, [
                           5,
                           chr & 1
                         ]);
               }
-            }
-            else {
+            } else {
               return /* Leading */Block.__(2, [
                         4,
                         chr & 3
                       ]);
             }
-          }
-          else {
+          } else {
             return /* Leading */Block.__(2, [
                       3,
                       chr & 7
                     ]);
           }
-        }
-        else {
+        } else {
           return /* Leading */Block.__(2, [
                     2,
                     chr & 15
                   ]);
         }
-      }
-      else {
+      } else {
         return /* Leading */Block.__(2, [
                   1,
                   chr & 31
                 ]);
       }
-    }
-    else {
+    } else {
       return /* Cont */Block.__(1, [chr & 63]);
     }
-  }
-  else {
+  } else {
     return /* Single */Block.__(0, [chr]);
   }
 }
@@ -73,8 +66,7 @@ function utf8_decode(strm) {
                         Stream.$$Error,
                         "Invalid byte"
                       ];
-                }
-                else {
+                } else {
                   switch (match$1.tag | 0) {
                     case 0 : 
                         return Stream.icons(match$1[0], utf8_decode(strm));
@@ -95,21 +87,18 @@ function utf8_decode(strm) {
                                       Stream.$$Error,
                                       "Continuation byte expected"
                                     ];
-                              }
-                              else if (match.tag === 1) {
+                              } else if (match.tag === 1) {
                                 _c = (c << 6) | match[0] & 63;
                                 _n = n - 1 | 0;
                                 continue ;
                                 
-                              }
-                              else {
+                              } else {
                                 throw [
                                       Stream.$$Error,
                                       "Continuation byte expected"
                                     ];
                               }
-                            }
-                            else {
+                            } else {
                               return c;
                             }
                           };
@@ -118,8 +107,7 @@ function utf8_decode(strm) {
                     
                   }
                 }
-              }
-              else {
+              } else {
                 return Stream.sempty;
               }
             });
@@ -133,8 +121,7 @@ function decode(bytes, offset) {
           Caml_builtin_exceptions.invalid_argument,
           "decode"
         ];
-  }
-  else {
+  } else {
     switch (match.tag | 0) {
       case 0 : 
           return /* tuple */[
@@ -161,22 +148,19 @@ function decode(bytes, offset) {
                       Caml_builtin_exceptions.invalid_argument,
                       "decode"
                     ];
-              }
-              else if (match$1.tag === 1) {
+              } else if (match$1.tag === 1) {
                 _offset = offset$2 + 1 | 0;
                 _c = (c << 6) | match$1[0] & 63;
                 _n = n - 1 | 0;
                 continue ;
                 
-              }
-              else {
+              } else {
                 throw [
                       Caml_builtin_exceptions.invalid_argument,
                       "decode"
                     ];
               }
-            }
-            else {
+            } else {
               return /* tuple */[
                       c,
                       offset$2
@@ -199,19 +183,15 @@ function eq_list(cmp, _xs, _ys) {
           _xs = xs[1];
           continue ;
           
-        }
-        else {
+        } else {
           return /* false */0;
         }
-      }
-      else {
+      } else {
         return /* false */0;
       }
-    }
-    else if (ys) {
+    } else if (ys) {
       return /* false */0;
-    }
-    else {
+    } else {
       return /* true */1;
     }
   };
@@ -258,7 +238,7 @@ Stream.iter(add, utf8_decode(Stream.of_string("\xe4\xbd\xa0\xe5\xa5\xbdBuckleScr
 
 var codes = List.rev(v[0]);
 
-eq('File "utf8_decode_test.ml", line 125, characters 5-12', /* tuple */[
+eq("File \"utf8_decode_test.ml\", line 125, characters 5-12", /* tuple */[
       /* true */1,
       eq_list(function (x, y) {
             return +(x === y);

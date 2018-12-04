@@ -1,5 +1,5 @@
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -17,19 +17,37 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
+
+(** Node Process API *)
 
 type t =
   < argv : string array;
     arch : string ;
     abort : unit -> unit [@bs.meth];
     chdir : string -> unit [@bs.meth];
-    (** @raise *)
     cwd : unit -> string [@bs.meth];
-    disconnect : unit -> unit [@bs.meth];    
+    disconnect : unit -> unit [@bs.meth];
+    platform : string;
+    env : string Js_dict.t; (* ocamldep sucks which can not map [Js.Dic.t] to [Js_dict.t]*)
   >   Js.t
-  
+
 external process : t = "" [@@bs.module]
+
+external exit : int -> unit = "" [@@bs.module "process"]
+
+(** The process.uptime() method returns the number of seconds 
+   the current Node.js process has been running.) *)
+external uptime : t -> unit -> float = "" [@@bs.send]
+let putEnvVar key (var : string) = 
+  Js_dict.set process##env key var
+(** Note that 
+    {[process.env.X = undefined]} will result in 
+    {[process.env.X = "undefined"]}
+    The only sane way to do it is using `delete`
+*)
+let deleteEnvVar   s  =
+  Js_dict.unsafeDeleteKey process##env s  [@bs]

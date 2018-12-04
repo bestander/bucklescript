@@ -60,33 +60,14 @@ type js_module_as_fn =
 (** TODO: information between [arg_type] and [arg_label] are duplicated, 
   design a more compact representation so that it is also easy to seralize by hand
 *)  
-type arg_type = Ast_core_type.arg_type =
-  | NullString of (int * string) list (* `a does not have any value*)
-  | NonNullString of (int * string) list (* `a of int *)
-  | Int of (int * int ) list (* ([`a | `b ] [@bs.int])*)
-  | Arg_int_lit of int 
-  | Arg_string_lit of string 
-  (* maybe we can improve it as a combination of {!Asttypes.constant} and tuple *)
-  | Array 
-  | Extern_unit
-  | Nothing
-  | Ignore
+type arg_type = Ast_arg.ty
 
-type arg_label = 
-  | Label of string 
-  | Label_int_lit of string * int 
-  | Label_string_lit of string * string 
-  | Optional of string 
-  | Empty (* it will be ignored , side effect will be recorded *)
-  | Empty_int_lit of int 
-  | Empty_string_lit of string 
+type arg_label = Ast_arg.label
+
+
+
 (**TODO: maybe we can merge [arg_label] and [arg_type] *)
-type arg_kind = 
-  {
-    arg_type : arg_type;
-    arg_label : arg_label
-  }
-type obj_create = arg_kind list
+type obj_create = Ast_arg.kind list
 
 type ffi = 
   (* | Obj_create of obj_create *)
@@ -122,8 +103,18 @@ let name_of_ffi ffi =
     Printf.sprintf "[@@bs.val] %S " v.name                    
 (* | Obj_create _ -> 
    Printf.sprintf "[@@bs.obj]" *)
+
+type return_wrapper = 
+  | Return_unset 
+  | Return_identity
+  | Return_undefined_to_opt  
+  | Return_null_to_opt
+  | Return_null_undefined_to_opt
+  | Return_to_ocaml_bool
+  | Return_replaced_with_unit    
 type t  = 
-  | Ffi_bs of arg_kind list  * bool * ffi 
+  | Ffi_bs of Ast_arg.kind list  *
+     return_wrapper * ffi 
   (**  [Ffi_bs(args,return,ffi) ]
        [return] means return value is unit or not, 
         [true] means is [unit]  
@@ -167,12 +158,12 @@ let valid_global_name ?loc txt =
     List.iter
       (fun s ->
          if not (valid_ident s) then
-           Location.raise_errorf ?loc "Not a valid  name %s"  txt
+           Location.raise_errorf ?loc "Not a valid name %s"  txt
       ) v      
 
 let valid_method_name ?loc txt =         
   if not (valid_ident txt) then
-    Location.raise_errorf ?loc "Not a valid  name %s"  txt
+    Location.raise_errorf ?loc "Not a valid name %s"  txt
 
 
 

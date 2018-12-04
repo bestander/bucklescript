@@ -36,6 +36,22 @@ type set_field_dbg_info = Lambda.set_field_dbg_info
 
 type ident = Ident.t
 
+type let_kind = Lambda.let_kind
+    = Strict
+    | Alias
+    | StrictOpt
+    | Variable
+
+type meth_kind = Lambda.meth_kind 
+  = Self 
+  | Public of string option 
+  | Cached 
+
+type function_kind 
+   = Curried
+   (* | Tupled *)
+
+
 type function_arities = 
   | Determin of bool * (int * Ident.t list option) list  * bool
   (** when the first argument is true, it is for sure 
@@ -45,6 +61,20 @@ type function_arities =
       for an exception: it is (Determin (true,[], true))
    *)
   | NA 
+
+type constant = 
+  | Const_int of int
+  | Const_char of char
+  | Const_string of string 
+  | Const_unicode of string 
+  | Const_float of string
+  | Const_int32 of int32
+  | Const_int64 of int64
+  | Const_nativeint of nativeint
+  | Const_pointer of int * Lambda.pointer_info
+  | Const_block of int * Lambda.tag_info * constant list
+  | Const_float_array of string list
+  | Const_immstring of string
 
 type primitive = 
   | Pbytes_to_string
@@ -57,7 +87,16 @@ type primitive =
   | Psetfloatfield of int * Lambda.set_field_dbg_info
   | Pduprecord of Types.record_representation * int
   | Plazyforce
-  | Pccall of  Primitive.description
+
+  | Pccall of  Primitive.description    
+  | Pjs_call of
+    (* Location.t *  [loc] is passed down *)
+    string *  (* prim_name *)
+    Ast_arg.kind list * (* arg_types *)
+    (* Ast_external_attributes.return_wrapper *) (* result_type *)
+    Ast_ffi_types.ffi  (* ffi *)
+  | Pjs_object_create of Ast_ffi_types.obj_create
+
   | Praise 
   | Psequand | Psequor | Pnot
   | Pnegint | Paddint | Psubint | Pmulint | Pdivint | Pmodint
@@ -70,6 +109,9 @@ type primitive =
   | Pnegfloat | Pabsfloat
   | Paddfloat | Psubfloat | Pmulfloat | Pdivfloat
   | Pfloatcomp of Lambda.comparison
+  | Pjscomp of Lambda.comparison
+  | Pjs_apply (*[f;arg0;arg1; arg2; ... argN]*)
+  | Pjs_runtime_apply (* [f; [...]] *)
   | Pstringlength 
   | Pstringrefu 
   | Pstringrefs
@@ -140,10 +182,31 @@ type primitive =
   | Pjs_unsafe_downgrade of string * Location.t
   | Pinit_mod
   | Pupdate_mod
+
+  | Praw_js_code_exp of string 
+  | Praw_js_code_stmt of string 
+  
   | Pjs_fn_make of int 
   | Pjs_fn_run of int 
   | Pjs_fn_method of int 
   | Pjs_fn_runmethod of int 
+  | Pundefined_to_opt
+  | Pnull_to_opt
+  | Pnull_undefined_to_opt 
+  
+  | Pis_null
+  | Pis_undefined
+  | Pis_null_undefined
+
+  | Pjs_boolean_to_bool
+  | Pjs_typeof
+  | Pjs_function_length 
+
+  | Pjs_string_of_small_array
+  | Pjs_is_instance_array
+  | Pcaml_obj_length
+  | Pcaml_obj_set_length
+  | Pwrap_exn (* convert either JS exception or OCaml exception into OCaml format *)  
 
 type switch  =
   { sw_numconsts: int;
@@ -169,17 +232,17 @@ and prim_info = private
   }
 and function_info = private
   { arity : int ; 
-   kind : Lambda.function_kind ; 
-   params : ident list ;
-   body : t 
+    function_kind : function_kind ; 
+    params : ident list ;
+    body : t 
   }
 and  t =  private
   | Lvar of ident
   | Lglobal_module of ident
-  | Lconst of Lambda.structured_constant
+  | Lconst of constant
   | Lapply of apply_info
   | Lfunction of function_info
-  | Llet of Lambda.let_kind * ident * t * t
+  | Llet of let_kind * ident * t * t
   | Lletrec of (ident * t) list * t
   | Lprim of prim_info
   | Lswitch of t * switch
@@ -200,12 +263,7 @@ and  t =  private
   *)
 
 
-module Prim : sig 
-  type t = primitive
-  val js_is_nil : t
-  val js_is_undef : t 
-  val js_is_nil_undef : t 
-end
+
 
 
 type binop = t -> t -> t 
@@ -217,6 +275,9 @@ type unop = t ->  t
 val inner_map : (t -> t) -> t -> t
 val inner_iter : (t -> unit) -> t -> unit 
 val free_variables : t -> Ident_set.t
+
+val no_bounded_variables : t -> bool 
+
 val hit_any_variables : Ident_set.t -> t -> bool
 val check : string -> t -> t 
 type bindings = (Ident.t * t) list
@@ -226,14 +287,14 @@ val scc : bindings -> t -> t  -> t
 
 val var : ident -> t
 val global_module : ident -> t 
-val const : Lambda.structured_constant -> t
+val const : constant -> t
 
 val apply : t -> t list -> Location.t -> apply_status -> t
 val function_ : 
   arity:int ->
-  kind:Lambda.function_kind -> params:ident list -> body:t -> t
+  function_kind:function_kind -> params:ident list -> body:t -> t
 
-val let_ : Lambda.let_kind -> ident -> t -> t -> t
+val let_ : let_kind -> ident -> t -> t -> t
 val letrec : (ident * t) list -> t -> t
 val if_ : triop
 val switch : t -> switch  -> t 
@@ -248,7 +309,7 @@ val sequand : binop
 val not_ : Location.t ->  unop
 val seq : binop
 val while_ : binop
-val event : t -> Lambda.lambda_event -> t  
+(* val event : t -> Lambda.lambda_event -> t   *)
 val try_ : t -> ident -> t  -> t 
 val ifused : ident -> t -> t
 val assign : ident -> t -> t 

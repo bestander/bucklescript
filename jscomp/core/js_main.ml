@@ -151,6 +151,14 @@ let buckle_script_flags =
    Arg.String set_eval_string, 
    " (experimental) Set the string to be evaluated, note this flag will be conflicted with -bs-main"
   )
+  ::("-bs-no-error-unused-attribute",
+    Arg.Set Js_config.no_error_unused_bs_attribute,
+    " No error when seeing unused attribute"
+    (* We introduce such flag mostly 
+      for work around 
+      in case some embarassing compiler bugs
+    *)
+  )
   ::
   (
     "-bs-sort-imports",
@@ -245,8 +253,11 @@ let buckle_script_flags =
 
 
 let _ = 
+  (* Default configuraiton: sync up with 
+    {!Jsoo_main}  *)
   Clflags.unsafe_string := false;
   Clflags.debug := true;
+  Clflags.record_event_when_debug := false;
   Clflags.binary_annotations := true; 
   Bs_conditional_initial.setup_env ();
   try
@@ -272,7 +283,3 @@ let _ =
     else
       (** Fancy error message reporting*)
       exit 2
-
-
-
-

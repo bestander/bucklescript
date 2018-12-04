@@ -1,9 +1,9 @@
 'use strict';
 
-var Block      = require("../../lib/js/block");
-var Curry      = require("../../lib/js/curry");
-var Format     = require("../../lib/js/format");
-var Pervasives = require("../../lib/js/pervasives");
+var Block      = require("../../lib/js/block.js");
+var Curry      = require("../../lib/js/curry.js");
+var Format     = require("../../lib/js/format.js");
+var Pervasives = require("../../lib/js/pervasives.js");
 
 function err(str, f) {
   return Curry._1(Format.fprintf(Format.err_formatter, Pervasives.$caret$caret(/* Format */[
@@ -36,8 +36,7 @@ function ierr(b, str, f) {
                           ]),
                         "%s "
                       ], f)), str);
-  }
-  else {
+  } else {
     return Curry._1(Format.ifprintf(Format.err_formatter, Pervasives.$caret$caret(/* Format */[
                         /* String */Block.__(2, [
                             /* No_padding */0,
@@ -88,8 +87,7 @@ function iwarn(b, str, f) {
                           ]),
                         "WARN: %s "
                       ], f)), str);
-  }
-  else {
+  } else {
     return Curry._1(Format.ifprintf(Format.err_formatter, Pervasives.$caret$caret(/* Format */[
                         /* String_literal */Block.__(11, [
                             "WARN: ",
@@ -137,8 +135,7 @@ function iinfo(b, str, f) {
                           ]),
                         "INFO: %s "
                       ], f)), str);
-  }
-  else {
+  } else {
     return Curry._1(Format.fprintf(Format.err_formatter, Pervasives.$caret$caret(/* Format */[
                         /* String_literal */Block.__(11, [
                             "INFO: ",

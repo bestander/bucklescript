@@ -22,10 +22,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
+(** Node Buffer API *)
 
 type t = Node.buffer 
 
-external isBuffer : 'a -> Js.boolean = "Buffer.isBuffer" 
+external isBuffer : 'a -> bool = "Buffer.isBuffer" 
 [@@bs.val]
 
 external fromString : string -> t = "Buffer.from"

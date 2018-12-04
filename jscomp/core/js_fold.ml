@@ -124,7 +124,7 @@ class virtual fold =
          Qualified (_, Runtime, Some "caml_int_compare")         
        ]}       
      *)
-                 (* used in [js_create_array] primitive, note having
+                 (* used in [#create_array] primitive, note having
        uninitilized array is not as bad as in ocaml, 
        since GC does not rely on it
      *)
@@ -215,7 +215,9 @@ class virtual fold =
        don't optimize it, since it does have side effec, 
        examples like "use asm;" and our compiler may generate "error;..." 
        which is better to leave it alone
+       The last argument is passed from as `j` from `{j||j}`
      *)
+                 (* It is escaped string, print delimited by '"'*)
                  (* literally raw JS code 
   *)
                  (* The third argument is [tag] , forth is [tag_info] *)
@@ -414,6 +416,7 @@ class virtual fold =
           let o = o#list (fun o -> o#ident) _x_i1 in
           let o = o#block _x_i2 in let o = o#unknown _x_i3 in o
       | Str (_x, _x_i1) -> let o = o#bool _x in let o = o#string _x_i1 in o
+      | Unicode _x -> let o = o#string _x in o
       | Raw_js_code (_x, _x_i1) ->
           let o = o#string _x in let o = o#code_info _x_i1 in o
       | Array (_x, _x_i1) ->

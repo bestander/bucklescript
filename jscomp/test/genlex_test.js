@@ -1,10 +1,10 @@
 'use strict';
 
-var Mt     = require("./mt");
-var List   = require("../../lib/js/list");
-var Block  = require("../../lib/js/block");
-var Genlex = require("../../lib/js/genlex");
-var Stream = require("../../lib/js/stream");
+var Mt     = require("./mt.js");
+var List   = require("../../lib/js/list.js");
+var Block  = require("../../lib/js/block.js");
+var Genlex = require("../../lib/js/genlex.js");
+var Stream = require("../../lib/js/stream.js");
 
 var lexer = Genlex.make_lexer(/* :: */[
       "+",
@@ -45,8 +45,7 @@ function to_list(s) {
     catch (exn){
       if (exn === Stream.Failure) {
         return List.rev(acc);
-      }
-      else {
+      } else {
         throw exn;
       }
     }

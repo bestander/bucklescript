@@ -28,6 +28,7 @@
 
 
 
+(** *)
 
 let repeat = Caml_utils.repeat
 let caml_failwith s = raise (Failure  s)
@@ -144,18 +145,16 @@ let caml_int64_of_string s =
 
   let rec aux acc k = 
     if k = len then acc 
-    else 
+    else             
       let a = s.[k] in
       if a  = '_' then aux acc ( k +  1) 
-      else 
+      else     
         let v = Int64.of_int @@ parse_digit a in  
-        if v < 0L || v >=  base then 
+        if v < 0L || v >=  base || acc > threshold then 
           caml_failwith "int64_of_string"
         else 
           let acc = base *~ acc +~  v in 
-          if acc > threshold then 
-            caml_failwith "int64_of_string"
-          else aux acc  ( k +   1)
+          aux acc  ( k +   1)
   in 
   let res = sign *~ aux d (i + 1) in 
   let or_res = Int64.logor res 0L in 
@@ -406,14 +405,14 @@ let caml_int64_format fmt x =
             ref (Int64.add quotient_l c )  in
           let modulus = ref d in
           s :=
-            Bs_string.string_of_char 
+            Bs_string.of_char 
               cvtbl.[ Int64.to_int !modulus] ^ !s ;
 
           while  !quotient <> 0L do
             let a, b = Js_int64.div_mod (!quotient) wbase in
             quotient := a;
             modulus := b;
-            s := Bs_string.string_of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
+            s := Bs_string.of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
           done;
         end
       else
@@ -421,14 +420,14 @@ let caml_int64_format fmt x =
         let quotient = ref a  in
         let modulus = ref b in
         s :=
-          Bs_string.string_of_char 
+          Bs_string.of_char 
             cvtbl.[ Int64.to_int !modulus] ^ !s ;
 
         while  !quotient <> 0L do
           let a, b = Js_int64.div_mod (!quotient) wbase in
           quotient := a;
           modulus := b;
-          s := Bs_string.string_of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
+          s := Bs_string.of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
         done
 
     | Dec ->
@@ -454,14 +453,14 @@ let caml_int64_format fmt x =
                  e)  in
         let modulus = ref f in
         s :=
-          Bs_string.string_of_char 
+          Bs_string.of_char 
             cvtbl.[Int64.to_int !modulus] ^ !s ;
 
         while !quotient <> 0L do
           let a, b = Js_int64.div_mod (!quotient) wbase in
           quotient := a;
           modulus := b;
-          s := Bs_string.string_of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
+          s := Bs_string.of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
         done;
 
       else
@@ -469,14 +468,14 @@ let caml_int64_format fmt x =
         let quotient = ref a  in
         let modulus = ref b in
         s :=
-          Bs_string.string_of_char 
+          Bs_string.of_char 
             cvtbl.[ Int64.to_int !modulus] ^ !s ;
 
         while  !quotient <> 0L do
           let a, b = Js_int64.div_mod (!quotient) wbase in
           quotient := a;
           modulus := b;
-          s := Bs_string.string_of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
+          s := Bs_string.of_char cvtbl.[Int64.to_int !modulus] ^ !s ;
         done;
   end;
   if f.prec >= 0 then
@@ -494,12 +493,12 @@ let caml_format_float fmt x =
   let prec = if f.prec < 0 then 6 else f.prec in 
   let x = if x < 0. then (f.sign <- (-1); -. x) else x in 
   let s = ref "" in 
-  if Js.to_bool @@ Js_float.isNaN x then 
+  if Js_float.isNaN x then 
     begin 
       s := "nan";
       f.filter <- " "
     end
-  else if not @@ Js.to_bool @@ Js_float.isFinite x then
+  else if not @@ Js_float.isFinite x then
     begin 
       s := "inf";
       f.filter <- " " 
@@ -509,7 +508,7 @@ let caml_format_float fmt x =
       match f.conv with 
       | "e"
         -> 
-        s := Js_float.to_exponential x ~prec;
+        s := Js_float.toExponentialWithPrecision x ~digits:prec;
         (* exponent should be at least two digits
            {[
              (3.3).toExponential()
@@ -526,13 +525,13 @@ let caml_format_float fmt x =
         -> 
         (*  this will not work large numbers *)
         (* ("%3.10f", 3e+56, "300000000000000005792779041490073052596128503513888063488.0000000000") *)
-        s := Js_float.toFixed x prec 
+        s := Js_float.toFixedWithPrecision x ~digits:prec 
       | "g" -> 
         let prec = if prec <> 0 then prec else 1 in
-        s := Js_float.to_exponential x (prec - 1);
+        s := Js_float.toExponentialWithPrecision x ~digits:(prec - 1);
         let j = Bs_string.index_of !s "e" in 
-        let  exp = Js_int.from_any @@ Bs_string.slice_rest !s (j + 1)  in 
-        if exp < -4 || x >= 1e21 ||Bs_string.length (Js_float.toFixed x 0) > prec then 
+        let  exp = int_of_float @@ Js_float.fromString @@ Bs_string.slice_rest !s (j + 1)  in 
+        if exp < -4 || x >= 1e21 ||Bs_string.length (Js_float.toFixed x) > prec then 
           let i = ref (j - 1)  in
           while !s.[!i] = '0' do 
             decr i 
@@ -549,10 +548,10 @@ let caml_format_float fmt x =
           if exp < 0 then 
             begin 
               p := !p - (exp + 1);
-              s := Js_float.toFixed x !p 
+              s := Js_float.toFixedWithPrecision x ~digits:!p 
             end
           else 
-            while (s := Js_float.toFixed x !p;Bs_string.length !s > prec + 1) do 
+            while (s := Js_float.toFixedWithPrecision x ~digits:!p;Bs_string.length !s > prec + 1) do 
               decr p
             done ;
           if !p <> 0 then 

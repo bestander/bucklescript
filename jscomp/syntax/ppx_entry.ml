@@ -197,6 +197,8 @@ let handle_core_type
         Ast_util.to_method_type loc self label args body
       | `Nothing , _ -> 
         Ast_mapper.default_mapper.typ self ty
+      | `Exn_convert, _  ->  
+        Location.raise_errorf ~loc "Invalid use of attribute `bs.exn`"
     end
   | {
     ptyp_desc =  Ptyp_object ( methods, closed_flag) ;
@@ -212,8 +214,10 @@ let handle_core_type
               | `Nothing, attrs -> attrs, core_type
               | `Uncurry, attrs ->
                 attrs, Ast_attributes.bs +> ty
+              | `Exn_convert, _ -> 
+                Location.raise_errorf ~loc "bs.get/set conflicts with bs.exn"
               | `Method, _
-                -> Location.raise_errorf "bs.get/set conflicts with bs.meth"
+                -> Location.raise_errorf ~loc "bs.get/set conflicts with bs.meth"
               | `Meth_callback, attrs ->
                 attrs, Ast_attributes.bs_this +> ty 
             in 
@@ -224,8 +228,10 @@ let handle_core_type
               | `Nothing, attrs -> attrs, core_type
               | `Uncurry, attrs ->
                 attrs, Ast_attributes.bs +> ty 
+              | `Exn_convert, _ -> 
+                Location.raise_errorf ~loc "bs.get/set conflicts with bs.exn"
               | `Method, _
-                -> Location.raise_errorf "bs.get/set conflicts with bs.meth"
+                -> Location.raise_errorf ~loc "bs.get/set conflicts with bs.meth"
               | `Meth_callback, attrs ->
                 attrs, Ast_attributes.bs_this +> ty
             in               
@@ -239,6 +245,8 @@ let handle_core_type
                 attrs, Ast_attributes.bs +> ty 
               | `Method, attrs -> 
                 attrs, Ast_attributes.bs_method +> ty 
+              | `Exn_convert, _ -> 
+                Location.raise_errorf ~loc "Invalid use of `bs.exn'"
               | `Meth_callback, attrs ->
                 attrs, Ast_attributes.bs_this +> ty  in            
             label, attrs, self.typ self core_type in
@@ -254,10 +262,6 @@ let handle_core_type
     else inner_type
   | _ -> super.typ self ty
 
-
-
-
-
 let rec unsafe_mapper : Ast_mapper.mapper =   
   { Ast_mapper.default_mapper with 
     expr = (fun self ({ pexp_loc = loc } as e) -> 
@@ -271,31 +275,42 @@ let rec unsafe_mapper : Ast_mapper.mapper =
             {txt = ("bs.re" | "re"); loc} , payload)
           ->
           Exp.constraint_ ~loc
-            (Ast_util.handle_raw loc payload)
-            (Ast_comb.to_js_re_type loc)            
+            (Ast_util.handle_raw ~check_js_regex:true loc payload)
+            (Ast_comb.to_js_re_type loc)
+        | Pexp_extension ({txt = "bs.external" | "external" ; loc }, payload) -> 
+          begin match Ast_payload.as_ident payload with 
+          | Some {txt = Lident x}
+            -> Ast_util.handle_external loc x
+            (* do we need support [%external gg.xx ] 
+               
+               {[ Js.Undefined.to_opt (if Js.typeof x == "undefined" then x else Js.Undefined.empty ) ]}
+            *)
+
+          | None | Some _ -> 
+            Location.raise_errorf ~loc 
+            "external expects a single identifier"
+          end 
         | Pexp_extension
             ({txt = ("bs.node" | "node"); loc},
              payload)
           ->
           let strip s =
-            let len = String.length s in            
-            if s.[len - 1] = '_' then
-              String.sub s 0 (len - 1)
-            else s in                  
+            match s with 
+            | "_module" -> "module" 
+            | x -> x  in 
           begin match Ast_payload.as_ident payload with
             | Some {txt = Lident
-                        ("__filename"
+                        ( "__filename"
                         | "__dirname"
-                        | "module_"
+                        | "_module"
                         | "require" as name); loc}
               ->
               let exp =
-                Ast_util.handle_raw loc
-                  (Ast_payload.raw_string_payload loc
-                     (strip name) ) in
+                Ast_util.handle_external loc (strip name)  in
               let typ =
-                Ast_comb.to_undefined_type loc @@                 
-                if name = "module_" then
+                Ast_core_type.lift_option_type  
+                 @@                 
+                if name = "_module" then
                   Typ.constr ~loc
                     { txt = Ldot (Lident "Node", "node_module") ;
                       loc} []   
@@ -320,6 +335,16 @@ let rec unsafe_mapper : Ast_mapper.mapper =
               end
 
           end             
+        |Pexp_constant (Const_string (s, (Some delim))) 
+          ->         
+          if Ext_string.equal delim Literals.unescaped_js_delimiter then 
+            let s_len  = String.length s in 
+            let buf = Buffer.create (s_len * 2) in 
+            Ast_utf8_string.check_and_transform loc buf s 0 s_len ;  
+            { e with pexp_desc = Pexp_constant (Const_string (Buffer.contents buf, Some Literals.escaped_j_delimiter))}
+          else if Ext_string.equal delim Literals.unescaped_j_delimiter then 
+            Location.raise_errorf ~loc "{j||j} is reserved for future use" 
+          else e 
 
         (** [bs.debugger], its output should not be rewritten any more*)
         | Pexp_extension ({txt = ("bs.debugger"|"debugger"); loc} , payload)
@@ -344,13 +369,21 @@ let rec unsafe_mapper : Ast_mapper.mapper =
           begin match Ast_attributes.process_attributes_rev e.pexp_attributes with 
             | `Nothing, _ 
               -> Ast_mapper.default_mapper.expr self e 
-            |   `Uncurry, pexp_attributes
+            | `Uncurry, pexp_attributes
               -> 
               {e with 
                pexp_desc = Ast_util.to_uncurry_fn loc self pat body  ;
                pexp_attributes}
+            | `Exn_convert, pexp_attributes 
+              -> 
+              {e with 
+               pexp_desc = Ast_util.to_exn_fn loc self pat body;
+               pexp_attributes
+              }
             | `Method , _
-              ->  Location.raise_errorf ~loc "bs.meth is not supported in function expression"
+              ->
+              Location.raise_errorf ~loc
+                "bs.meth is not supported in function expression"
             | `Meth_callback , pexp_attributes
               -> 
               {e with pexp_desc = Ast_util.to_method_callback loc  self pat body ;
@@ -577,6 +610,14 @@ let rec unsafe_mapper : Ast_mapper.mapper =
              }}
 
       | _ -> Ast_mapper.default_mapper.signature_item self sigi
+    end;
+    pat = begin fun self (pat : Parsetree.pattern) -> 
+      match pat with 
+      | { ppat_desc = Ppat_constant(Const_string (_, Some "j")); ppat_loc = loc} -> 
+        Location.raise_errorf ~loc 
+          "Unicode string is not allowed in pattern match"
+      | _  -> Ast_mapper.default_mapper.pat self pat
+
     end;
     structure_item = begin fun self (str : Parsetree.structure_item) -> 
       begin match str.pstr_desc with 

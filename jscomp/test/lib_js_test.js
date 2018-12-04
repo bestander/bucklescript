@@ -1,7 +1,7 @@
 'use strict';
 
-var Mt    = require("./mt");
-var Block = require("../../lib/js/block");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
 
 console.log(JSON.stringify(/* :: */[
           1,
@@ -21,7 +21,7 @@ var suites_000 = /* tuple */[
   function () {
     return /* Eq */Block.__(0, [
               "3",
-              "" + 3
+              String(3)
             ]);
   }
 ];

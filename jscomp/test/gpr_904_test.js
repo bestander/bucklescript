@@ -1,7 +1,7 @@
 'use strict';
 
-var Mt    = require("./mt");
-var Block = require("../../lib/js/block");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
 
 var suites = [/* [] */0];
 
@@ -27,8 +27,7 @@ function eq(loc, x, y) {
 function check_healty(check) {
   if (!check.a && !check.b) {
     return 1 - check.c;
-  }
-  else {
+  } else {
     return /* false */0;
   }
 }
@@ -40,18 +39,17 @@ function basic_not(x) {
 function f(check) {
   if (check.x) {
     return check.y;
-  }
-  else {
+  } else {
     return /* false */0;
   }
 }
 
-eq('File "gpr_904_test.ml", line 23, characters 5-12', f({
+eq("File \"gpr_904_test.ml\", line 23, characters 5-12", f({
           x: /* true */1,
           y: /* false */0
         }), /* false */0);
 
-eq('File "gpr_904_test.ml", line 26, characters 5-12', check_healty({
+eq("File \"gpr_904_test.ml\", line 26, characters 5-12", check_healty({
           a: /* false */0,
           b: /* false */0,
           c: /* true */1

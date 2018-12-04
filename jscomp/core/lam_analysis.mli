@@ -34,7 +34,7 @@ val no_side_effects : Lam.t -> bool
 
 val size : Lam.t -> int
 
-val ok_to_inline : body:Lam.t -> Lam.ident list -> Lam.t list -> bool
+val ok_to_inline_fun_when_app : body:Lam.t -> Lam.ident list -> Lam.t list -> bool
   
 val eq_lambda : Lam.t -> Lam.t -> bool 
 (** a conservative version of comparing two lambdas, mostly 

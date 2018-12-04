@@ -34,8 +34,9 @@ let merge_module_info_map acc sources =
       | None , None ->
         assert false
       | Some a, Some b  ->
-        failwith ("conflict files found: " ^ modname ^ "in ("
-                  ^  Binary_cache.dir_of_module_info a ^ Ext_string.single_space ^ Binary_cache.dir_of_module_info b ^  " )")
+        failwith ("Conflict files found: " ^ modname ^ " in "
+                  ^ Binary_cache.dir_of_module_info a ^ " and " ^ Binary_cache.dir_of_module_info b
+                  ^ ". File names need to be unique in a project.")
       | Some v, None  -> Some v
       | None, Some v ->  Some v
     ) acc  sources
@@ -43,41 +44,54 @@ let merge_module_info_map acc sources =
 let bsc_exe = "bsc.exe"
 let bsb_helper_exe = "bsb_helper.exe"
 let dash_i = "-I"
+let refmt_exe = "refmt.exe"
+let dash_ppx = "-ppx"
+
+let ninja_required_version = "ninja_required_version = 1.5.1 \n"
+
 let output_ninja
     ~cwd 
     ~bsc_dir           
     {
     Bsb_config_types.package_name;
     ocamllex;
-    external_includes = bs_external_includes;
+    external_includes;
     bsc_flags ; 
     ppx_flags;
     bs_dependencies;
+    bs_dev_dependencies;
     refmt;
     refmt_flags;
     js_post_build_cmd;
     package_specs;
     bs_file_groups;
     files_to_install;
+    built_in_dependency;
+    reason_react_jsx
     }
   =
+  let () = Bsb_rule.reset () in 
   let bsc = bsc_dir // bsc_exe in   (* The path to [bsc.exe] independent of config  *)
   let bsdep = bsc_dir // bsb_helper_exe in (* The path to [bsb_heler.exe] *)
-  let builddir = Bsb_config.lib_bs in 
-  let ppx_flags = Bsb_build_util.flag_concat "-ppx" ppx_flags in
+  (* let builddir = Bsb_config.lib_bs in  *)
+  let ppx_flags = Bsb_build_util.flag_concat dash_ppx ppx_flags in
   let bsc_flags =  String.concat Ext_string.single_space bsc_flags in
   let refmt_flags = String.concat Ext_string.single_space refmt_flags in
-  let oc = open_out_bin (builddir // Literals.build_ninja) in
+  let oc = open_out_bin (cwd // Bsb_config.lib_bs // Literals.build_ninja) in
   begin
     let () =
-      output_string oc "ninja_required_version = 1.7.1 \n" ;
+      output_string oc ninja_required_version ;
       output_string oc "bs_package_flags = ";
-      begin match package_name with
-        | None -> ()
-        | Some x ->
-          output_string oc ("-bs-package-name "  ^ x  )
-      end;
+      output_string oc ("-bs-package-name "  ^ package_name);
       output_string oc "\n";
+      let bsc_flags = 
+        Ext_string.inter2  Literals.dash_nostdlib @@
+        match built_in_dependency with 
+        | None -> bsc_flags   
+        | Some {package_install_path} -> 
+          Ext_string.inter3 dash_i package_install_path bsc_flags
+  
+      in 
       Bsb_ninja.output_kvs
         [|
           "src_root_dir", cwd (* TODO: need check its integrity -- allow relocate or not? *);
@@ -87,11 +101,27 @@ let output_ninja
           "bsc_flags", bsc_flags ;
           "ppx_flags", ppx_flags;
           "bs_package_includes", (Bsb_build_util.flag_concat dash_i @@ List.map (fun x -> x.Bsb_config_types.package_install_path) bs_dependencies);
-          "refmt", refmt;
+          "bs_package_dev_includes", (Bsb_build_util.flag_concat dash_i @@ List.map (fun x -> x.Bsb_config_types.package_install_path) bs_dev_dependencies);  
+          "refmt", (match refmt with None -> bsc_dir // refmt_exe | Some x -> x) ;
+          "reason_react_jsx",
+            ( if reason_react_jsx then "-ppx " ^ Filename.quote (bsc_dir // Literals.reactjs_jsx_ppx_exe)
+              else Ext_string.empty  ) ; (* make it configurable in the future *)
           "refmt_flags", refmt_flags;
           Bsb_build_schemas.bsb_dir_group, "0"  (*TODO: avoid name conflict in the future *)
         |] oc ;
     in
+    let all_includes acc  = 
+        match external_includes with 
+        | [] -> acc 
+        | _ ->  
+          (* for external includes, if it is absolute path, leave it as is 
+            for relative path './xx', we need '../.././x' since we are in 
+            [lib/bs], [build] is different from merlin though
+          *)
+          Ext_list.map_acc acc 
+          (fun x -> if Filename.is_relative x then Bsb_config.rev_lib_bs_prefix  x else x) 
+          external_includes
+    in 
     let  static_resources =
       let number_of_dev_groups = Bsb_build_ui.get_current_number_of_dev_groups () in
       if number_of_dev_groups = 0 then
@@ -99,9 +129,10 @@ let output_ninja
           List.fold_left (fun (acc, dirs,acc_resources) ({Bsb_build_ui.sources ; dir; resources }) ->
               merge_module_info_map  acc  sources ,  dir::dirs , (List.map (fun x -> dir // x ) resources) @ acc_resources
             ) (String_map.empty,[],[]) bs_file_groups in
-        Binary_cache.write_build_cache (builddir // Binary_cache.bsbuild_cache) [|bs_groups|] ;
+        Binary_cache.write_build_cache (cwd // Bsb_config.lib_bs // Binary_cache.bsbuild_cache) [|bs_groups|] ;
         Bsb_ninja.output_kv
-          Bsb_build_schemas.bsc_lib_includes (Bsb_build_util.flag_concat dash_i @@ (bs_external_includes @ source_dirs  ))  oc ;
+          Bsb_build_schemas.bsc_lib_includes (Bsb_build_util.flag_concat dash_i @@ 
+          (all_includes source_dirs  ))  oc ;
         static_resources
       else
         let bs_groups = Array.init  (number_of_dev_groups + 1 ) (fun i -> String_map.empty) in
@@ -115,14 +146,15 @@ let output_ninja
         (* Make sure [sources] does not have files in [lib] we have to check later *)
         let lib = bs_groups.(0) in
         Bsb_ninja.output_kv
-          Bsb_build_schemas.bsc_lib_includes (Bsb_build_util.flag_concat dash_i @@ (bs_external_includes @ source_dirs.(0))) oc ;
+          Bsb_build_schemas.bsc_lib_includes (Bsb_build_util.flag_concat dash_i @@
+           (all_includes source_dirs.(0))) oc ;
         for i = 1 to number_of_dev_groups  do
           let c = bs_groups.(i) in
           String_map.iter (fun k _ -> if String_map.mem k lib then failwith ("conflict files found:" ^ k)) c ;
           Bsb_ninja.output_kv (Bsb_build_util.string_of_bsb_dev_include i)
             (Bsb_build_util.flag_concat "-I" @@ source_dirs.(i)) oc
         done  ;
-        Binary_cache.write_build_cache (builddir // Binary_cache.bsbuild_cache) bs_groups ;
+        Binary_cache.write_build_cache (cwd // Bsb_config.lib_bs // Binary_cache.bsbuild_cache) bs_groups ;
         static_resources;
     in
     let all_info =
@@ -132,7 +164,7 @@ let output_ninja
       List.iter (fun x -> Bsb_ninja.output_build oc
                     ~output:x
                     ~input:(Bsb_config.proj_rel x)
-                    ~rule:Bsb_ninja.Rules.copy_resources) static_resources in
+                    ~rule:Bsb_rule.copy_resources) static_resources in
     Bsb_ninja.phony oc ~order_only_deps:(static_resources @ all_info.all_config_deps)
       ~inputs:[]
       ~output:Literals.build_ninja ;

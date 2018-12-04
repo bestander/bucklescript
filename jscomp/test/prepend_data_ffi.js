@@ -30,19 +30,20 @@ process.on(function (i) {
 xx(3, 3, "xxx", "a", "b");
 
 function f(x) {
-  x.xx(104, /* int array */[
+  x.xx(110, /* int array */[
         1,
         2,
         3
       ]);
-  x.xx(105, 3, "xxx", /* int array */[
+  x.xx(111, 3, "xxx", /* int array */[
         1,
         2,
         3
       ]);
-  x.xx(106, 3, "xxx", 1, 2, 3);
-  x.xx(107, 3, "xxx", 0, "b", 1, 2, 3, 4, 5);
-  return x.xx(108, 3, "xxx", 0, "yyy", "b", 1, 2, 3, 4, 5);
+  x.xx(112, 3, "xxx", 1, 2, 3);
+  x.xx(113, 3, "xxx", 0, "b", 1, 2, 3, 4, 5);
+  x.xx(114, 3, true, false, ("你好"), ( ["你好",1,2,3] ), ( [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] ), ( [{ "arr" : ["你好",1,2,3], "encoding" : "utf8"}] ), "xxx", 0, "yyy", "b", 1, 2, 3, 4, 5);
+  return /* () */0;
 }
 
 process.on("exit", function (exit_code) {
@@ -51,10 +52,11 @@ process.on("exit", function (exit_code) {
     });
 
 function register(p) {
-  return p.on("exit", function (i) {
-              console.log(i);
-              return /* () */0;
-            });
+  p.on("exit", function (i) {
+        console.log(i);
+        return /* () */0;
+      });
+  return /* () */0;
 }
 
 var config = {
@@ -67,4 +69,4 @@ exports.v2       = v2;
 exports.f        = f;
 exports.register = register;
 exports.config   = config;
-/* v1 Not a pure module */
+/*  Not a pure module */

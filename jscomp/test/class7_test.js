@@ -1,13 +1,13 @@
 'use strict';
 
-var Mt              = require("./mt");
-var Oo              = require("../../lib/js/oo");
-var Block           = require("../../lib/js/block");
-var Curry           = require("../../lib/js/curry");
-var Caml_obj        = require("../../lib/js/caml_obj");
-var Caml_oo_curry   = require("../../lib/js/caml_oo_curry");
-var CamlinternalOO  = require("../../lib/js/camlinternalOO");
-var Caml_exceptions = require("../../lib/js/caml_exceptions");
+var Mt              = require("./mt.js");
+var Oo              = require("../../lib/js/oo.js");
+var Block           = require("../../lib/js/block.js");
+var Curry           = require("../../lib/js/curry.js");
+var Caml_obj        = require("../../lib/js/caml_obj.js");
+var Caml_oo_curry   = require("../../lib/js/caml_oo_curry.js");
+var CamlinternalOO  = require("../../lib/js/camlinternalOO.js");
+var Caml_exceptions = require("../../lib/js/caml_exceptions.js");
 
 var shared = ["copy"];
 
@@ -84,7 +84,7 @@ var q = Oo.copy(p);
 
 Caml_oo_curry.js2(-933174511, 1, q, 7);
 
-eq('File "class7_test.ml", line 22, characters 5-12', /* tuple */[
+eq("File \"class7_test.ml\", line 22, characters 5-12", /* tuple */[
       55,
       62
     ], /* tuple */[
@@ -137,8 +137,7 @@ function backup_init($$class) {
           var match = self$neg3[copy];
           if (match) {
             return match[0];
-          }
-          else {
+          } else {
             return self$neg3;
           }
         }
@@ -184,8 +183,7 @@ function get(_p, _n) {
       _p = Caml_oo_curry.js1(-357537970, 7, p);
       continue ;
       
-    }
-    else {
+    } else {
       return Caml_oo_curry.js1(5144726, 6, p);
     }
   };
@@ -201,7 +199,7 @@ Caml_oo_curry.js1(-867333315, 10, p$1);
 
 Caml_oo_curry.js2(5741474, 11, p$1, 2);
 
-eq('File "class7_test.ml", line 47, characters 5-12', /* array */[
+eq("File \"class7_test.ml\", line 47, characters 5-12", /* array */[
       2,
       1,
       1,
@@ -236,8 +234,7 @@ function backup2_init($$class) {
           var match = self$neg5[copy];
           if (match) {
             return match[0];
-          }
-          else {
+          } else {
             return self$neg5;
           }
         },
@@ -295,7 +292,7 @@ Caml_oo_curry.js1(-867333315, 14, p$2);
 
 Caml_oo_curry.js2(5741474, 15, p$2, 2);
 
-eq('File "class7_test.ml", line 63, characters 5-12', /* array */[
+eq("File \"class7_test.ml\", line 63, characters 5-12", /* array */[
       2,
       1,
       0,
