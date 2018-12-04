@@ -1,4 +1,3 @@
-# 1 "node_buffer.ml.cppo"
 (* Copyright (C) 2015-2016 Bloomberg Finance L.P.
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -27,17 +26,15 @@
 
 type t = Node.buffer 
 
+#define BUFFER_VAL(v,name,ty) external v : ty = STRINGIFY(name) [@@bs.val] [@@bs.scope "Buffer"]
+
+#define BUFFER_METH(v,name, ty) external v : ty = STRINGIFY(name) [@@bs.send.pipe:t]
+
+BUFFER_VAL(isBuffer, isBuffer, 'a -> bool)
 
 
-# 33
- external isBuffer :  'a -> bool = "isBuffer" [@@bs.val] [@@bs.scope "Buffer"] 
+BUFFER_VAL(fromString, from, string -> t )
 
 
-# 36
- external fromString :  string -> t  = "from" [@@bs.val] [@@bs.scope "Buffer"] 
-
-
-# 39
- external readDoubleBE :  offset:int -> float = "readDoubleBE" [@@bs.send.pipe:t] 
-# 40
- external readDoubleBEUnsafe :  offset:int -> (_ [@bs.as{json|true|json}])-> float = "readDoubleBE" [@@bs.send.pipe:t] 
+BUFFER_METH(readDoubleBE, readDoubleBE, offset:int -> float)
+BUFFER_METH(readDoubleBEUnsafe, readDoubleBE, offset:int -> (_ [@bs.as{json|true|json}])-> float)

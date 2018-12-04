@@ -272,9 +272,11 @@ module Int8Array = struct
   include TypedArray(struct type t = int end)
 
 
-  external _BYTES_PER_ELEMENT: int = "Int8Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val] [@@bs.scope "Int8Array"]
 
-  external make : elt array -> t = "Int8Array" [@@bs.new]
+  external make : elt array -> t = "Int8Array"
+    [@@bs.new]
 
   (** can throw *)
   external fromBuffer : array_buffer -> t = "Int8Array" [@@bs.new]
@@ -323,17 +325,24 @@ module Uint8ClampedArray = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = int end)
 
-  external _BYTES_PER_ELEMENT: int = "Uint8ClampedArray.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val] [@@bs.scope "Uint8ClampedArray"]
 
-  external make : elt array -> t = "Uint8ClampedArray" [@@bs.new]
-  external fromBuffer : array_buffer -> t = "Uint8ClampedArray" [@@bs.new]
+  external make : elt array -> t = "Uint8ClampedArray"
+    [@@bs.new]
+  external fromBuffer : array_buffer -> t = "Uint8ClampedArray"
+    [@@bs.new]
+
   (** can throw *)
-  external fromBufferOffset : array_buffer -> int -> t = "Uint8ClampedArray" [@@bs.new]
+  external fromBufferOffset : array_buffer -> int -> t = "Uint8ClampedArray"
+    [@@bs.new]
   (** can throw, offset is in bytes *)
-  external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Uint8ClampedArray" [@@bs.new]
+  external fromBufferRange : array_buffer -> offset:int -> length:int -> t =
+    "Uint8ClampedArray" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Uint8ClampedArray" [@@bs.new]
-  external from : elt array_like -> t = "Uint8ClampedArray.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val] [@@bs.scope "Uint8ClampedArray"]
   (* *Array.of is redundant, use make *)
 end
 
@@ -344,7 +353,8 @@ module Int16Array = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = int end)
 
-  external _BYTES_PER_ELEMENT: int = "Int16Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val] [@@bs.scope "Int16Array"]
 
   external make : elt array -> t = "Int16Array" [@@bs.new]
   external fromBuffer : array_buffer -> t = "Int16Array" [@@bs.new]
@@ -354,7 +364,8 @@ module Int16Array = struct
   external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Int16Array" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Int16Array" [@@bs.new]
-  external from : elt array_like -> t = "Int16Array.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val] [@@bs.scope"Int16Array"]
   (* *Array.of is redundant, use make *)
 end
 
@@ -365,7 +376,8 @@ module Uint16Array = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = int end)
 
-  external _BYTES_PER_ELEMENT: int = "Uint16Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val]  [@@bs.scope "Uint16Array"]
 
   external make : elt array -> t = "Uint16Array" [@@bs.new]
   external fromBuffer : array_buffer -> t = "Uint16Array" [@@bs.new]
@@ -375,7 +387,8 @@ module Uint16Array = struct
   external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Uint16Array" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Uint16Array" [@@bs.new]
-  external from : elt array_like -> t = "Uint16Array.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val] [@@bs.scope"Uint16Array"]
   (* *Array.of is redundant, use make *)
 end
 
@@ -386,7 +399,8 @@ module Int32Array = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = int32 end)
 
-  external _BYTES_PER_ELEMENT: int = "Int32Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val] [@@bs.scope"Int32Array"]
 
   external make : elt array -> t = "Int32Array" [@@bs.new]
   external fromBuffer : array_buffer -> t = "Int32Array" [@@bs.new]
@@ -396,16 +410,19 @@ module Int32Array = struct
   external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Int32Array" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Int32Array" [@@bs.new]
-  external from : elt array_like -> t = "Int32Array.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val]
+    [@@bs.scope "Int32Array"]
   (* *Array.of is redundant, use make *)
 
-  external create : int32 array -> t = "Int32Array" [@@bs.new]
-  [@@ocaml.deprecated "use `make` instead"]
-  external of_buffer : array_buffer -> t = "Int32Array" [@@bs.new]
-  [@@ocaml.deprecated "use `fromBuffer` instead"]
+  (* external create : int32 array -> t = "Int32Array" [@@bs.new] *)
+  (* [@@ocaml.deprecated "use `make` instead"] *)
+  (* external of_buffer : array_buffer -> t = "Int32Array" [@@bs.new] *)
+  (* [@@ocaml.deprecated "use `fromBuffer` instead"] *)
 end
+
 module Int32_array = Int32Array
-[@ocaml.deprecated "use `Int32Array` instead"]
+[@@ocaml.deprecated "use `Int32Array` instead"]
 
 
 module Uint32Array = struct
@@ -414,7 +431,9 @@ module Uint32Array = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = int end)
 
-  external _BYTES_PER_ELEMENT: int = "Uint32Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val]
+    [@@bs.scope "Uint32Array"]
 
   external make : elt array -> t = "Uint32Array" [@@bs.new]
   external fromBuffer : array_buffer -> t = "Uint32Array" [@@bs.new]
@@ -424,7 +443,8 @@ module Uint32Array = struct
   external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Uint32Array" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Uint32Array" [@@bs.new]
-  external from : elt array_like -> t = "Uint32Array.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val] [@@bs.scope "Uint32Array"]
   (* *Array.of is redundant, use make *)
 end
 
@@ -438,7 +458,8 @@ module Float32Array = struct
   (* defines elt, typed_array and a bunch of common functions *)
   include TypedArray(struct type t = float end)
 
-  external _BYTES_PER_ELEMENT: int = "Float32Array.BYTES_PER_ELEMENT" [@@bs.val]
+  external _BYTES_PER_ELEMENT: int = "BYTES_PER_ELEMENT"
+    [@@bs.val] [@@bs.scope "Float32Array"]
 
   external make : elt array -> t = "Float32Array" [@@bs.new]
   external fromBuffer : array_buffer -> t = "Float32Array" [@@bs.new]
@@ -448,7 +469,9 @@ module Float32Array = struct
   external fromBufferRange : array_buffer -> offset:int -> length:int -> t = "Float32Array" [@@bs.new]
   (** can throw, offset is in bytes, length in elements *)
   external fromLength : int -> t = "Float32Array" [@@bs.new]
-  external from : elt array_like -> t = "Float32Array.from" [@@bs.val]
+  external from : elt array_like -> t = "from"
+    [@@bs.val]
+    [@@bs.scope "Float32Array"]
   (* *Array.of is redundant, use make *)
 
   external create : float array -> t = "Float32Array" [@@bs.new]
