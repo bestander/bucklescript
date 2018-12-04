@@ -59,7 +59,7 @@ let annotate (meta : Lam_stats.meta)
  *)
 let collect_helper  (meta : Lam_stats.meta) (lam : Lam.t)  = 
   let rec collect_bind rec_flag
-      (kind : Lambda.let_kind) 
+      (kind : Lam.let_kind) 
       (ident : Ident.t)
       (lam : Lam.t) = 
     match lam with 
@@ -70,39 +70,30 @@ let collect_helper  (meta : Lam_stats.meta) (lam : Lam.t)  =
       -> 
       Ident_hashtbl.replace meta.ident_tbl ident 
         (Lam_util.kind_of_lambda_block Normal ls);
-      List.iter collect ls 
-
-    | Lprim {primitive = Pccall {prim_name = "js_from_nullable"; _}; 
+      List.iter collect ls     
+    | Lprim {primitive = Pnull_to_opt; 
              args = ([ Lvar _] as ls) ; _}
       ->
       Ident_hashtbl.replace meta.ident_tbl ident 
-        (Lam_util.kind_of_lambda_block Null ls )
-    | Lprim {primitive = Pccall {prim_name = "js_from_def"; _}; 
+        (Lam_util.kind_of_lambda_block Null ls )    
+    | Lprim {primitive = Pundefined_to_opt; 
              args = ([ Lvar _] as ls); _}
       ->
       Ident_hashtbl.replace meta.ident_tbl ident 
         (Lam_util.kind_of_lambda_block Undefined ls )
-    | Lprim {primitive = Pccall {prim_name = "js_from_nullable_def"; _};
+    | Lprim {primitive = Pnull_undefined_to_opt;
              args = ([ Lvar _] as ls);}
       ->
       Ident_hashtbl.replace meta.ident_tbl ident 
         (Lam_util.kind_of_lambda_block Null_undefined ls )
-      
-    | Lprim {primitive = Pgetglobal v; args = []; _} 
+    | Lglobal_module v  
       -> 
-      begin 
-        Lam_util.alias meta  ident v (Module  v) kind; 
-        begin match kind with 
-          | Alias -> ()
-          | Strict | StrictOpt | Variable -> 
-            Lam_util.add_required_module v meta
-        end;
-      end
+        Lam_util.alias_ident_or_global meta  ident v (Module  v) kind; 
     | Lvar v 
       -> 
         (
          (* if Ident.global v then  *)
-         Lam_util.alias meta  ident v NA kind
+         Lam_util.alias_ident_or_global meta  ident v NA kind
            (* enven for not subsitution, it still propogate some properties *)
            (* else () *)
         )
@@ -150,6 +141,7 @@ let collect_helper  (meta : Lam_stats.meta) (lam : Lam.t)  =
     | Lletrec (bindings, body) -> 
         List.iter (fun (ident,arg) -> collect_bind Rec  Strict ident arg ) bindings;
         collect body
+    | Lglobal_module _ -> ()
     | Lprim {args; _} -> List.iter collect  args
     | Lswitch(l, {sw_failaction; sw_consts; sw_blocks}) ->
         collect  l;
@@ -195,7 +187,6 @@ let count_alias_globals
      ident_tbl = Ident_hashtbl.create 31;
      exit_codes = Int_hash_set.create 31 ;
      exports =  export_idents;
-     required_modules = [] ;
      filename;
      env;
      export_idents = export_sets;

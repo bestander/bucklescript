@@ -49,12 +49,12 @@ let suites =
 
     __LOC__ >:: begin fun _ -> 
       OUnit.assert_bool __LOC__ @@
-      List.for_all Ext_string.is_valid_source_name
+      List.for_all (fun x -> Ext_string.is_valid_source_name x = Good)
         ["x.ml"; "x.mli"; "x.re"; "x.rei"; "x.mll"; 
          "A_x.ml"; "ab.ml"; "a_.ml"; "a__.ml";
          "ax.ml"];
       OUnit.assert_bool __LOC__ @@ not @@
-      List.exists Ext_string.is_valid_source_name
+      List.exists (fun x -> Ext_string.is_valid_source_name x = Good)
         [".re"; ".rei";"..re"; "..rei"; "..ml"; ".mll~"; 
          "...ml"; "_.mli"; "_x.ml"; "__.ml"; "__.rei"; 
          ".#hello.ml"; ".#hello.rei"; "a-.ml"; "a-b.ml"; "-a-.ml"
@@ -174,7 +174,7 @@ let suites =
         OUnit.assert_bool __LOC__ (Ext_string.compare a b < 0);
         OUnit.assert_bool __LOC__ (Ext_string.compare  b a  > 0)
       done ;
-      
+
     end;
     __LOC__ >:: begin fun _ -> 
       let slow_compare x y  = 
@@ -184,18 +184,104 @@ let suites =
           String.compare x y 
         else 
           Pervasives.compare x_len y_len  in 
-       let same_sign x y =
-         if x = 0 then y = 0 
-         else if x < 0 then y < 0 
-         else y > 0 in 
-       for i = 0 to 3000 do
-         let chars = [|'a';'b';'c';'d'|] in 
-         let x = Ounit_data_random.random_string chars 129 in 
-         let y = Ounit_data_random.random_string chars 129 in 
-         let a = Ext_string.compare  x y  in 
-         let b = slow_compare x y in 
-         if same_sign a b then OUnit.assert_bool __LOC__ true 
-         else failwith ("incosistent " ^ x ^ " " ^ y ^ " " ^ string_of_int a ^ " " ^ string_of_int b)
-       done 
-    end 
+      let same_sign x y =
+        if x = 0 then y = 0 
+        else if x < 0 then y < 0 
+        else y > 0 in 
+      for i = 0 to 3000 do
+        let chars = [|'a';'b';'c';'d'|] in 
+        let x = Ounit_data_random.random_string chars 129 in 
+        let y = Ounit_data_random.random_string chars 129 in 
+        let a = Ext_string.compare  x y  in 
+        let b = slow_compare x y in 
+        if same_sign a b then OUnit.assert_bool __LOC__ true 
+        else failwith ("incosistent " ^ x ^ " " ^ y ^ " " ^ string_of_int a ^ " " ^ string_of_int b)
+      done 
+    end ;
+    __LOC__ >:: begin fun _ -> 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.concat3 "a0" "a1" "a2") "a0a1a2"
+        );
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.concat3 "a0" "a11" "") "a0a11"
+        );
+ 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.concat4 "a0" "a1" "a2" "a3") "a0a1a2a3"
+        );
+     OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.concat4 "a0" "a11" "" "a33") "a0a11a33"
+        );   
+    end;
+    __LOC__ >:: begin fun _ -> 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.inter2 "a0" "a1") "a0 a1"
+        );
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.inter3 "a0" "a1" "a2") "a0 a1 a2"
+        );
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.equal
+           (Ext_string.inter4 "a0" "a1" "a2" "a3") "a0 a1 a2 a3"
+        );
+    end;
+    __LOC__ >:: begin fun _ -> 
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx" < 0);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "xxx/g/" = 3);
+      OUnit.assert_bool __LOC__ 
+        (Ext_string.no_slash_idx "/xxx/g/" = 0)
+    end;
+    __LOC__ >:: begin fun _ -> 
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [||])
+           Ext_string.empty
+        );
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"a0"|])
+           "a0"
+        );
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"|])
+           "a0 a1"
+        );   
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"; "a2"|])
+           "a0 a1 a2"
+        );   
+       OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"; "a2";"a3"|])
+           "a0 a1 a2 a3"
+        );    
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"a0";"a1"; "a2";"a3";""; "a4"|])
+           "a0 a1 a2 a3  a4"
+        );      
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"0";"a1"; "2";"a3";""; "a4"|])
+           "0 a1 2 a3  a4"
+        );        
+      OUnit.assert_bool __LOC__
+        (Ext_string.equal 
+           (Ext_string.concat_array Ext_string.single_space [|"0";"a1"; "2";"3";"d"; ""; "e"|])
+           "0 a1 2 3 d  e"
+        );        
+  
+    end
   ]

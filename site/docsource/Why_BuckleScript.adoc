@@ -8,16 +8,16 @@ need to install binaries or use package managers to access software,
 just a link will work.
 
 Another important factor is that the JavaScript VM is quite fast and
-keeps getting faster.  The JavaScript platform is therefore
+keeps getting faster. The JavaScript platform is therefore
 increasingly capable of supporting large applications.
 
-### Problems of JavaScript && how BuckleScript solves it
+### Problems of JavaScript && how BuckleScript solves them
 
 BuckleScript is mainly designed to solve the problems of _large scale_ JavaScript programming:
 
 Type-safety:: OCaml offers an industrial-strength
    state-of-the-art type system and provides very strong type inference (i.e. No
-   verbose type annotation required compared with typescript), which proves
+   verbose type annotation required compared with TypeScript), which proves
    http://programmers.stackexchange.com/questions/215482/what-are-the-safety-benefits-of-a-type-system[invaluable]
    in managing large projects. OCaml's type system is not just for tooling,
    it is a _sound_ type system which means it is guaranteed that there will
@@ -50,7 +50,7 @@ Offline optimizations:: JavaScript is a dynamic language, it
 
 JS platform and Native platform::
   Run your programs on all platforms, but run your system _faster_
-  under specific platforms. Javascript is everywhere but it does not
+  under specific platforms. JavaScript is everywhere but it does not
   mean we have to run all apps in JS, under several platforms, for
   example, server side or iOS/Android native apps, when programs are
   written in OCaml, it can also be compiled to native code for _better
@@ -69,11 +69,11 @@ http://www.scala-lang.org/[Scala] or
   {BuckleScript-playground}[playground], the native backend is one
   order faster than the JS backend.
 
-Un-readable JS Code and hard to integrate with existing JS  libraries::
+Un-readable JS Code and hard to integrate with existing JS libraries::
 When compiling to JavaScript, many systems
   generate code, that while syntactically and semantically correct is
   not human-readable and very difficult to debug and profile.
-  Our BuckleScript implementation and the multi-pass compilation  strategy of OCaml,
+  Our BuckleScript implementation and the multi-pass compilation strategy of OCaml,
   allows us to avoid {name-mangling}[name-mangling],
   and produce JavaScript code that is human-readable and easier to debug and
   maintain. More importantly, this makes integration with existing JS
@@ -81,10 +81,10 @@ When compiling to JavaScript, many systems
 
 Large JS output even for a simple program::
 In BuckleScript, a `Hello world` program generates _20 bytes_ JS code
-instead of _50K bytes_. This is due to that BuckleScript has an excellent
-integration with JS libs that unlike most JS compilers,
+instead of _50K bytes_. This is due to BuckleScript having an excellent
+integration with JS libs in that unlike most JS compilers,
 all BuckleScript's runtime is written in OCaml itself so that these
-runtime libraries are only needed when user actually call it.
+runtime libraries are only needed when user actually calls it.
 
 
 

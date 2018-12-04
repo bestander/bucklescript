@@ -1,8 +1,8 @@
 'use strict';
 
-var Block = require("../../lib/js/block");
+var Mt    = require("./mt.js");
 var Fs    = require("fs");
-var Mt    = require("./mt");
+var Block = require("../../lib/js/block.js");
 
 var suites = [/* [] */0];
 
@@ -59,13 +59,13 @@ var vv = /* int array */[
   hey_int(4)
 ];
 
-eq('File "poly_variant_test.ml", line 58, characters 5-12', vv, /* int array */[
+eq("File \"poly_variant_test.ml\", line 58, characters 5-12", vv, /* int array */[
       3,
       0,
       4
     ]);
 
-eq('File "poly_variant_test.ml", line 59, characters 5-12', /* tuple */[
+eq("File \"poly_variant_test.ml\", line 59, characters 5-12", /* tuple */[
       hey_int(5),
       hey_int(6)
     ], /* tuple */[
@@ -73,7 +73,7 @@ eq('File "poly_variant_test.ml", line 59, characters 5-12', /* tuple */[
       6
     ]);
 
-eq('File "poly_variant_test.ml", line 60, characters 5-12', uu, /* array */[
+eq("File \"poly_variant_test.ml\", line 60, characters 5-12", uu, /* array */[
       "on_open",
       "on_closed",
       "in"
@@ -88,10 +88,11 @@ function register(readline) {
         console.log(s);
         return /* () */0;
       });
-  return readline.on("close", function () {
-              console.log("finished");
-              return /* () */0;
-            });
+  readline.on("close", function () {
+        console.log("finished");
+        return /* () */0;
+      });
+  return /* () */0;
 }
 
 function read(name) {
@@ -103,45 +104,47 @@ function read$1(name) {
 }
 
 function test(readline, x) {
-  return readline.on(function (action) {
-              switch (x) {
-                case -944564236 : 
-                    return action[0];
-                case -933029960 : 
-                    return action[0];
-                
-              }
-            }, function (action) {
-              switch (x) {
-                case -944564236 : 
-                    return action[1];
-                case -933029960 : 
-                    return action[1];
-                
-              }
-            });
+  readline.on(function (action) {
+        switch (x) {
+          case -944564236 : 
+              return action[0];
+          case -933029960 : 
+              return action[0];
+          
+        }
+      }, function (action) {
+        switch (x) {
+          case -944564236 : 
+              return action[1];
+          case -933029960 : 
+              return action[1];
+          
+        }
+      });
+  return /* () */0;
 }
 
 Mt.from_pair_suites("poly_variant_test.ml", suites[0]);
 
 function on2(prim, prim$1) {
-  return prim.on2(function (action) {
-              switch (prim$1) {
-                case -944564236 : 
-                    return action[0];
-                case -933029960 : 
-                    return action[0];
-                
-              }
-            }, function (action) {
-              switch (prim$1) {
-                case -944564236 : 
-                    return action[1];
-                case -933029960 : 
-                    return action[1];
-                
-              }
-            });
+  prim.on2(function (action) {
+        switch (prim$1) {
+          case -944564236 : 
+              return action[0];
+          case -933029960 : 
+              return action[0];
+          
+        }
+      }, function (action) {
+        switch (prim$1) {
+          case -944564236 : 
+              return action[1];
+          case -933029960 : 
+              return action[1];
+          
+        }
+      });
+  return /* () */0;
 }
 
 var readN = read$1;

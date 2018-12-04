@@ -1,5 +1,5 @@
 var child_process = require('child_process')
-var process = require('process')
+
 var fs = require('fs')
 var path = require('path')
 var os = require('os')
@@ -10,7 +10,7 @@ var working_dir = process.cwd()
 console.log("Working dir", working_dir)
 var working_config = {cwd: jscomp, stdio:[0,1,2]}
 
-
+process.env.BS_RELEASE_BUILD=true
 child_process.execSync('make -j4 -B -C bin all', working_config)
 
 var result = child_process.execSync('make -B -j1 --dry-run libs',{cwd:jscomp,encoding:'utf8'})

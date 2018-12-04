@@ -17,6 +17,7 @@ echo "Building finished" >> build.compile
 echo "Building libs" >> build.compile
 make libs 2>> build.compile
 echo "Building finished" >> build.compile
+# TODO: run make depend to snapshot .depend
 # TODO: this quick test is buggy, 
 # since a.ml maybe depend on another module 
 # we can not just comment it, it will also produce jslambda
@@ -43,4 +44,11 @@ echo "Snapshot && update deps" >> ./build.compile
 
 make -C test depend 2>>../build.compile
 make -j7 depend snapshotml 2>> ./build.compile
+
+echo "Updating dependencies in runtime"
+cd runtime; make depend; cd ..
+
+echo "Updating dependencies in others"
+cd others; make depend; cd ..
+
 echo "Done" >> ./build.compile

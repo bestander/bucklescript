@@ -1,7 +1,7 @@
 'use strict';
 
-var Curry                   = require("../../lib/js/curry");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var delayed = [function () {
     return /* () */0;
@@ -17,11 +17,9 @@ for(var i = 1; i <= 2; ++i){
         return f(((n + 1 | 0) + i | 0) - i | 0, j - 1 | 0);
       };
       return /* () */0;
-    }
-    else if (i === n) {
+    } else if (i === n) {
       return 0;
-    }
-    else {
+    } else {
       throw [
             Caml_builtin_exceptions.assert_failure,
             [

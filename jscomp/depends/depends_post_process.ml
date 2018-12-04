@@ -49,36 +49,58 @@ let read_deps fn =
 
   return_arr 
 
+type compilation_kind_t = Js | Bytecode | Native
 
 (* TODO: Don't touch the .d file if nothing changed *)
-let handle_bin_depfile oprefix  (fn : string) : unit = 
+let handle_bin_depfile 
+  oprefix
+  ~compilation_kind
+  (fn : string)
+  index : unit = 
+  let suffix_inteface, suffix_cmjxo = match compilation_kind with
+  | Js       -> Literals.suffix_cmj, Literals.suffix_cmj
+  | Bytecode -> Literals.suffix_cmi, Literals.suffix_cmo
+  | Native   -> Literals.suffix_cmi, Literals.suffix_cmx in
   let op_concat s = match oprefix with None -> s | Some v -> v // s in 
-  let data =
+  let data : Binary_cache.t  =
     Binary_cache.read_build_cache (op_concat  Binary_cache.bsbuild_cache) in 
   let set = read_deps fn in 
   match Ext_string.ends_with_then_chop fn Literals.suffix_mlast with 
   | Some  input_file -> 
-    let dependent_file = (input_file ^ Literals.suffix_cmj) ^ dep_lit in
+    let dependent_file = (input_file ^ suffix_cmjxo) ^ dep_lit in
     let (files, len) = 
       Array.fold_left
         (fun ((acc, len) as v) k  -> 
-           match String_map.find_exn k data with
-           | {ml = Ml s | Re s  } 
-           | {mll = Some s } 
+           match String_map.find_opt k data.(0) with
+           | Some ({ml = Ml s | Re s  } | {mll = Some s }) 
              -> 
-             let new_file = op_concat @@ Filename.chop_extension s ^ Literals.suffix_cmj  
+             let new_file = op_concat @@ Filename.chop_extension s ^ suffix_inteface  
              in (new_file :: acc , len + String.length new_file + length_space)
-           | {mli = Mli s | Rei s } -> 
+           | Some {mli = Mli s | Rei s } -> 
              let new_file =  op_concat @@   Filename.chop_extension s ^ Literals.suffix_cmi in
              (new_file :: acc , len + String.length new_file + length_space)
-           | _ -> assert false
-           | exception Not_found -> v
+           | Some _ -> assert false
+           | None  -> 
+             if index = 0 then v 
+             else 
+               begin match String_map.find_opt k data.(index) with 
+                 | Some ({ml = Ml s | Re s  } | {mll = Some s }) 
+                   -> 
+                   let new_file = op_concat @@ Filename.chop_extension s ^ suffix_inteface  
+                   in (new_file :: acc , len + String.length new_file + length_space)
+                 | Some {mli = Mli s | Rei s } -> 
+                   let new_file =  op_concat @@   Filename.chop_extension s ^ Literals.suffix_cmi in
+                   (new_file :: acc , len + String.length new_file + length_space)
+                 | Some _ -> assert false
+                 | None -> 
+                   v
+               end
         )  ([],String.length dependent_file) set in
+    (* https://github.com/ninja-build/ninja/issues/1229 *)
+    let output = input_file ^ Literals.suffix_mlastd in        
     let deps = Ext_string.unsafe_concat_with_length len
         space
-        (dependent_file :: files)
-    in 
-    let output = input_file ^ Literals.suffix_mlastd in
+        (dependent_file :: files) in 
     Ext_pervasives.with_file_as_chan output  (fun v -> output_string v deps)
 
   | None -> 
@@ -88,19 +110,33 @@ let handle_bin_depfile oprefix  (fn : string) : unit =
         let (files, len) = 
           Array.fold_left
             (fun ((acc, len) as v) k ->
-               match String_map.find_exn k data with 
-               | { ml = Ml f | Re f  }
-               | { mll = Some f }
-               | { mli = Mli f | Rei f } -> 
+               match String_map.find_opt k data.(0) with 
+               | Some ({ ml = Ml f | Re f  }
+                      | { mll = Some f }
+                      | { mli = Mli f | Rei f }) -> 
                  let new_file = (op_concat @@ Filename.chop_extension f ^ Literals.suffix_cmi) in
                  (new_file :: acc , len + String.length new_file + length_space)
-               | _ -> assert false
-               | exception Not_found -> v
+               | Some _ -> assert false
+               | None -> 
+                 if index = 0 then v 
+                 else 
+                   begin  match String_map.find_opt k data.(index) with 
+                     | Some ({ ml = Ml f | Re f  }
+                            | { mll = Some f }
+                            | { mli = Mli f | Rei f }) -> 
+                       let new_file = (op_concat @@ Filename.chop_extension f ^ Literals.suffix_cmi) in
+                       (new_file :: acc , len + String.length new_file + length_space)
+                     | Some _ -> assert false
+                     | None -> v
+                   end
+
             )   ([], String.length dependent_file) set in 
-        let deps = Ext_string.unsafe_concat_with_length len
-            space 
-            (dependent_file :: files)  in 
         let output = input_file ^ Literals.suffix_mliastd in
+        (* https://github.com/ninja-build/ninja/issues/1229 *)
+        let deps = 
+          Ext_string.unsafe_concat_with_length len
+            space 
+            (dependent_file :: files)  in   
         Ext_pervasives.with_file_as_chan output  (fun v -> output_string v deps)
       | None -> 
         raise (Arg.Bad ("don't know what to do with  " ^ fn))

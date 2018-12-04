@@ -113,9 +113,11 @@ val handle_debugger :
   loc -> Ast_payload.t -> Parsetree.expression_desc
 
 val handle_raw : 
-  loc -> Ast_payload.t -> Parsetree.expression
+  ?check_js_regex: bool -> loc -> Ast_payload.t -> Parsetree.expression
 
-
+val handle_external :
+  loc -> string -> Parsetree.expression 
+  
 val handle_raw_structure : 
   loc -> Ast_payload.t -> Parsetree.structure_item
 
@@ -123,3 +125,8 @@ val ocaml_obj_as_js_object :
   (Parsetree.pattern ->
    Parsetree.class_field list ->
    Parsetree.expression_desc) cxt   
+
+
+ val convertBsErrorFunction : 
+   
+   (Ast_helper.attrs -> Parsetree.case list -> Parsetree.expression) cxt

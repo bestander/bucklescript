@@ -39,30 +39,59 @@ let simplify_alias
     | Lvar v ->
       begin match (Ident_hashtbl.find_opt meta.alias_tbl v) with
       | None -> lam
-      | Some v -> Lam.var v
+      | Some v ->
+        if Ident.persistent v then 
+          Lam.global_module v 
+        else 
+         Lam.var v 
+        (* This is wrong
+            currently alias table has info 
+            include -> Array
+
+            however, (field id Array/xx) 
+            does not result in a reduction, so we 
+            still pick the old one (field id include)
+            which makes dead code elimination wrong
+         *)
       end
       (* GLOBAL module needs to be propogated *)
-    | Llet(kind, k, (Lprim {primitive = Pgetglobal i; args = [] ; _} as g),
-           l ) -> 
-      (* This is detection of MODULE ALIAS 
+    | Llet (kind, k, (Lglobal_module i as g), l )
+           -> 
+      (* This is detection of global MODULE inclusion
           we need track all global module aliases, when it's
           passed as a parameter(escaped), we need do the expansion
           since global module access is not the same as local module
           TODO: 
           since we aliased k, so it's safe to remove it?
+          no, we should not shake away code just by [Ident_set.mem k meta.export_idents ]
+          in that case, we should provide strong guarantee that all [k] will be substitued
       *)
       let v = simpl l in
-      if Ident_set.mem k meta.export_idents 
-      then 
-        Lam.let_ kind k g v
+      Lam.let_ kind k g v
         (* in this case it is preserved, but will still be simplified 
             for the inner expression
         *)
-      else v
-    | Lprim {primitive = Pfield (i,_); args =  [Lvar v]; _} -> 
+      
+    | Lprim {primitive = (Pfield (i,_) as primitive); args =  [arg]; loc} -> 
       (* ATTENTION: 
          Main use case, we should detect inline all immutable block .. *)
-      Lam_util.get lam v  i meta.ident_tbl 
+      begin match  simpl  arg with 
+      | Lglobal_module g 
+      ->    
+        Lam.prim 
+          ~primitive:(Pfield(i,Lambda.Fld_na))
+          ~args:[Lam.global_module g ]
+          loc
+      | Lvar v as l-> 
+        Lam_util.field_flatten_get (fun _ -> Lam.prim ~primitive ~args:[l] loc )
+         v  i meta.ident_tbl 
+      | _ ->  
+        Lam.prim ~primitive ~args:[simpl arg] loc 
+      end
+    | Lglobal_module _ -> lam 
+    | Lprim {primitive; args; loc } 
+      -> Lam.prim ~primitive ~args:(List.map simpl  args) loc
+      
     | Lifthenelse(Lvar id as l1, l2, l3) 
       -> 
       begin match Ident_hashtbl.find_opt meta.ident_tbl id with 
@@ -74,14 +103,16 @@ let simplify_alias
         let l1 = 
           match x with 
           | Null 
-            -> Lam.not_ (Location.none) ( Lam.prim ~primitive:Lam.Prim.js_is_nil ~args:[l] Location.none) 
+            -> Lam.not_ (Location.none) ( Lam.prim ~primitive:Pis_null
+
+            ~args:[l] Location.none) 
           | Undefined 
             -> 
-            Lam.not_  Location.none (Lam.prim ~primitive:Lam.Prim.js_is_undef ~args:[l] Location.none)
+            Lam.not_  Location.none (Lam.prim ~primitive:Pis_undefined ~args:[l] Location.none)
           | Null_undefined
             -> 
             Lam.not_ Location.none
-              ( Lam.prim ~primitive:Lam.Prim.js_is_nil_undef  ~args:[l] Location.none) 
+              ( Lam.prim ~primitive:Pis_null_undefined  ~args:[l] Location.none) 
           | Normal ->  l1 
         in 
         Lam.if_ l1 (simpl l2) (simpl l3)
@@ -97,9 +128,7 @@ let simplify_alias
     | Lletrec(bindings, body) ->
       let bindings = List.map (fun (k,l) ->  (k, simpl l) ) bindings in 
       Lam.letrec bindings (simpl body) 
-    | Lprim {primitive; args; loc } 
-      -> Lam.prim ~primitive ~args:(List.map simpl  args) loc
-
+ 
     (* complicated 
         1. inline this function
         2. ...
@@ -110,7 +139,7 @@ let simplify_alias
     *)      
     | Lapply{fn = 
                Lprim {primitive = Pfield (index, _) ;
-                      args = [Lprim {primitive = Pgetglobal ident; args =  []}];
+                      args = [ Lglobal_module ident ];
                       _} as l1;
              args; loc ; status} ->
       begin
@@ -175,7 +204,7 @@ let simplify_alias
               end
             else 
             if (* Lam_analysis.size body < Lam_analysis.small_inline_size *)
-              Lam_analysis.ok_to_inline ~body params args 
+              Lam_analysis.ok_to_inline_fun_when_app ~body params args 
             then 
 
                 (* let param_map =  *)
@@ -215,21 +244,21 @@ let simplify_alias
 
       end
 
-    | Lapply{ fn = Lfunction{ kind = Curried ; params; body}; args; _}
+    | Lapply{ fn = Lfunction{ function_kind = Curried ; params; body}; args; _}
       when  Ext_list.same_length params args ->
       simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args)
-    | Lapply{ fn = Lfunction{kind =  Tupled;  params; body}; 
-             args = [Lprim {primitive = Pmakeblock _; args; _}]; _}
-      (** TODO: keep track of this parameter in ocaml trunk,
-          can we switch to the tupled backend?
-      *)
-      when  Ext_list.same_length params args ->
-      simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args)
+    (* | Lapply{ fn = Lfunction{function_kind =  Tupled;  params; body};  *)
+    (*          args = [Lprim {primitive = Pmakeblock _; args; _}]; _} *)
+    (*   (\** TODO: keep track of this parameter in ocaml trunk, *)
+    (*       can we switch to the tupled backend? *)
+    (*   *\) *)
+    (*   when  Ext_list.same_length params args -> *)
+    (*   simpl (Lam_beta_reduce.propogate_beta_reduce meta params body args) *)
 
     | Lapply {fn = l1; args =  ll;  loc ; status} ->
       Lam.apply (simpl  l1) (List.map simpl  ll) loc status
-    | Lfunction {arity; kind; params; body = l}
-      -> Lam.function_ ~arity ~kind ~params  ~body:(simpl  l)
+    | Lfunction {arity; function_kind; params; body = l}
+      -> Lam.function_ ~arity ~function_kind ~params  ~body:(simpl  l)
     | Lswitch (l, {sw_failaction; 
                    sw_consts; 
                    sw_blocks;
@@ -259,10 +288,6 @@ let simplify_alias
     | Lstaticcatch (l1, ids, l2) -> 
       Lam.staticcatch (simpl  l1) ids (simpl  l2)
     | Ltrywith (l1, v, l2) -> Lam.try_ (simpl  l1) v (simpl  l2)
-
-    | Lsequence (Lprim {primitive = Pgetglobal (id); args = []}, l2)
-      when Lam_compile_env.is_pure_module (Lam_module_ident.of_ml id) 
-      -> simpl l2 (** TODO: apply in the beginning *)
     | Lsequence(l1, l2)
       -> Lam.seq (simpl  l1) (simpl  l2)
     | Lwhile(l1, l2)
@@ -280,3 +305,5 @@ let simplify_alias
     | Lifused (v, l) -> Lam.ifused v (simpl  l)
   in 
   simpl lam
+
+

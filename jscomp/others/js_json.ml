@@ -22,8 +22,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-type t
+(** Efficient JSON encoding using JavaScript API *)
 
+type t
 
 type _ kind = 
   | String : Js_string.t kind
@@ -33,7 +34,7 @@ type _ kind =
   | Boolean : Js.boolean kind
   | Null : Js_types.null_val kind
 
-let reify_type (type a) (x : 'a) : (a kind * a ) = 
+let reifyType (type a) (x : 'a) : (a kind * a ) = 
   (if Js.typeof x = "string" then 
     Obj.magic String else
   if Js.typeof x = "number" then 
@@ -44,22 +45,73 @@ let reify_type (type a) (x : 'a) : (a kind * a ) =
   if (Obj.magic x) == Js.null then
     (* providing a universal function *)
     Obj.magic Null else 
-  if Js.to_bool @@ Js_array.isArray x  then 
+  if Js_array.isArray x  then 
     Obj.magic Array 
   else 
     Obj.magic Object ), Obj.magic x
 
+let reify_type = reifyType 
+
+
 let test (type a) (x : 'a) (v : a kind) : bool =
   match v with
   | Number -> Js.typeof x = "number"
-  | Boolean 
-    -> 
-     Js.typeof x = "boolean" 
+  | Boolean -> Js.typeof x = "boolean" 
   | String -> Js.typeof x = "string"
   | Null -> (Obj.magic x) == Js.null 
-  | Array -> Js.to_bool (Js_array.isArray x )
-  | Object -> (Obj.magic x) != Js.null && Js.typeof x = "object" && not (Js.to_bool (Js_array.isArray x ))
+  | Array -> Js_array.isArray x 
+  | Object -> (Obj.magic x) != Js.null && Js.typeof x = "object" && not (Js_array.isArray x )
 
+let decodeString json = 
+  if Js.typeof json = "string" 
+  then Some (Obj.magic (json:t) : string)
+  else None 
+
+let decodeNumber json = 
+  if Js.typeof json = "number" 
+  then Some (Obj.magic (json:t) : float)
+  else None 
+
+let decodeObject json = 
+  if  Js.typeof json = "object" && 
+      not (Js_array.isArray json) && 
+      not ((Obj.magic json : 'a Js.null) == Js.null)
+  then Some (Obj.magic (json:t) : t Js_dict.t)
+  else None 
+
+let decodeArray json = 
+  if Js_array.isArray json
+  then Some (Obj.magic (json:t) : t array)
+  else None 
+
+let decodeBoolean json = 
+  if Js.typeof json = "boolean"
+  then Some (Obj.magic (json:t) : Js.boolean)
+  else None 
+
+let decodeNull json = 
+  if (Obj.magic json : 'a Js.null) == Js.null
+  then Some Js.null
+  else None 
 
 external parse : string -> t = "JSON.parse" [@@bs.val]
+
+external parseExn : string -> t = "JSON.parse" [@@bs.val]
+
+external stringifyAny : 'a -> string option = "JSON.stringify" [@@bs.val] [@@bs.return undefined_to_opt]
 (* TODO: more docs when parse error happens or stringify non-stringfy value *)
+
+external null : t = "" [@@bs.val]
+external string : string -> t = "%identity"
+external number : float -> t = "%identity"
+external boolean : Js.boolean -> t = "%identity" 
+external object_ : t Js_dict.t -> t = "%identity"
+
+external array_ : t array -> t = "%identity"
+
+external array : t array -> t = "%identity"
+external stringArray : string array -> t = "%identity"
+external numberArray : float array -> t = "%identity"
+external booleanArray : Js.boolean array -> t = "%identity"
+external objectArray : t Js_dict.t array -> t = "%identity"
+external stringify: t -> string = "JSON.stringify" [@@bs.val]

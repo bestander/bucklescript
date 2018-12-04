@@ -111,20 +111,16 @@ let deep_flatten
       (lam : Lam.t) :  Lam.t *  Lam_group.t list = 
     match lam with 
     | Llet (str, id, 
-            (Lprim {primitive = Pccall 
-                      {prim_name = 
-                         ("js_from_nullable" 
-                         | "js_from_def"
-                         |"js_from_nullable_def"); _ }
+            (Lprim {primitive = (
+                          Pnull_to_opt
+                         | Pundefined_to_opt
+                         | Pnull_undefined_to_opt)
                    ; args  =  [Lvar _]} as arg), body)
       -> 
       flatten (Single(str, id, (aux arg) ) :: acc) body
     | Llet (str, id, 
-            Lprim {primitive = Pccall 
-                     ({prim_name = 
-                         ("js_from_nullable"
-                         | "js_from_def"
-                         | "js_from_nullable_def"); _ } as p );
+            Lprim {primitive = ( 
+                          Pnull_to_opt | Pundefined_to_opt | Pnull_undefined_to_opt as primitive );
                    args = [arg]}, body)
       -> 
       let id' = Ident.rename id in 
@@ -132,7 +128,7 @@ let deep_flatten
         (Lam.let_ str id' arg 
                (Lam.let_ Alias id 
                   (Lam.prim 
-                     ~primitive:(Pccall p)
+                     ~primitive
                      ~args: [Lam.var id'] Location.none (* FIXME*))
                   body)
               )
@@ -206,23 +202,24 @@ let deep_flatten
        and as early as possible *) 
 
     | Lprim {primitive = Pccall{prim_name = "caml_int64_float_of_bits"; _};
-            args = [ Lconst (Const_base (Const_int64 i))]; _} 
+            args = [ Lconst (  (Const_int64 i))]; _} 
       ->  
       Lam.const 
-        (Const_base (Const_float (Js_number.to_string (Int64.float_of_bits i) )))
+        (  (Const_float (Js_number.to_string (Int64.float_of_bits i) )))
     | Lprim {primitive = Pccall{prim_name = "caml_int64_to_float"; _}; 
-             args = [ Lconst (Const_base (Const_int64 i))]; _} 
+             args = [ Lconst (  (Const_int64 i))]; _} 
       -> 
       (* TODO: note when int is too big, [caml_int64_to_float] is unsafe *)
       Lam.const 
-        (Const_base (Const_float (Js_number.to_string (Int64.to_float i) )))
+        (  (Const_float (Js_number.to_string (Int64.to_float i) )))
+    | Lglobal_module _ -> lam 
     | Lprim {primitive ; args; loc }
       -> 
       let args = List.map aux args in
       Lam.prim ~primitive ~args loc
 
-    | Lfunction{arity; kind; params;  body = l} -> 
-      Lam.function_ ~arity ~kind ~params  ~body:(aux  l)
+    | Lfunction{arity; function_kind; params;  body = l} -> 
+      Lam.function_ ~arity ~function_kind ~params  ~body:(aux  l)
     | Lswitch(l, {sw_failaction; 
                   sw_consts; 
                   sw_blocks;

@@ -69,17 +69,6 @@ let set_eval_string s =
 
 let (//) = Filename.concat
 
-let add_package s = 
-  let path = 
-    Bs_pkg.resolve_bs_package
-      ~cwd:(Lazy.force Ext_filename.cwd) 
-      ~subdir:Js_config.lib_ocaml_dir
-      s   in 
-  match path with
-  | None -> Bs_exception.error (Bs_package_not_found s)
-  | Some path ->
-    Clflags.include_dirs := path :: ! Clflags.include_dirs
-
 
 let set_noassert () = 
   Js_config.set_no_any_assert ();
@@ -155,15 +144,31 @@ let buckle_script_flags =
    " only check syntax"
   )
   ::
+  ("-bs-no-bin-annot", Arg.Clear Clflags.binary_annotations, 
+   " disable binary annotations (by default on)")
+  ::
   ("-bs-eval", 
    Arg.String set_eval_string, 
    " (experimental) Set the string to be evaluated, note this flag will be conflicted with -bs-main"
+  )
+  ::("-bs-no-error-unused-attribute",
+    Arg.Set Js_config.no_error_unused_bs_attribute,
+    " No error when seeing unused attribute"
+    (* We introduce such flag mostly 
+      for work around 
+      in case some embarassing compiler bugs
+    *)
   )
   ::
   (
     "-bs-sort-imports",
     Arg.Set Js_config.sort_imports,
-    " Sort the imports by lexical order so the output will be more stable"
+    " Sort the imports by lexical order so the output will be more stable (default false)"
+  )
+  ::
+  ( "-bs-no-sort-imports", 
+    Arg.Clear Js_config.sort_imports,
+    " No sort (see -bs-sort-imports)"
   )
   ::
   ("-bs-better-errors",
@@ -181,12 +186,9 @@ let buckle_script_flags =
   ::
   ("-bs-package-output", 
    Arg.String Js_config.set_npm_package_path, 
-   " set npm-output-path: [opt_module]:path, for example: 'lib/cjs', 'amdjs:lib/amdjs' and 'goog:lib/gjs'")
+   " set npm-output-path: [opt_module]:path, for example: 'lib/cjs', 'amdjs:lib/amdjs', 'es6:lib/es6' and 'goog:lib/gjs'")
   ::
-  ("-bs-package-include", 
-   Arg.String add_package, 
-   " set package names, for example bs-platform "  )
-  ::
+  
   ("-bs-no-warn-unused-bs-attribute",
    Arg.Set Js_config.no_warn_unused_bs_attribute,
    " disable warnings on unused bs. attribute"
@@ -251,8 +253,12 @@ let buckle_script_flags =
 
 
 let _ = 
+  (* Default configuraiton: sync up with 
+    {!Jsoo_main}  *)
   Clflags.unsafe_string := false;
   Clflags.debug := true;
+  Clflags.record_event_when_debug := false;
+  Clflags.binary_annotations := true; 
   Bs_conditional_initial.setup_env ();
   try
     Compenv.readenv ppf Before_args;
@@ -277,7 +283,3 @@ let _ =
     else
       (** Fancy error message reporting*)
       exit 2
-
-
-
-

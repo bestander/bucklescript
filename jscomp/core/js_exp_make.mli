@@ -63,7 +63,7 @@ type unary_op =  ?comment:string -> t -> t
 val ocaml_boolean_under_condition : t -> t 
 
 
-val bin : ?comment:string -> J.binop -> t -> t -> t
+(* val bin : ?comment:string -> J.binop -> t -> t -> t *)
 val mk :
   ?comment:string -> J.expression_desc -> t
 
@@ -89,8 +89,17 @@ val runtime_call : ?comment:string -> string -> string -> t list -> t
 val public_method_call : string -> t -> t -> Int32.t -> t list -> t
 val runtime_ref : string -> string -> t
 
-val str : ?pure:bool -> ?comment:string -> string -> t 
+val str : 
+  ?pure:bool -> 
+  ?comment:string -> 
+  string -> 
+  t 
 
+val unicode : 
+  ?comment:string -> 
+  string -> 
+  t
+  
 val ocaml_fun : ?comment:string ->
   ?immutable_mask:bool array -> J.ident list -> J.block -> t
 
@@ -104,6 +113,7 @@ val nint : ?comment:string -> nativeint -> t
 val small_int : int -> t
 val float : ?comment:string -> string -> t
 
+val empty_string_literal : t 
 (* TODO: we can do hash consing for small integers *)
 val zero_int_literal : t
 val one_int_literal : t
@@ -194,7 +204,7 @@ val float_mod : binary_op
 val int_comp : Lambda.comparison -> binary_op
 val string_comp : Js_op.binop -> binary_op
 val float_comp :  Lambda.comparison -> binary_op
-
+val js_comp :  Lambda.comparison -> binary_op
 
 
 val not : t -> t
@@ -226,6 +236,7 @@ val uninitialized_object :
 val uninitialized_array : unary_op
 
 val seq : binary_op
+val fuse_to_seq : t -> t list -> t 
 
 val obj : ?comment:string -> J.property_map -> t 
 
@@ -263,7 +274,7 @@ val set_tag : ?comment:string -> J.expression -> J.expression -> t
 
 val set_length : ?comment:string -> J.expression -> J.expression -> t
 val obj_length : ?comment:string -> J.expression -> t
-val to_ocaml_boolean : unary_op
+val bool_of_boolean : unary_op
 
 val and_ : binary_op
 val or_ : binary_op

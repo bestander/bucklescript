@@ -1,18 +1,20 @@
 'use strict';
 
-var Printf                  = require("../../lib/js/printf");
-var Block                   = require("../../lib/js/block");
-var Caml_string             = require("../../lib/js/caml_string");
-var Curry                   = require("../../lib/js/curry");
-var Caml_io                 = require("../../lib/js/caml_io");
-var Digest                  = require("../../lib/js/digest");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var Buffer                  = require("../../lib/js/buffer");
-var Bytes                   = require("../../lib/js/bytes");
-var List                    = require("../../lib/js/list");
-var Pervasives              = require("../../lib/js/pervasives");
-var Caml_obj                = require("../../lib/js/caml_obj");
-var Scanf                   = require("../../lib/js/scanf");
+var List                    = require("../../lib/js/list.js");
+var Block                   = require("../../lib/js/block.js");
+var Bytes                   = require("../../lib/js/bytes.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Scanf                   = require("../../lib/js/scanf.js");
+var Buffer                  = require("../../lib/js/buffer.js");
+var Digest                  = require("../../lib/js/digest.js");
+var Js_exn                  = require("../../lib/js/js_exn.js");
+var Printf                  = require("../../lib/js/printf.js");
+var Caml_io                 = require("../../lib/js/caml_io.js");
+var Caml_obj                = require("../../lib/js/caml_obj.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_string             = require("../../lib/js/caml_string.js");
+var Caml_missing_polyfill   = require("../../lib/js/caml_missing_polyfill.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var tscanf_data_file = "tscanf_data";
 
@@ -52,9 +54,7 @@ function write_tscanf_data_file(fname, lines) {
   create_tscanf_data(ob, lines);
   Buffer.output_buffer(oc, ob);
   Caml_io.caml_ml_flush(oc);
-  return function () {
-            throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-          }();
+  return Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
 }
 
 function get_lines(fname) {
@@ -93,7 +93,8 @@ function get_lines(fname) {
     };
     return List.rev(l[0]);
   }
-  catch (exn){
+  catch (raw_exn){
+    var exn = Js_exn.internalToOCamlException(raw_exn);
     if (exn[0] === Scanf.Scan_failure) {
       var s = Curry._2(Printf.sprintf(/* Format */[
                 /* String_literal */Block.__(11, [
@@ -115,8 +116,7 @@ function get_lines(fname) {
             Caml_builtin_exceptions.failure,
             s
           ];
-    }
-    else if (exn === Caml_builtin_exceptions.end_of_file) {
+    } else if (exn === Caml_builtin_exceptions.end_of_file) {
       var s$1 = Curry._1(Printf.sprintf(/* Format */[
                 /* String_literal */Block.__(11, [
                     "in file ",
@@ -134,8 +134,7 @@ function get_lines(fname) {
             Caml_builtin_exceptions.failure,
             s$1
           ];
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -171,8 +170,7 @@ function add_digest_ib(ob, ib) {
   catch (exn){
     if (exn === Caml_builtin_exceptions.end_of_file) {
       return /* () */0;
-    }
-    else {
+    } else {
       throw exn;
     }
   }

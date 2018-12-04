@@ -1,18 +1,19 @@
 'use strict';
 
-var Block           = require("../../lib/js/block");
-var Curry           = require("../../lib/js/curry");
-var CamlinternalOO  = require("../../lib/js/camlinternalOO");
-var Mt              = require("./mt");
-var Caml_exceptions = require("../../lib/js/caml_exceptions");
-var Caml_obj        = require("../../lib/js/caml_obj");
+var Mt              = require("./mt.js");
+var Block           = require("../../lib/js/block.js");
+var Curry           = require("../../lib/js/curry.js");
+var Caml_obj        = require("../../lib/js/caml_obj.js");
+var Caml_oo_curry   = require("../../lib/js/caml_oo_curry.js");
+var CamlinternalOO  = require("../../lib/js/camlinternalOO.js");
+var Caml_exceptions = require("../../lib/js/caml_exceptions.js");
 
-var shared = [
+var shared = ["repr"];
+
+var shared$1 = [
   "leq",
   "value"
 ];
-
-var shared$1 = ["repr"];
 
 var suites = [/* [] */0];
 
@@ -53,7 +54,7 @@ function money_init($$class) {
   var ids = CamlinternalOO.new_methods_variables($$class, [
         "value",
         "leq"
-      ], shared$1);
+      ], shared);
   var value = ids[0];
   var leq = ids[1];
   var repr = ids[2];
@@ -66,7 +67,7 @@ function money_init($$class) {
         },
         leq,
         function (self$neg2, p) {
-          return +(self$neg2[repr] <= Curry.js1(834174833, 1, p));
+          return +(self$neg2[repr] <= Caml_oo_curry.js1(834174833, 1, p));
         }
       ]);
   return function (_, self, x) {
@@ -77,11 +78,11 @@ function money_init($$class) {
   };
 }
 
-var money = CamlinternalOO.make_class(shared, money_init);
+var money = CamlinternalOO.make_class(shared$1, money_init);
 
 function money2_init($$class) {
   var times = CamlinternalOO.get_method_label($$class, "times");
-  var inh = CamlinternalOO.inherits($$class, shared$1, 0, shared, money, 1);
+  var inh = CamlinternalOO.inherits($$class, shared, 0, shared$1, money, 1);
   var obj_init = inh[0];
   var repr = inh[1];
   CamlinternalOO.set_method($$class, times, function (self$neg3, k) {
@@ -103,21 +104,20 @@ var money2 = CamlinternalOO.make_class([
     ], money2_init);
 
 function min(x, y) {
-  if (Curry.js2(5393368, 2, x, y)) {
+  if (Caml_oo_curry.js2(5393368, 2, x, y)) {
     return x;
-  }
-  else {
+  } else {
     return y;
   }
 }
 
 var tmp = min(Curry._2(money[0], 0, 1.0), Curry._2(money[0], 0, 3.0));
 
-eq('File "class8_test.ml", line 34, characters 5-12', 1, Curry.js1(834174833, 3, tmp));
+eq("File \"class8_test.ml\", line 34, characters 5-12", 1, Caml_oo_curry.js1(834174833, 3, tmp));
 
 var tmp$1 = min(Curry._2(money2[0], 0, 5.0), Curry._2(money2[0], 0, 3));
 
-eq('File "class8_test.ml", line 39, characters 5-12', 3, Curry.js1(834174833, 4, tmp$1));
+eq("File \"class8_test.ml\", line 39, characters 5-12", 3, Caml_oo_curry.js1(834174833, 4, tmp$1));
 
 Mt.from_pair_suites("class8_test.ml", suites[0]);
 

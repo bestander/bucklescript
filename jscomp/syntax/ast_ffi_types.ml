@@ -56,16 +56,18 @@ type js_module_as_fn =
   { external_module_name : external_module_name;
     splice : bool 
   }
+  
+(** TODO: information between [arg_type] and [arg_label] are duplicated, 
+  design a more compact representation so that it is also easy to seralize by hand
+*)  
+type arg_type = Ast_arg.ty
 
-type arg_type = Ast_core_type.arg_type
-type arg_label = Ast_core_type.arg_label
+type arg_label = Ast_arg.label
 
-type arg_kind = 
-  {
-    arg_type : arg_type;
-    arg_label : arg_label
-  }
-type obj_create = arg_kind list
+
+
+(**TODO: maybe we can merge [arg_label] and [arg_type] *)
+type obj_create = Ast_arg.kind list
 
 type ffi = 
   (* | Obj_create of obj_create *)
@@ -99,12 +101,22 @@ let name_of_ffi ffi =
   | Js_global v 
     -> 
     Printf.sprintf "[@@bs.val] %S " v.name                    
-  (* | Obj_create _ -> 
-    Printf.sprintf "[@@bs.obj]" *)
+(* | Obj_create _ -> 
+   Printf.sprintf "[@@bs.obj]" *)
+
+type return_wrapper = 
+  | Return_unset 
+  | Return_identity
+  | Return_undefined_to_opt  
+  | Return_null_to_opt
+  | Return_null_undefined_to_opt
+  | Return_to_ocaml_bool
+  | Return_replaced_with_unit    
 type t  = 
-  | Ffi_bs of arg_kind list  * bool * ffi 
+  | Ffi_bs of Ast_arg.kind list  *
+     return_wrapper * ffi 
   (**  [Ffi_bs(args,return,ffi) ]
-     [return] means return value is unit or not, 
+       [return] means return value is unit or not, 
         [true] means is [unit]  
   *)
   | Ffi_obj_create of obj_create
@@ -146,12 +158,12 @@ let valid_global_name ?loc txt =
     List.iter
       (fun s ->
          if not (valid_ident s) then
-           Location.raise_errorf ?loc "Not a valid  name %s"  txt
+           Location.raise_errorf ?loc "Not a valid name %s"  txt
       ) v      
 
 let valid_method_name ?loc txt =         
   if not (valid_ident txt) then
-    Location.raise_errorf ?loc "Not a valid  name %s"  txt
+    Location.raise_errorf ?loc "Not a valid name %s"  txt
 
 
 
@@ -195,7 +207,7 @@ let bs_prefix_length = String.length bs_prefix
     Solution:
     1. fixed length 
     2. non-prefix approach
- *)
+*)
 let bs_external = bs_prefix ^ Bs_version.version 
 
 
@@ -208,16 +220,15 @@ let to_string  t =
 
 (* TODO:  better error message when version mismatch *)
 let from_string s : t = 
-    let s_len = String.length s in 
-    if s_len >= bs_prefix_length &&
-         String.unsafe_get s 0 = 'B' &&
-        String.unsafe_get s 1 = 'S' &&
-        String.unsafe_get s 2 = ':' then 
-        if Ext_string.starts_with s bs_external then 
-            Marshal.from_string s bs_external_length 
-         else 
-            Ext_pervasives.failwithf 
-                ~loc:__LOC__
-                "compiler version mismatch, please do a clean build"
-    else Ffi_normal    
-    
+  let s_len = String.length s in 
+  if s_len >= bs_prefix_length &&
+     String.unsafe_get s 0 = 'B' &&
+     String.unsafe_get s 1 = 'S' &&
+     String.unsafe_get s 2 = ':' then 
+    if Ext_string.starts_with s bs_external then 
+      Marshal.from_string s bs_external_length 
+    else 
+      Ext_pervasives.failwithf 
+        ~loc:__LOC__
+        "compiler version mismatch, please do a clean build"
+  else Ffi_normal    

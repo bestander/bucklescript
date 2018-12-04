@@ -23,22 +23,103 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 let (//) = Ext_filename.combine 
 
-let lib_js = "lib"//"js"
-let lib_amd = "lib"//"amdjs"
-let lib_goog = "lib" // "goog"
-let lib_ocaml = Js_config.lib_ocaml_dir
-let lib_bs = "lib" // "bs"
+let lib_lit = "lib"
+let lib_js = lib_lit //"js"
+let lib_amd = lib_lit //"amdjs"
+let lib_goog = lib_lit // "goog"
+let lib_ocaml = lib_lit // "ocaml"
+let lib_bs = lib_lit // "bs"
+let lib_es6 = lib_lit // "es6"
+let lib_es6_global = lib_lit // "es6_global"
+let lib_amd_global = lib_lit // "amdjs_global"
+let all_lib_artifacts = 
+  [ lib_js ; 
+    lib_amd ;
+    lib_goog ; 
+    lib_ocaml;
+    lib_bs ; 
+    lib_es6 ; 
+    lib_es6_global;
+    lib_amd_global
+  ]
 let rev_lib_bs = ".."// ".."
+
+
 let rev_lib_bs_prefix p = rev_lib_bs // p 
 let common_js_prefix p  =  lib_js  // p
 let amd_js_prefix p = lib_amd // p 
 let goog_prefix p = lib_goog // p  
+let es6_prefix p = lib_es6 // p 
+let es6_global_prefix p =  lib_es6_global // p
+let amdjs_global_prefix p = lib_amd_global // p 
 let ocaml_bin_install_prefix p = lib_ocaml // p
 
 let lazy_src_root_dir = "$src_root_dir" 
 let proj_rel path = lazy_src_root_dir // path
-                                 
+
 (** it may not be a bad idea to hard code the binary path 
     of bsb in configuration time
 *)
+
+
+
+
+
+
+let cmd_package_specs = ref None 
+
+type package_specs = String_set.t
+
+let supported_format x = 
+  x = Literals.amdjs ||
+  x = Literals.commonjs ||
+  x = Literals.goog ||
+  x = Literals.es6 ||
+  x = Literals.es6_global ||
+  x = Literals.amdjs_global
+
+
+let bs_package_output = "-bs-package-output"
+
+(** Assume input is valid 
+    {[ -bs-package-output commonjs:lib/js/jscomp/test ]}
+*)
+let package_flag ~format:fmt dir =
+  Ext_string.inter2
+    bs_package_output 
+    (Ext_string.concat3
+       fmt
+       Ext_string.single_colon
+       (if fmt = Literals.amdjs then 
+          amd_js_prefix dir 
+        else if fmt = Literals.commonjs then 
+          common_js_prefix dir 
+        else if fmt = Literals.es6 then 
+          es6_prefix dir 
+        else if fmt = Literals.es6_global then 
+          es6_global_prefix dir   
+        else if fmt = Literals.amdjs_global then 
+          amdjs_global_prefix dir 
+        else goog_prefix dir))
+(** js output for each package *)
+let package_output ~format:s output=
+  let prefix  =
+    if s = Literals.commonjs then
+      common_js_prefix
+    else if s = Literals.amdjs then
+      amd_js_prefix
+    else if s = Literals.es6 then 
+      es6_prefix   
+    else if s = Literals.es6_global then 
+      es6_global_prefix  
+    else  if s = Literals.amdjs_global then 
+      amdjs_global_prefix
+    else goog_prefix
+  in
+  (proj_rel @@ prefix output )
+(* output_file_sans_extension ^ Literals.suffix_js *) 
+
+
+
+
 

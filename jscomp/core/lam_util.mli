@@ -35,18 +35,19 @@ val string_of_primitive : Lam.primitive -> string
 
 val kind_of_lambda_block : Lam_stats.boxed_nullable -> Lam.t list -> Lam_stats.kind
 
-val get : Lam.t -> Ident.t -> int -> Lam_stats.ident_tbl -> Lam.t
+val field_flatten_get : 
+  (unit -> Lam.t) -> Ident.t -> int -> Lam_stats.ident_tbl -> Lam.t
 
-val add_required_module : Ident.t -> Lam_stats.meta -> unit
 
-val add_required_modules : Ident.t list -> Lam_stats.meta -> unit
 
-val alias : Lam_stats.meta ->
-  Ident.t -> Ident.t -> Lam_stats.kind -> Lambda.let_kind -> unit 
+
+
+val alias_ident_or_global : Lam_stats.meta ->
+  Ident.t -> Ident.t -> Lam_stats.kind -> Lam.let_kind -> unit 
 
 
 val refine_let : 
-    ?kind:Lambda.let_kind ->
+    kind:Lam.let_kind  ->
       Ident.t -> Lam.t -> Lam.t -> Lam.t
 
 
@@ -70,10 +71,6 @@ val print_ident_set : Format.formatter -> Ident_set.t -> unit
 val not_function : Lam.t -> bool 
 val is_function : Lam.t -> bool 
 
-
-val eta_conversion : 
-  int ->
-  Location.t -> Lam.apply_status -> Lam.t -> Lam.t list -> Lam.t
 
 
 

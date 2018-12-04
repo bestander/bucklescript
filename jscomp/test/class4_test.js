@@ -1,21 +1,22 @@
 'use strict';
 
-var Block          = require("../../lib/js/block");
-var Curry          = require("../../lib/js/curry");
-var CamlinternalOO = require("../../lib/js/camlinternalOO");
-var Mt             = require("./mt");
+var Mt             = require("./mt.js");
+var Block          = require("../../lib/js/block.js");
+var Curry          = require("../../lib/js/curry.js");
+var Caml_oo_curry  = require("../../lib/js/caml_oo_curry.js");
+var CamlinternalOO = require("../../lib/js/camlinternalOO.js");
 
 var shared = [
   "move",
   "get_x"
 ];
 
-var shared$1 = ["x"];
-
-var shared$2 = [
+var shared$1 = [
   "bump",
   "get_x"
 ];
+
+var shared$2 = ["x"];
 
 var suites = [/* [] */0];
 
@@ -43,7 +44,7 @@ function restricted_point_init($$class) {
         "move",
         "get_x",
         "bump"
-      ], shared$1);
+      ], shared$2);
   var move = ids[0];
   var get_x = ids[1];
   var bump = ids[2];
@@ -70,27 +71,27 @@ function restricted_point_init($$class) {
   };
 }
 
-var restricted_point = CamlinternalOO.make_class(shared$2, restricted_point_init);
+var restricted_point = CamlinternalOO.make_class(shared$1, restricted_point_init);
 
 function restricted_point$prime_init($$class) {
-  var inh = CamlinternalOO.inherits($$class, 0, 0, shared$2, restricted_point, 1);
+  var inh = CamlinternalOO.inherits($$class, 0, 0, shared$1, restricted_point, 1);
   var obj_init = inh[0];
   return function (_, self, x) {
     return Curry._2(obj_init, self, x);
   };
 }
 
-var restricted_point$prime = CamlinternalOO.make_class(shared$2, restricted_point$prime_init);
+var restricted_point$prime = CamlinternalOO.make_class(shared$1, restricted_point$prime_init);
 
 function restricted_point2$prime_init($$class) {
-  var inh = CamlinternalOO.inherits($$class, 0, 0, shared$2, restricted_point, 1);
+  var inh = CamlinternalOO.inherits($$class, 0, 0, shared$1, restricted_point, 1);
   var obj_init = inh[0];
   return function (_, self, x) {
     return Curry._2(obj_init, self, x);
   };
 }
 
-var restricted_point2$prime = CamlinternalOO.make_class(shared$2, restricted_point2$prime_init);
+var restricted_point2$prime = CamlinternalOO.make_class(shared$1, restricted_point2$prime_init);
 
 var Point = /* module */[/* restricted_point' */restricted_point];
 
@@ -121,7 +122,7 @@ var abstract_point = [
 ];
 
 function point_init($$class) {
-  var ids = CamlinternalOO.new_methods_variables($$class, shared, shared$1);
+  var ids = CamlinternalOO.new_methods_variables($$class, shared, shared$2);
   var move = ids[0];
   var get_x = ids[1];
   var x = ids[2];
@@ -156,7 +157,7 @@ function colored_point_init($$class) {
   var ids = CamlinternalOO.new_methods_variables($$class, ["color"], ["c"]);
   var color = ids[0];
   var c = ids[1];
-  var inh = CamlinternalOO.inherits($$class, shared$1, 0, [
+  var inh = CamlinternalOO.inherits($$class, shared$2, 0, [
         "get_offset",
         "get_x",
         "move"
@@ -182,22 +183,22 @@ var colored_point = CamlinternalOO.make_class([
 
 var p$prime = Curry._3(colored_point[0], 0, 5, "red");
 
-eq('File "class4_test.ml", line 67, characters 5-12', /* tuple */[
+eq("File \"class4_test.ml\", line 67, characters 5-12", /* tuple */[
       5,
       "red"
     ], /* tuple */[
-      Curry.js1(291546447, 1, p$prime),
-      Curry.js1(-899911325, 2, p$prime)
+      Caml_oo_curry.js1(291546447, 1, p$prime),
+      Caml_oo_curry.js1(-899911325, 2, p$prime)
     ]);
 
 function get_succ_x(p) {
-  return Curry.js1(291546447, 3, p) + 1 | 0;
+  return Caml_oo_curry.js1(291546447, 3, p) + 1 | 0;
 }
 
-eq('File "class4_test.ml", line 71, characters 12-19', 6, get_succ_x(p$prime));
+eq("File \"class4_test.ml\", line 71, characters 12-19", 6, get_succ_x(p$prime));
 
 function set_x(p) {
-  return Curry.js1(-97543333, 4, p);
+  return Caml_oo_curry.js1(-97543333, 4, p);
 }
 
 function incr(p) {

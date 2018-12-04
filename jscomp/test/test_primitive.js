@@ -1,12 +1,13 @@
 'use strict';
 
-var Curry            = require("../../lib/js/curry");
-var CamlinternalLazy = require("../../lib/js/camlinternalLazy");
-var Pervasives       = require("../../lib/js/pervasives");
+var Curry            = require("../../lib/js/curry.js");
+var Caml_array       = require("../../lib/js/caml_array.js");
+var Pervasives       = require("../../lib/js/pervasives.js");
+var CamlinternalLazy = require("../../lib/js/camlinternalLazy.js");
 
 function a4(prim) {
   return [
-          'File "test_primitive.ml", line 30, characters 9-19',
+          "File \"test_primitive.ml\", line 30, characters 9-19",
           prim
         ];
 }
@@ -47,8 +48,7 @@ function u(b) {
   if (b) {
     Pervasives.print_int(1);
     return 32;
-  }
-  else {
+  } else {
     return 7;
   }
 }
@@ -57,7 +57,7 @@ function f2(h, b, _) {
   return Curry._1(h, b ? 32 : 7);
 }
 
-v[1] = 3.0;
+Caml_array.caml_array_set(v, 1, 3.0);
 
 var unboxed_x = /* float array */[
   0,
@@ -77,11 +77,9 @@ function is_lazy_force(x) {
   var tag = x.tag | 0;
   if (tag === 250) {
     return x[0];
-  }
-  else if (tag === 246) {
+  } else if (tag === 246) {
     return CamlinternalLazy.force_lazy_block(x);
-  }
-  else {
+  } else {
     return x;
   }
 }
@@ -89,15 +87,14 @@ function is_lazy_force(x) {
 function fib(n) {
   if (n === 0 || n === 1) {
     return 1;
-  }
-  else {
+  } else {
     var fib1 = fib(n - 1 | 0);
     var fib2 = fib(n - 2 | 0);
     return (fib1 + fib2 | 0) + 3 | 0;
   }
 }
 
-var a0 = 'File "test_primitive.ml", line 26, characters 9-16';
+var a0 = "File \"test_primitive.ml\", line 26, characters 9-16";
 
 var a1 = "test_primitive.ml";
 

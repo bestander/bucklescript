@@ -1,8 +1,8 @@
 'use strict';
 
-var Block    = require("../../lib/js/block");
-var Mt       = require("./mt");
-var $$String = require("../../lib/js/string");
+var Mt       = require("./mt.js");
+var Block    = require("../../lib/js/block.js");
+var $$String = require("../../lib/js/string.js");
 
 function u(v) {
   return v;

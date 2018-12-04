@@ -2,7 +2,7 @@
 
 ### First example
 
-* Create a directory called `hello` and create `bsconfig.json`, `package.json`
+* Create a directory called `hello` and create `bsconfig.json` and `package.json`
   as below:
 
 +
@@ -10,8 +10,8 @@
 .bsconfig.json
 ----
 {
-    "name" : "helo",
-    "sources" : { "dir" :  "src"}
+    "name" : "hello",
+    "sources" : { "dir" : "src"}
 }
 ----
 
@@ -21,7 +21,7 @@
 ----
 {
     "dependencies": {
-        "bs-platform": "1.3.3" // <1>
+        "bs-platform": "1.7.0" // <1>
     },
     "scripts" : {
         "build" : "bsb",
@@ -30,7 +30,7 @@
 }
 ----
 <1> Version should be updated accordingly
-<2> Watch mode when development
+<2> Watch mode when developing
 * Create `src/main_entry.ml` as below:
 +
 [source,ocaml]
@@ -47,7 +47,7 @@ let () =
 ----
 npm run build
 ----
- 
+
 Now you should see a file called `lib/js/src/main_entry.js` generated as below:
 [source,js]
 .lib/js/src/main_entry.js
@@ -60,9 +60,9 @@ console.log("hello world");
 
 /*  Not a pure module */ <1>
 ----
-<1> The compiler analyze this module is impure due to the side effect
+<1> The compiler detects this module is impure due to the side effect.
 
-User can  also run `watch` mode see changes instantly while editing.
+User can also run `watch` mode to see changes instantly while editing.
 
 [source,sh]
 ----
@@ -78,14 +78,14 @@ Now we want to create two modules, one file called `fib.ml` which
 exports `fib` function, the other module called `main_entry.ml` which
 will call `fib`.
 
-* Create a directory `fib` and created files, `bsconfig.json`, `package.json`
+* Create a directory `fib` and create files `bsconfig.json` and `package.json`
 +
 [source,js]
 .bsconfig.json
 ----
 {
     "name" : "helo",
-    "sources" : { "dir" :  "src"}
+    "sources" : { "dir" : "src"}
 }
 ----
 +
@@ -94,7 +94,7 @@ will call `fib`.
 ----------
 {
     "dependencies": {
-        "bs-platform": "1.3.4"
+        "bs-platform": "1.7.0"
     },
     "scripts" : {
         "build" : "bsb",
@@ -107,7 +107,7 @@ will call `fib`.
 [source,ocaml]
 .src/fib.ml
 ------
-let  fib n  =
+let fib n =
   let rec aux n a b =
     if n = 0 then a
     else

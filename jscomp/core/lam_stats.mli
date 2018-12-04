@@ -74,7 +74,7 @@ type boxed_nullable
 type kind = 
   | ImmutableBlock of element array * boxed_nullable
   | MutableBlock of element array
-  | Constant of Lambda.structured_constant
+  | Constant of Lam.constant
   | Module of Ident.t
         (** TODO: static module vs first class module *)
   | Function of function_id 
@@ -107,5 +107,5 @@ type meta = {
       for sure it's not a function, there is no need to count them
    *)
 
-  mutable required_modules : Lam_module_ident.t list ;
+
 }

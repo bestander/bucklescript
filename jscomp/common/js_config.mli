@@ -24,8 +24,12 @@
 
 
 type module_system = 
-  [ `NodeJS | `AmdJS | `Goog ] (* This will be serliazed *)
-
+  | NodeJS 
+  | AmdJS
+  | Goog  (* This will be serliazed *)
+  | Es6
+  | Es6_global
+  | AmdJS_global
 
 type package_info = 
  (module_system * string )
@@ -55,11 +59,11 @@ val set_npm_package_path : string -> unit
 val get_packages_info : unit -> packages_info
 
 type info_query = 
-  [ `Empty 
-  | `Package_script of string
-  | `Found of package_name * string
-  | `NotFound 
-  ]
+  | Empty 
+  | Package_script of string
+  | Found of package_name * string
+  | NotFound 
+  
 
 val query_package_infos : 
   packages_info ->
@@ -102,7 +106,7 @@ val no_builtin_ppx_ml : bool ref
 val no_builtin_ppx_mli : bool ref 
 val no_warn_ffi_type : bool ref 
 val no_warn_unused_bs_attribute : bool ref 
-
+val no_error_unused_bs_attribute : bool ref 
 (** check-div-by-zero option *)
 val check_div_by_zero : bool ref 
 val get_check_div_by_zero : unit -> bool 
@@ -135,6 +139,7 @@ val string : string
 val bytes : string  
 val float : string 
 val curry : string 
+val caml_oo_curry : string 
 (* val bigarray : string *)
 (* val unix : string *)
 val int64 : string
@@ -143,7 +148,8 @@ val hash : string
 val weak : string
 val js_primitive : string
 val module_ : string
-
+val missing_polyfill : string
+val exn : string
 (** Debugging utilies *)
 val set_current_file : string -> unit 
 val get_current_file : unit -> string
@@ -157,7 +163,6 @@ val is_same_file : unit -> bool
 
 val tool_name : string
 
-val is_windows : bool 
 
 val better_errors : bool ref
 val sort_imports : bool ref 
@@ -165,4 +170,4 @@ val dump_js : bool ref
 val syntax_only  : bool ref
 val binary_ast : bool ref
 
-val lib_ocaml_dir : string
+

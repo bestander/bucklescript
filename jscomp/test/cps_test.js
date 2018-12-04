@@ -1,10 +1,10 @@
 'use strict';
 
-var $$Array    = require("../../lib/js/array");
-var Block      = require("../../lib/js/block");
-var Curry      = require("../../lib/js/curry");
-var Mt         = require("./mt");
-var Caml_array = require("../../lib/js/caml_array");
+var Mt         = require("./mt.js");
+var $$Array    = require("../../lib/js/array.js");
+var Block      = require("../../lib/js/block.js");
+var Curry      = require("../../lib/js/curry.js");
+var Caml_array = require("../../lib/js/caml_array.js");
 
 function test() {
   var v = [0];
@@ -22,8 +22,7 @@ function test() {
         _n = n - 1 | 0;
         continue ;
         
-      }
-      else {
+      } else {
         return Curry._1(acc, /* () */0);
       }
     };
@@ -40,11 +39,11 @@ function test_closure() {
         return x;
       });
   for(var i = 0; i <= 5; ++i){
-    arr[i] = (function(i){
-    return function () {
-      return i;
-    }
-    }(i));
+    Caml_array.caml_array_set(arr, i, (function(i){
+        return function () {
+          return i;
+        }
+        }(i)));
   }
   $$Array.iter(function (i) {
         v[0] = v[0] + Curry._1(i, 0) | 0;
@@ -60,11 +59,11 @@ function test_closure2() {
       });
   for(var i = 0; i <= 5; ++i){
     var j = i + i | 0;
-    arr[i] = (function(j){
-    return function () {
-      return j;
-    }
-    }(j));
+    Caml_array.caml_array_set(arr, i, (function(j){
+        return function () {
+          return j;
+        }
+        }(j)));
   }
   $$Array.iter(function (i) {
         v[0] = v[0] + Curry._1(i, 0) | 0;

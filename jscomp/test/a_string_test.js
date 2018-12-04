@@ -1,9 +1,9 @@
 'use strict';
 
-var Block      = require("../../lib/js/block");
-var Ext_string = require("./ext_string");
-var Mt         = require("./mt");
-var List       = require("../../lib/js/list");
+var Mt         = require("./mt.js");
+var List       = require("../../lib/js/list.js");
+var Block      = require("../../lib/js/block.js");
+var Ext_string = require("./ext_string.js");
 
 var suites_000 = /* tuple */[
   "split",
@@ -79,8 +79,7 @@ var suites_001 = /* :: */[
                             })(Ext_string.split_by(/* None */0, function (x) {
                                 if (x === /* " " */32) {
                                   return /* true */1;
-                                }
-                                else {
+                                } else {
                                   return +(x === /* "\t" */9);
                                 }
                               }, "h hgso hgso \t hi")),

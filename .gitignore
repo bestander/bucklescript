@@ -24,6 +24,7 @@ _build
 *.jsx
 *.lambda
 *.rawlambda
+*.s
 *.o
 *.lam
 *.0.js
@@ -34,7 +35,7 @@ _build
 *.rawlambda
 *.lambda
 *.zip
-*.gz
+
 *.mlast
 *.mliast
 # special file
@@ -58,6 +59,7 @@ lib/ocaml
 bin/*
 ocaml_src
 *.exe
+odoc_gen/*.cmxs
 
 # for npm publish
 !bin/bsc.exe
@@ -79,7 +81,7 @@ jscomp/bin/bsc
 jscomp/bin/config_whole_compiler.ml
 lib/bs
 lib/js/jscomp/test
-
+#ignore temporary directory
 *.goog.js
 *.jsoo.js
 *.so

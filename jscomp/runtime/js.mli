@@ -22,83 +22,159 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-(** This module will  be exported
 
-
+(* DESIGN:  
     - It does not have any code, all its code will be inlined so that
        there will be never
        {[ require('js')]}
-
     - Its interface should be minimal
-
 *)
 
-(** internal types for FFI, these types are not used by normal users *)
+(** This library provides bindings and necessary support for JS FFI. 
+    It contains all bindings into [Js] namespace.
+
+    @example {[
+        [| 1;2;3;4|]
+        |> Js.Array.map (fun x -> x + 1 )
+        |> Js.Array.reduce (+) 0
+        |> Js.log 
+    ]}
+*)
+
+(**/**)
+(* internal types for FFI, these types are not used by normal users *)
 type (-'obj, +'a) meth_callback
 type (-'arg, + 'result) meth
 type (-'arg, + 'result) fn (** Js uncurried function *)
-
+(**/**)
 
 (** Types for JS objects *)
-(* tag::public_js_types[]*)
+
 type +'a t
-(** Js object type *)
+(** Js object type.  
+   
+    @example {[
+        let x : < x : int ; y : int > Js.t =
+            [%obj{ x = 1 ; y = 2}]
+    ]}
+ *)
+
 type + 'a null
 (** nullable, value of this type can be either [null] or ['a]
-    this type is the same as {!Js.Null.t}  *)
+    this type is the same as type [t] in {!Null}    
+*)
+
 type + 'a undefined
 (** value of this type can be either [undefined] or ['a]
-    this type is the same as {!Js.Undefined.t}  *)
+    this type is the same as type [t] in {!Undefined}  *)
+
 type + 'a null_undefined
 (** value of this type can be [undefined], [null] or ['a]
-    this type is the same as {!Js.Null_undefined.t}*)
+    this type is the same as type [t] n {!Null_undefined} *)
+
 type boolean
-(* end::public_js_types[]*)
+(** The value could be either  {!Js.true_} or {!Js.false_}.
+     Note in BuckleScript, [boolean] has different representation from OCaml's [bool],
+     see conversion functions in {!Boolean} *)
 
-(* tag::nested_built_in_modules[] *)
-(** {3 nested modules}*)
-module Null = Js_null
-module Undefined = Js_undefined
-module Null_undefined = Js_null_undefined
-(* end::nested_built_in_modules[] *)
+type (+'a, +'e) promise
+(** The promise type, defined here for interoperation across packages 
+    @deprecated please use {!Js.Promise}
+*)
 
 
-(* tag::predefined_js_values[]*)
 external true_ : boolean = "true" [@@bs.val]
 external false_ : boolean = "false" [@@bs.val]
-external null : 'a null = ""
-[@@bs.val] (* The same as {!Js.Null.empty} will be compiled as [null]*)
-external undefined : 'a undefined = ""
-[@@bs.val] (* The same as  {!Js.Undefined.empty} will be compiled as [undefined]*)
-(* end::predefined_js_values[]*)
 
-(* tag::utility_functions[]*)
-external to_bool : boolean -> bool = "js_boolean_to_bool"
+external null : 'a null = "" [@@bs.val] 
+(** The same as [empty] in {!Js.Null} will be compiled as [null]*)
+
+external undefined : 'a undefined = "" [@@bs.val] 
+(** The same as  [empty] {!Js.Undefined} will be compiled as [undefined]*)
+
+
+external to_bool : boolean -> bool = "#boolean_to_bool"
 (** convert Js boolean to OCaml bool *)
-external typeof : 'a -> string = "js_typeof"
-(** [typeof x] will be compiled as [typeof x] in JS *)
-external log : 'a -> unit = "js_dump"
-(** A convenience function to log *)
+
+external typeof : 'a -> string = "#typeof"
+(** [typeof x] will be compiled as [typeof x] in JS 
+    Please consider functions in {!Types} for a type safe way of reflection 
+*)
+
+external log : 'a -> unit = "console.log" [@@bs.val]
+(** A convenience function to log everything *)
 
 (** {4 operators }*)
-external unsafe_lt : 'a -> 'a -> boolean = "js_unsafe_lt"
-(**  [unsafe_lt a b] will be compiled as [a < b] *)
-external unsafe_le : 'a -> 'a -> boolean = "js_unsafe_le"
-(**  [unsafe_le a b] will be compiled as [a <= b] *)
-external unsafe_gt : 'a -> 'a -> boolean = "js_unsafe_gt"
-(**  [unsafe_gt a b] will be compiled as [a > b] *)
-external unsafe_ge : 'a -> 'a -> boolean = "js_unsafe_ge"
-(**  [unsafe_ge a b] will be compiled as [a >= b] *)
-(* end::utility_functions[]*)
 
-(** {8 nested modules} *experimental* API, please refer to
-  {!Js_dict} {!Js_array} {!Js_string} {!Js_re} for more details *)
-module Dict = Js_dict
+external unsafe_lt : 'a -> 'a -> bool = "#unsafe_lt"
+(** [unsafe_lt a b] will be compiled as [a < b].
+    It is marked as unsafe, since it is impossible 
+    to give a proper semantics for comparision which applies to any type
+ *)
+external unsafe_le : 'a -> 'a -> bool = "#unsafe_le"
+(**  [unsafe_le a b] will be compiled as [a <= b]. 
+    See also {!unsafe_lt}
+*)
+external unsafe_gt : 'a -> 'a -> bool = "#unsafe_gt"
+(**  [unsafe_gt a b] will be compiled as [a > b]. 
+     See also {!unsafe_lt}
+*)
+external unsafe_ge : 'a -> 'a -> bool = "#unsafe_ge"
+(**  [unsafe_ge a b] will be compiled as [a >= b].
+    See also {!unsafe_lt}
+*)
+
+
+(** {12 nested modules}*)
+
+module Null = Js_null
+(** Provide utilities arond ['a null] *)
+
+module Undefined = Js_undefined
+(** Provide utilities around {!undefined} *)
+module Null_undefined = Js_null_undefined
+(** Provide utilities arond {!null_undefined} *)
+
+module Exn = Js_exn
+(** Provide utilities for dealing with Js exceptions *)
+
 module Array = Js_array
+(** Provide bindings to Js array*)
 module String = Js_string
-module Re = Js_re
-module Types = Js_types
-module Json = Js_json
-module Obj  = Js_obj
+(** Provide bindings to JS string *)
 module Boolean = Js_boolean
+(** Provide utilties for {!boolean} *)
+
+module Re = Js_re
+(** Provide bindings to Js regex expression *)
+
+module Promise = Js_promise
+(** Provide bindings to JS promise *)
+
+module Date = Js_date
+(** Provide bindings for JS Date *)
+
+module Dict = Js_dict
+(** Provide utilities for JS dictionary object *)
+
+module Global = Js_global
+(** Provide bindings to JS global functions in global namespace*)
+
+module Json = Js_json
+(** Provide utilities for json *)
+
 module Math = Js_math
+(** Provide bindings for JS [Math] object *)
+
+module Obj  = Js_obj
+(** Provide utilities for {!Js.t} *)
+
+module Typed_array = Js_typed_array
+(** Provide bindings for JS typed array *)
+
+module Types = Js_types
+(** Provide utilities for maninpulatig JS types  *)
+module Float = Js_float
+(** Provide utilities for JS float *)
+module Int = Js_int
+(** Provide utilities for int *)

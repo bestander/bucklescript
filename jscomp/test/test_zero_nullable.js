@@ -1,9 +1,9 @@
 'use strict';
 
-var Js_primitive = require("../../lib/js/js_primitive");
-var Block        = require("../../lib/js/block");
-var Curry        = require("../../lib/js/curry");
-var Mt           = require("./mt");
+var Mt           = require("./mt.js");
+var Block        = require("../../lib/js/block.js");
+var Curry        = require("../../lib/js/curry.js");
+var Js_primitive = require("../../lib/js/js_primitive.js");
 
 var suites = [/* [] */0];
 
@@ -29,8 +29,7 @@ function eq(loc, x, y) {
 function f1(x) {
   if (x !== null) {
     return x + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -38,8 +37,7 @@ function f1(x) {
 function f2(x) {
   if (x !== null) {
     return x + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -48,8 +46,7 @@ function f5(h, _) {
   var u = Curry._1(h, 32);
   if (u !== null) {
     return u + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -59,8 +56,7 @@ function f4(h, x) {
   var v = 32 + x | 0;
   if (u !== null) {
     return u + 1 | 0;
-  }
-  else {
+  } else {
     return 1 + v | 0;
   }
 }
@@ -77,12 +73,10 @@ function f8(x) {
   if (x !== null) {
     if (x !== null) {
       return 0;
-    }
-    else {
+    } else {
       return 1;
     }
-  }
-  else {
+  } else {
     return 2;
   }
 }
@@ -92,8 +86,7 @@ var u = f8(/* None */0);
 function f9(x) {
   if (x === null) {
     return /* None */0;
-  }
-  else {
+  } else {
     return [x];
   }
 }
@@ -121,8 +114,7 @@ var Test_null = /* module */[
 function f1$1(x) {
   if (x !== undefined) {
     return x + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -130,8 +122,7 @@ function f1$1(x) {
 function f2$1(x) {
   if (x !== undefined) {
     return x + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -140,8 +131,7 @@ function f5$1(h, _) {
   var u = Curry._1(h, 32);
   if (u !== undefined) {
     return u + 1 | 0;
-  }
-  else {
+  } else {
     return 3;
   }
 }
@@ -151,8 +141,7 @@ function f4$1(h, x) {
   var v = 32 + x | 0;
   if (u !== undefined) {
     return u + 1 | 0;
-  }
-  else {
+  } else {
     return 1 + v | 0;
   }
 }
@@ -169,12 +158,10 @@ function f8$1(x) {
   if (x !== undefined) {
     if (x !== undefined) {
       return 0;
-    }
-    else {
+    } else {
       return 1;
     }
-  }
-  else {
+  } else {
     return 2;
   }
 }
@@ -184,8 +171,7 @@ var u$1 = f8$1(/* None */0);
 function f9$1(x) {
   if (x === undefined) {
     return /* None */0;
-  }
-  else {
+  } else {
     return [x];
   }
 }
@@ -211,29 +197,26 @@ var Test_def = /* module */[
 ];
 
 function f1$2(x) {
-  if (Js_primitive.js_is_nil_undef(x)) {
+  if (Js_primitive.is_nil_undef(x)) {
     return 3;
-  }
-  else {
+  } else {
     return x + 1 | 0;
   }
 }
 
 function f2$2(x) {
-  if (Js_primitive.js_is_nil_undef(x)) {
+  if (Js_primitive.is_nil_undef(x)) {
     return 3;
-  }
-  else {
+  } else {
     return x + 1 | 0;
   }
 }
 
 function f5$2(h, _) {
   var u = Curry._1(h, 32);
-  if (Js_primitive.js_is_nil_undef(u)) {
+  if (Js_primitive.is_nil_undef(u)) {
     return 3;
-  }
-  else {
+  } else {
     return u + 1 | 0;
   }
 }
@@ -241,10 +224,9 @@ function f5$2(h, _) {
 function f4$2(h, x) {
   var u = Curry._1(h, 32);
   var v = 32 + x | 0;
-  if (Js_primitive.js_is_nil_undef(u)) {
+  if (Js_primitive.is_nil_undef(u)) {
     return 1 + v | 0;
-  }
-  else {
+  } else {
     return u + 1 | 0;
   }
 }
@@ -258,24 +240,22 @@ function f7$2(x) {
 }
 
 function f8$2(x) {
-  if (Js_primitive.js_is_nil_undef(x)) {
+  if (Js_primitive.is_nil_undef(x)) {
     return 2;
-  }
-  else if (Js_primitive.js_is_nil_undef(x)) {
+  } else if (Js_primitive.is_nil_undef(x)) {
     return 1;
-  }
-  else {
+  } else {
     return 0;
   }
 }
 
 var u$2 = f8$2(/* None */0);
 
-var f9$2 = Js_primitive.js_from_nullable_def;
+var f9$2 = Js_primitive.null_undefined_to_opt;
 
-var f10$2 = Js_primitive.js_is_nil_undef;
+var f10$2 = Js_primitive.is_nil_undef;
 
-var f11$2 = Js_primitive.js_is_nil_undef(3);
+var f11$2 = Js_primitive.is_nil_undef(3);
 
 var Test_null_def = /* module */[
   /* f1 */f1$2,
@@ -291,19 +271,19 @@ var Test_null_def = /* module */[
   /* f11 */f11$2
 ];
 
-eq('File "test_zero_nullable.ml", line 227, characters 7-14', f1$2(0), 1);
+eq("File \"test_zero_nullable.ml\", line 227, characters 7-14", f1$2(0), 1);
 
-eq('File "test_zero_nullable.ml", line 228, characters 7-14', f1$2((null)), 3);
+eq("File \"test_zero_nullable.ml\", line 228, characters 7-14", f1$2((null)), 3);
 
-eq('File "test_zero_nullable.ml", line 229, characters 7-14', f1$2((undefined)), 3);
+eq("File \"test_zero_nullable.ml\", line 229, characters 7-14", f1$2((undefined)), 3);
 
-eq('File "test_zero_nullable.ml", line 231, characters 7-14', f1(0), 1);
+eq("File \"test_zero_nullable.ml\", line 231, characters 7-14", f1(0), 1);
 
-eq('File "test_zero_nullable.ml", line 232, characters 7-14', f1((null)), 3);
+eq("File \"test_zero_nullable.ml\", line 232, characters 7-14", f1((null)), 3);
 
-eq('File "test_zero_nullable.ml", line 234, characters 7-14', f1$1(0), 1);
+eq("File \"test_zero_nullable.ml\", line 234, characters 7-14", f1$1(0), 1);
 
-eq('File "test_zero_nullable.ml", line 235, characters 7-14', f1$1((undefined)), 3);
+eq("File \"test_zero_nullable.ml\", line 235, characters 7-14", f1$1((undefined)), 3);
 
 Mt.from_pair_suites("test_zero_nullable.ml", suites[0]);
 

@@ -1,13 +1,15 @@
 'use strict';
 
-var Caml_string              = require("../../lib/js/caml_string");
-var CamlinternalFormatBasics = require("../../lib/js/camlinternalFormatBasics");
-var Curry                    = require("../../lib/js/curry");
-var Caml_io                  = require("../../lib/js/caml_io");
-var Caml_builtin_exceptions  = require("../../lib/js/caml_builtin_exceptions");
-var Caml_exceptions          = require("../../lib/js/caml_exceptions");
-var Caml_format              = require("../../lib/js/caml_format");
-var Caml_obj                 = require("../../lib/js/caml_obj");
+var Curry                    = require("../../lib/js/curry.js");
+var Caml_io                  = require("../../lib/js/caml_io.js");
+var Caml_obj                 = require("../../lib/js/caml_obj.js");
+var Caml_sys                 = require("../../lib/js/caml_sys.js");
+var Caml_format              = require("../../lib/js/caml_format.js");
+var Caml_string              = require("../../lib/js/caml_string.js");
+var Caml_exceptions          = require("../../lib/js/caml_exceptions.js");
+var Caml_missing_polyfill    = require("../../lib/js/caml_missing_polyfill.js");
+var Caml_builtin_exceptions  = require("../../lib/js/caml_builtin_exceptions.js");
+var CamlinternalFormatBasics = require("../../lib/js/camlinternalFormatBasics.js");
 
 function failwith(s) {
   throw [
@@ -28,8 +30,7 @@ var Exit = Caml_exceptions.create("Test_per.Exit");
 function min(x, y) {
   if (Caml_obj.caml_lessequal(x, y)) {
     return x;
-  }
-  else {
+  } else {
     return y;
   }
 }
@@ -37,8 +38,7 @@ function min(x, y) {
 function max(x, y) {
   if (Caml_obj.caml_greaterequal(x, y)) {
     return x;
-  }
-  else {
+  } else {
     return y;
   }
 }
@@ -46,8 +46,7 @@ function max(x, y) {
 function abs(x) {
   if (x >= 0) {
     return x;
-  }
-  else {
+  } else {
     return -x | 0;
   }
 }
@@ -73,8 +72,7 @@ function char_of_int(n) {
           Caml_builtin_exceptions.invalid_argument,
           "char_of_int"
         ];
-  }
-  else {
+  } else {
     return n;
   }
 }
@@ -82,8 +80,7 @@ function char_of_int(n) {
 function string_of_bool(b) {
   if (b) {
     return "true";
-  }
-  else {
+  } else {
     return "false";
   }
 }
@@ -113,23 +110,19 @@ function valid_float_lexem(s) {
     var i = _i;
     if (i >= l) {
       return $caret(s, ".");
-    }
-    else {
+    } else {
       var match = Caml_string.get(s, i);
       if (match >= 48) {
         if (match >= 58) {
           return s;
-        }
-        else {
+        } else {
           _i = i + 1 | 0;
           continue ;
           
         }
-      }
-      else if (match !== 45) {
+      } else if (match !== 45) {
         return s;
-      }
-      else {
+      } else {
         _i = i + 1 | 0;
         continue ;
         
@@ -148,8 +141,7 @@ function $at(l1, l2) {
             l1[0],
             $at(l1[1], l2)
           ];
-  }
-  else {
+  } else {
     return l2;
   }
 }
@@ -161,9 +153,7 @@ var stdout = Caml_io.caml_ml_open_descriptor_out(1);
 var stderr = Caml_io.caml_ml_open_descriptor_out(2);
 
 function open_out_gen(_, _$1, _$2) {
-  return Caml_io.caml_ml_open_descriptor_out(function () {
-                throw "caml_sys_open not implemented by bucklescript yet\n";
-              }());
+  return Caml_io.caml_ml_open_descriptor_out(Caml_missing_polyfill.not_implemented("caml_sys_open not implemented by bucklescript yet\n"));
 }
 
 function open_out(name) {
@@ -212,8 +202,7 @@ function flush_all() {
       _param = param[1];
       continue ;
       
-    }
-    else {
+    } else {
       return /* () */0;
     }
   };
@@ -233,8 +222,7 @@ function output(oc, s, ofs, len) {
           Caml_builtin_exceptions.invalid_argument,
           "output"
         ];
-  }
-  else {
+  } else {
     return Caml_io.caml_ml_output(oc, s, ofs, len);
   }
 }
@@ -245,23 +233,18 @@ function output_substring(oc, s, ofs, len) {
           Caml_builtin_exceptions.invalid_argument,
           "output_substring"
         ];
-  }
-  else {
+  } else {
     return Caml_io.caml_ml_output(oc, s, ofs, len);
   }
 }
 
 function output_value(_, _$1) {
-  return function () {
-            throw "caml_output_value not implemented by bucklescript yet\n";
-          }();
+  return Caml_missing_polyfill.not_implemented("caml_output_value not implemented by bucklescript yet\n");
 }
 
 function close_out(oc) {
   Caml_io.caml_ml_flush(oc);
-  return function () {
-            throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-          }();
+  return Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
 }
 
 function close_out_noerr(oc) {
@@ -272,9 +255,7 @@ function close_out_noerr(oc) {
     
   }
   try {
-    return function () {
-              throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-            }();
+    return Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
   }
   catch (exn$1){
     return /* () */0;
@@ -282,9 +263,7 @@ function close_out_noerr(oc) {
 }
 
 function open_in_gen(_, _$1, _$2) {
-  return Caml_io.caml_ml_open_descriptor_in(function () {
-                throw "caml_sys_open not implemented by bucklescript yet\n";
-              }());
+  return Caml_io.caml_ml_open_descriptor_in(Caml_missing_polyfill.not_implemented("caml_sys_open not implemented by bucklescript yet\n"));
 }
 
 function open_in(name) {
@@ -313,11 +292,8 @@ function input(_, s, ofs, len) {
           Caml_builtin_exceptions.invalid_argument,
           "input"
         ];
-  }
-  else {
-    return function () {
-              throw "caml_ml_input not implemented by bucklescript yet\n";
-            }();
+  } else {
+    return Caml_missing_polyfill.not_implemented("caml_ml_input not implemented by bucklescript yet\n");
   }
 }
 
@@ -327,18 +303,14 @@ function unsafe_really_input(_, _$1, _ofs, _len) {
     var ofs = _ofs;
     if (len <= 0) {
       return /* () */0;
-    }
-    else {
-      var r = function () {
-          throw "caml_ml_input not implemented by bucklescript yet\n";
-        }();
+    } else {
+      var r = Caml_missing_polyfill.not_implemented("caml_ml_input not implemented by bucklescript yet\n");
       if (r) {
         _len = len - r | 0;
         _ofs = ofs + r | 0;
         continue ;
         
-      }
-      else {
+      } else {
         throw Caml_builtin_exceptions.end_of_file;
       }
     }
@@ -351,8 +323,7 @@ function really_input(ic, s, ofs, len) {
           Caml_builtin_exceptions.invalid_argument,
           "really_input"
         ];
-  }
-  else {
+  } else {
     return unsafe_really_input(ic, s, ofs, len);
   }
 }
@@ -376,8 +347,7 @@ function input_line(chan) {
         _pos = pos - len | 0;
         continue ;
         
-      }
-      else {
+      } else {
         return buf;
       }
     };
@@ -387,15 +357,11 @@ function input_line(chan) {
   while(true) {
     var len = _len;
     var accu = _accu;
-    var n = function () {
-        throw "caml_ml_input_scan_line not implemented by bucklescript yet\n";
-      }();
+    var n = Caml_missing_polyfill.not_implemented("caml_ml_input_scan_line not implemented by bucklescript yet\n");
     if (n) {
       if (n > 0) {
         var res = Caml_string.caml_create_string(n - 1 | 0);
-        (function () {
-              throw "caml_ml_input not implemented by bucklescript yet\n";
-            }());
+        Caml_missing_polyfill.not_implemented("caml_ml_input not implemented by bucklescript yet\n");
         Caml_io.caml_ml_input_char(chan);
         if (accu) {
           var len$1 = (len + n | 0) - 1 | 0;
@@ -403,16 +369,12 @@ function input_line(chan) {
                       res,
                       accu
                     ]);
-        }
-        else {
+        } else {
           return res;
         }
-      }
-      else {
+      } else {
         var beg = Caml_string.caml_create_string(-n | 0);
-        (function () {
-              throw "caml_ml_input not implemented by bucklescript yet\n";
-            }());
+        Caml_missing_polyfill.not_implemented("caml_ml_input not implemented by bucklescript yet\n");
         _len = len - n | 0;
         _accu = /* :: */[
           beg,
@@ -421,11 +383,9 @@ function input_line(chan) {
         continue ;
         
       }
-    }
-    else if (accu) {
+    } else if (accu) {
       return build_result(Caml_string.caml_create_string(len), len, accu);
-    }
-    else {
+    } else {
       throw Caml_builtin_exceptions.end_of_file;
     }
   };
@@ -433,9 +393,7 @@ function input_line(chan) {
 
 function close_in_noerr() {
   try {
-    return function () {
-              throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-            }();
+    return Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
   }
   catch (exn){
     return /* () */0;
@@ -545,11 +503,9 @@ function do_at_exit() {
   return Curry._1(exit_function[0], /* () */0);
 }
 
-function exit() {
+function exit(retcode) {
   Curry._1(exit_function[0], /* () */0);
-  return function () {
-            throw "caml_sys_exit not implemented by bucklescript yet\n";
-          }();
+  return Caml_sys.caml_sys_exit(retcode);
 }
 
 var max_int = 2147483647;

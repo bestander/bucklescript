@@ -22,6 +22,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
+(** Node Path API *)
+
 external basename : string -> string = "" [@@bs.module "path"]
 external basename_ext : string -> string -> string  =
   "basename" [@@bs.module "path"]
@@ -43,7 +45,7 @@ type pathObject =
   ]  
 external format : pathObject -> string = "" [@@bs.module "path"]
 
-external isAbsolute : string -> Js.boolean = "" [@@bs.module "path"]
+external isAbsolute : string -> bool = "" [@@bs.module "path"]
 
 (* TODO: improve after we support [@bs.rest] calling convention  *)
 external join2 : string -> string -> string = "join" [@@bs.module "path"]

@@ -1,10 +1,10 @@
 'use strict';
 
-var $$Array                 = require("../../lib/js/array");
-var Curry                   = require("../../lib/js/curry");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var Caml_array              = require("../../lib/js/caml_array");
-var List                    = require("../../lib/js/list");
+var List                    = require("../../lib/js/list.js");
+var $$Array                 = require("../../lib/js/array.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_array              = require("../../lib/js/caml_array.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function reverse_range(a, i, len) {
   if (len) {
@@ -14,8 +14,7 @@ function reverse_range(a, i, len) {
       a[((i + len | 0) - 1 | 0) - k | 0] = t;
     }
     return /* () */0;
-  }
-  else {
+  } else {
     return /* () */0;
   }
 }
@@ -32,8 +31,7 @@ function reverse(a) {
       b[i] = a[(b_len - 1 | 0) - i | 0];
     }
     return b;
-  }
-  else {
+  } else {
     return /* array */[];
   }
 }
@@ -53,13 +51,11 @@ function reverse_of_list(l) {
         _i = i + 1 | 0;
         continue ;
         
-      }
-      else {
+      } else {
         return a;
       }
     };
-  }
-  else {
+  } else {
     return /* array */[];
   }
 }
@@ -73,8 +69,7 @@ function filter(f, a) {
     var acc = _acc;
     if (i === arr_len) {
       return reverse_of_list(acc);
-    }
-    else {
+    } else {
       var v = a[i];
       if (Curry._1(f, v)) {
         _i = i + 1 | 0;
@@ -84,8 +79,7 @@ function filter(f, a) {
         ];
         continue ;
         
-      }
-      else {
+      } else {
         _i = i + 1 | 0;
         continue ;
         
@@ -103,8 +97,7 @@ function filter_map(f, a) {
     var acc = _acc;
     if (i === arr_len) {
       return reverse_of_list(acc);
-    }
-    else {
+    } else {
       var v = a[i];
       var match = Curry._1(f, v);
       _i = i + 1 | 0;
@@ -115,8 +108,7 @@ function filter_map(f, a) {
         ];
         continue ;
         
-      }
-      else {
+      } else {
         continue ;
         
       }
@@ -130,8 +122,7 @@ function range(from, to_) {
           Caml_builtin_exceptions.invalid_argument,
           "Ext_array.range"
         ];
-  }
-  else {
+  } else {
     return $$Array.init((to_ - from | 0) + 1 | 0, function (i) {
                 return i + from | 0;
               });
@@ -145,24 +136,20 @@ function map2i(f, a, b) {
           Caml_builtin_exceptions.invalid_argument,
           "Ext_array.map2i"
         ];
-  }
-  else {
+  } else {
     return $$Array.mapi(function (i, a) {
                 return Curry._3(f, i, a, b[i]);
               }, a);
   }
 }
 
-function to_list_map(f, a) {
-  var _i = a.length - 1 | 0;
-  var _res = /* [] */0;
+function tolist_aux(a, f, _i, _res) {
   while(true) {
     var res = _res;
     var i = _i;
     if (i < 0) {
       return res;
-    }
-    else {
+    } else {
       var v = a[i];
       var match = Curry._1(f, v);
       _res = match ? /* :: */[
@@ -176,6 +163,40 @@ function to_list_map(f, a) {
   };
 }
 
+function to_list_map(f, a) {
+  return tolist_aux(a, f, a.length - 1 | 0, /* [] */0);
+}
+
+function to_list_map_acc(f, a, acc) {
+  return tolist_aux(a, f, a.length - 1 | 0, acc);
+}
+
+function of_list_map(f, a) {
+  if (a) {
+    var tl = a[1];
+    var hd = Curry._1(f, a[0]);
+    var len = List.length(tl) + 1 | 0;
+    var arr = Caml_array.caml_make_vect(len, hd);
+    var _i = 1;
+    var _param = tl;
+    while(true) {
+      var param = _param;
+      var i = _i;
+      if (param) {
+        arr[i] = Curry._1(f, param[0]);
+        _param = param[1];
+        _i = i + 1 | 0;
+        continue ;
+        
+      } else {
+        return arr;
+      }
+    };
+  } else {
+    return /* array */[];
+  }
+}
+
 function rfind_with_index(arr, cmp, v) {
   var len = arr.length;
   var _i = len - 1 | 0;
@@ -183,11 +204,9 @@ function rfind_with_index(arr, cmp, v) {
     var i = _i;
     if (i < 0) {
       return i;
-    }
-    else if (Curry._2(cmp, arr[i], v)) {
+    } else if (Curry._2(cmp, arr[i], v)) {
       return i;
-    }
-    else {
+    } else {
       _i = i - 1 | 0;
       continue ;
       
@@ -199,8 +218,7 @@ function rfind_and_split(arr, cmp, v) {
   var i = rfind_with_index(arr, cmp, v);
   if (i < 0) {
     return /* No_split */-226265796;
-  }
-  else {
+  } else {
     return /* `Split */[
             345791162,
             /* tuple */[
@@ -219,11 +237,9 @@ function find_with_index(arr, cmp, v) {
     var i = _i;
     if (i >= len$1) {
       return -1;
-    }
-    else if (Curry._2(cmp, arr[i], v)) {
+    } else if (Curry._2(cmp, arr[i], v)) {
       return i;
-    }
-    else {
+    } else {
       _i = i + 1 | 0;
       continue ;
       
@@ -235,8 +251,7 @@ function find_and_split(arr, cmp, v) {
   var i = find_with_index(arr, cmp, v);
   if (i < 0) {
     return /* No_split */-226265796;
-  }
-  else {
+  } else {
     return /* `Split */[
             345791162,
             /* tuple */[
@@ -254,16 +269,18 @@ function exists(p, a) {
     var i = _i;
     if (i === n) {
       return /* false */0;
-    }
-    else if (Curry._1(p, a[i])) {
+    } else if (Curry._1(p, a[i])) {
       return /* true */1;
-    }
-    else {
+    } else {
       _i = i + 1 | 0;
       continue ;
       
     }
   };
+}
+
+function is_empty(arr) {
+  return +(arr.length === 0);
 }
 
 exports.reverse_range    = reverse_range;
@@ -274,10 +291,14 @@ exports.filter           = filter;
 exports.filter_map       = filter_map;
 exports.range            = range;
 exports.map2i            = map2i;
+exports.tolist_aux       = tolist_aux;
 exports.to_list_map      = to_list_map;
+exports.to_list_map_acc  = to_list_map_acc;
+exports.of_list_map      = of_list_map;
 exports.rfind_with_index = rfind_with_index;
 exports.rfind_and_split  = rfind_and_split;
 exports.find_with_index  = find_with_index;
 exports.find_and_split   = find_and_split;
 exports.exists           = exists;
+exports.is_empty         = is_empty;
 /* No side effect */

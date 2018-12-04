@@ -36,16 +36,43 @@ type set_field_dbg_info = Lambda.set_field_dbg_info
 
 type ident = Ident.t
 
+type function_kind
+   = Curried 
+   (* | Tupled *)
+
+
 type function_arities = 
   | Determin of bool * (int * Ident.t list option) list  * bool
   | NA 
 
+type let_kind = Lambda.let_kind
+    = Strict
+    | Alias
+    | StrictOpt
+    | Variable
+
+type meth_kind = Lambda.meth_kind 
+  = Self 
+  | Public of string option 
+  | Cached 
+
+type constant = 
+  | Const_int of int
+  | Const_char of char
+  | Const_string of string  (* use record later *)
+  | Const_unicode of string 
+  | Const_float of string
+  | Const_int32 of int32
+  | Const_int64 of int64
+  | Const_nativeint of nativeint
+  | Const_pointer of int * Lambda.pointer_info
+  | Const_block of int * Lambda.tag_info * constant list
+  | Const_float_array of string list
+  | Const_immstring of string
+
 type primitive = 
   | Pbytes_to_string
   | Pbytes_of_string
-  (* Globals *)
-  | Pgetglobal of ident
-  (* | Psetglobal of ident *)
   | Pglobal_exception of ident       
   (* Operations on heap blocks *)
   | Pmakeblock of int * tag_info * mutable_flag
@@ -59,6 +86,14 @@ type primitive =
   | Plazyforce
   (* External call *)
   | Pccall of  Primitive.description
+  | Pjs_call of
+      (* Location.t *  [loc] is passed down *)
+      string *  (* prim_name *)
+      Ast_arg.kind list * (* arg_types *)
+      Ast_ffi_types.ffi  (* ffi *)
+
+  (* Ast_ffi_types.arg_kind list * bool * Ast_ffi_types.ffi  *)
+  | Pjs_object_create of Ast_ffi_types.obj_create
   (* Exceptions *)
   | Praise
   (* Boolean operations *)
@@ -75,6 +110,9 @@ type primitive =
   | Pnegfloat | Pabsfloat
   | Paddfloat | Psubfloat | Pmulfloat | Pdivfloat
   | Pfloatcomp of comparison
+  | Pjscomp of comparison
+  | Pjs_apply (*[f;arg0;arg1; arg2; ... argN]*)
+  | Pjs_runtime_apply (* [f; [...]] *)
   (* String operations *)
   | Pstringlength 
   | Pstringrefu 
@@ -146,10 +184,31 @@ type primitive =
   | Pjs_unsafe_downgrade of string * Location.t
   | Pinit_mod
   | Pupdate_mod
+  | Praw_js_code_exp of string 
+  | Praw_js_code_stmt of string 
   | Pjs_fn_make of int 
   | Pjs_fn_run of int 
   | Pjs_fn_method of int 
   | Pjs_fn_runmethod of int
+
+  | Pundefined_to_opt
+  | Pnull_to_opt
+  | Pnull_undefined_to_opt 
+  | Pis_null
+  | Pis_undefined
+  | Pis_null_undefined
+  | Pjs_boolean_to_bool
+  | Pjs_typeof
+  | Pjs_function_length 
+
+  | Pjs_string_of_small_array
+  | Pjs_is_instance_array
+  | Pcaml_obj_length
+  | Pcaml_obj_set_length
+  | Pwrap_exn (* convert either JS exception or OCaml exception into OCaml format *)
+
+  (* | Pcreate_exception of string  *)
+  | Pcreate_extension of string 
 
 type apply_status =
   | App_na
@@ -175,16 +234,17 @@ module Types = struct
     }
   and function_info = 
     { arity : int ; 
-      kind : Lambda.function_kind ; 
+      function_kind : function_kind ; 
       params : ident list ;
       body : t 
     }
   and t = 
     | Lvar of ident
-    | Lconst of Lambda.structured_constant
+    | Lglobal_module of ident
+    | Lconst of constant
     | Lapply of apply_info
     | Lfunction of function_info
-    | Llet of Lambda.let_kind * ident * t * t
+    | Llet of let_kind * ident * t * t
     | Lletrec of (ident * t) list * t
     | Lprim of prim_info
     | Lswitch of t * switch
@@ -197,12 +257,8 @@ module Types = struct
     | Lwhile of t * t
     | Lfor of ident * t * t * Asttypes.direction_flag * t
     | Lassign of ident * t
-    | Lsend of Lambda.meth_kind * t * t * t list * Location.t
+    | Lsend of meth_kind * t * t * t list * Location.t
     | Lifused of ident * t
-      (* | Levent of t * Lambda.lambda_event 
-         [Levent] in the branch hurt pattern match, 
-         we should use record for trivial debugger info
-      *)
 end 
 
 module X = struct 
@@ -234,7 +290,7 @@ module X = struct
     = Types.function_info
     =
       { arity : int ; 
-        kind : Lambda.function_kind ; 
+        function_kind : function_kind ; 
         params : ident list ;
         body : t 
       }
@@ -242,10 +298,11 @@ module X = struct
     = Types.t
     =
       | Lvar of ident
-      | Lconst of Lambda.structured_constant
+      | Lglobal_module of ident 
+      | Lconst of constant
       | Lapply of apply_info
       | Lfunction of function_info
-      | Llet of Lambda.let_kind * ident * t * t
+      | Llet of let_kind * ident * t * t
       | Lletrec of (ident * t) list * t
       | Lprim of prim_info
       | Lswitch of t * switch
@@ -258,7 +315,7 @@ module X = struct
       | Lwhile of t * t
       | Lfor of ident * t * t * Asttypes.direction_flag * t
       | Lassign of ident * t
-      | Lsend of Lambda.meth_kind * t * t * t list * Location.t
+      | Lsend of meth_kind * t * t * t list * Location.t
       | Lifused of ident * t
 end
 include Types 
@@ -266,15 +323,15 @@ include Types
 let inner_map (f : t -> X.t ) (l : t) : X.t = 
   match l  with 
   | Lvar (_ : ident)
-  | Lconst (_ : Lambda.structured_constant) -> 
+  | Lconst (_ : constant) -> 
     ( (* Obj.magic *) l : X.t)
   | Lapply ({fn; args; loc; status} )  ->
     let fn = f fn in
     let args = List.map f args in 
     Lapply { fn ; args; loc; status }
-  | Lfunction({body; arity; kind; params } ) ->
+  | Lfunction({body; arity; function_kind; params } ) ->
     let body = f body in 
-    Lfunction {body; arity; kind ; params}
+    Lfunction {body; arity; function_kind ; params}
   | Llet(str, id, arg, body) ->
     let arg = f arg in let body =  f body in
     Llet(str,id,arg,body)
@@ -282,9 +339,11 @@ let inner_map (f : t -> X.t ) (l : t) : X.t =
     let body = f body in 
     let decl = List.map (fun (id, exp) -> id, f exp) decl in 
     Lletrec(decl,body)
+  | Lglobal_module _ -> (l : X.t)      
   | Lprim {args; primitive ; loc}  ->
     let args = List.map f args in 
     Lprim { args; primitive; loc}
+
   | Lswitch(arg, {sw_consts; sw_numconsts; sw_blocks; sw_numblocks; sw_failaction}) ->
     let arg = f arg in 
     let sw_consts = List.map (fun (key, case) -> key , f case) sw_consts in 
@@ -341,11 +400,11 @@ let inner_map (f : t -> X.t ) (l : t) : X.t =
 let inner_iter (f : t -> unit ) (l : t) : unit = 
   match l  with 
   | Lvar (_ : ident)
-  | Lconst (_ : Lambda.structured_constant) ->  ()
+  | Lconst (_ : constant) -> ()
   | Lapply ({fn; args; loc; status} )  ->
     f fn;
     List.iter f args 
-  | Lfunction({body; arity; kind; params } ) ->
+  | Lfunction({body; arity; function_kind; params } ) ->
     f body
   | Llet(str, id, arg, body) ->
     f arg ;
@@ -353,6 +412,8 @@ let inner_iter (f : t -> unit ) (l : t) : unit =
   | Lletrec(decl, body) ->
     f body;
     List.iter (fun (id, exp) ->  f exp) decl
+  | Lglobal_module (_ )
+    ->  ()    
   | Lprim {args; primitive ; loc}  ->
     List.iter f args;
   | Lswitch(arg, {sw_consts; sw_numconsts; sw_blocks; sw_numblocks; sw_failaction}) ->
@@ -481,7 +542,7 @@ let hit_any_variables (fv : Ident_set.t) l : bool  =
   let rec hit (l : t) =
     begin
       match (l : t) with 
-      | Lvar id -> Ident_set.mem id fv 
+      | Lvar id -> Ident_set.mem id fv       
       | Lassign(id, e) ->
         Ident_set.mem id fv || hit e
       | Lstaticcatch(e1, (_,vars), e2) ->
@@ -500,6 +561,8 @@ let hit_any_variables (fv : Ident_set.t) l : bool  =
       | Lconst _ -> false 
       | Lapply{fn; args; _} ->
         hit fn || List.exists hit args
+      | Lglobal_module _  (* global persistent module, play safe *)
+        -> false        
       | Lprim {args; _} ->
         List.exists hit args
       | Lswitch(arg, sw) ->
@@ -531,7 +594,78 @@ let hit_any_variables (fv : Ident_set.t) l : bool  =
         hit e
     end;
   in hit l
-  
+
+(** A conservative approach to avoid packing exceptions *)
+let exception_id_destructed (fv : Ident.t) l : bool  =
+  let rec hit (l : t) =
+    begin
+      match (l : t) with 
+      | Lvar id ->
+        Ext_log.dwarn __LOC__ "[HIT]%s/%d@." id.name id.stamp ; 
+        Ident.same id fv       
+      | Lassign(id, e) ->
+        Ident.same id fv || hit e
+      | Lstaticcatch(e1, (_,vars), e2) ->
+        hit e1 || hit e2
+      | Ltrywith(e1, exn, e2) ->
+        hit e1 || hit e2
+      | Lfunction{body;params} ->
+        hit body;
+      | Llet(str, id, arg, body) ->
+        hit arg || hit body
+      | Lletrec(decl, body) ->
+        hit body ||
+        List.exists (fun (id, exp) -> hit exp) decl
+      | Lfor(v, e1, e2, dir, e3) ->
+        hit e1 || hit e2 || hit e3
+      | Lconst _ -> false 
+      | Lapply{fn; args; _} ->
+        hit fn || List.exists hit args
+      | Lglobal_module _  (* global persistent module, play safe *)
+        -> false        
+      | Lprim {primitive = Pintcomp _ ; 
+        args = ([x;y ])  } ->    
+        begin match x,y with 
+        | Lvar _, Lvar _ -> false 
+        | Lvar _, _ -> hit y 
+        | _, Lvar _ -> hit x 
+        | _, _  -> hit x || hit y 
+        end      
+      | Lprim {primitive = Praise ; args = [Lvar _]} -> false 
+      | Lprim {primitive ; args; _} ->
+        (*Ext_log.dwarn __LOC__ "[FUCKPRIMITIVE]%a@." 
+        Ext_pervasives.pp_any primitive; *)
+        List.exists hit args
+      | Lswitch(arg, sw) ->
+        hit arg ||
+        List.exists (fun (key, case) -> hit case) sw.sw_consts ||
+        List.exists (fun (key, case) -> hit case) sw.sw_blocks ||
+        begin match sw.sw_failaction with 
+          | None -> false
+          | Some a -> hit a 
+        end
+      | Lstringswitch (arg,cases,default) ->
+        hit arg ||
+        List.exists (fun (_,act) -> hit act) cases ||
+        begin match default with 
+          | None -> false
+          | Some a -> hit a 
+        end
+      | Lstaticraise (_,args) ->
+        List.exists hit args
+      | Lifthenelse(e1, e2, e3) ->
+        hit e1 || hit e2 || hit e3
+      | Lsequence(e1, e2) ->
+        hit e1 || hit e2
+      | Lwhile(e1, e2) ->
+        hit e1 || hit e2
+      | Lsend (k, met, obj, args, _) ->
+        hit met || hit obj || List.exists hit args 
+      | Lifused (v, e) ->
+        hit e
+    end;
+  in hit l  
+
 let hit_mask (fv : Hash_set_ident_mask.t) l =
   let rec hit (l : t) =
     begin
@@ -555,6 +689,8 @@ let hit_mask (fv : Hash_set_ident_mask.t) l =
       | Lconst _ -> false 
       | Lapply{fn; args; _} ->
         hit fn || List.exists hit args
+      | Lglobal_module id (* playsafe *)        
+        -> false
       | Lprim {args; _} ->
         List.exists hit args
       | Lswitch(arg, sw) ->
@@ -602,7 +738,6 @@ let free_variables l =
       | Ltrywith(e1, exn, e2) ->
         free e1; free e2;
         fv := Ident_set.remove exn !fv
-        
       | Lfunction{body;params} ->
         free body;
         List.iter (fun param -> fv := Ident_set.remove param !fv) params
@@ -619,6 +754,10 @@ let free_variables l =
       | Lconst _ -> ()
       | Lapply{fn; args; _} ->
         free fn; List.iter free args
+      | Lglobal_module _ -> () 
+      (* according to the existing semantics: 
+         [primitive] is not counted
+      *)        
       | Lprim {args; _} ->
         List.iter free args
       | Lswitch(arg, sw) ->
@@ -653,6 +792,64 @@ let free_variables l =
   !fv
 
 
+
+let rec no_bounded_variables (l : t) =
+  begin
+    match (l : t) with 
+    | Lvar id -> true 
+    | Lconst _ -> true
+    | Lassign(_id, e) ->
+      no_bounded_variables e
+    | Lapply{fn; args; _} ->
+      no_bounded_variables fn && List.for_all no_bounded_variables args
+    | Lglobal_module _ -> true
+    | Lprim {args; primitive = _ ; } ->
+      List.for_all no_bounded_variables args
+    | Lswitch(arg, sw) ->
+      no_bounded_variables arg &&
+      List.for_all (fun (key, case) -> no_bounded_variables case) sw.sw_consts &&
+      List.for_all (fun (key, case) -> no_bounded_variables case) sw.sw_blocks &&
+      begin match sw.sw_failaction with 
+        | None -> true
+        | Some a -> no_bounded_variables a 
+      end
+    | Lstringswitch (arg,cases,default) ->
+      no_bounded_variables arg &&
+      List.for_all (fun (_,act) -> no_bounded_variables act) cases &&
+      begin match default with 
+        | None -> true
+        | Some a -> no_bounded_variables a 
+      end
+    | Lstaticraise (_,args) ->
+      List.for_all no_bounded_variables args
+    | Lifthenelse(e1, e2, e3) ->
+      no_bounded_variables e1 && no_bounded_variables e2 && no_bounded_variables e3
+    | Lsequence(e1, e2) ->
+      no_bounded_variables e1 && no_bounded_variables e2
+    | Lwhile(e1, e2) ->
+      no_bounded_variables e1 && no_bounded_variables e2
+    | Lsend (k, met, obj, args, _) ->
+      no_bounded_variables met  &&
+      no_bounded_variables obj &&
+      List.for_all no_bounded_variables args 
+    | Lifused (v, e) ->
+      no_bounded_variables e
+
+
+    | Lstaticcatch(e1, (_,vars), e2) ->
+      vars = [] && no_bounded_variables e1 &&  no_bounded_variables e2
+    | Ltrywith(e1, exn, e2) -> false
+    | Lfunction{body;params} ->
+      params = [] && no_bounded_variables body;
+    | Llet(str, id, arg, body) ->false
+    | Lletrec(decl, body) -> decl = [] && no_bounded_variables body 
+    | Lfor(v, e1, e2, dir, e3) -> false 
+
+  end
+
+
+
+
 (**
    checks  
    1. variables are not bound twice 
@@ -667,7 +864,7 @@ let check file lam =
         Format.fprintf Format.err_formatter "\n[SANITY]:%s/%d used before defined in %s\n" id.name id.stamp file ;
         success := false
       end        
-      in 
+  in 
   let def (id : Ident.t) =
     if Ident_hash_set.mem defined_variables id  then 
       begin 
@@ -679,7 +876,10 @@ let check file lam =
   let rec iter (l : t) =
     begin
       match (l : t) with 
-        Lvar id -> use id 
+      | Lvar id -> use id 
+      | Lglobal_module _ -> ()
+      | Lprim {args; _} ->
+        List.iter iter args
       | Lconst _ -> ()
       | Lapply{fn; args; _} ->
         iter fn; List.iter iter args
@@ -694,8 +894,7 @@ let check file lam =
         List.iter (fun (id, exp) ->  def id) decl;
         List.iter (fun (id, exp) -> iter exp) decl;
         iter body
-      | Lprim {args; _} ->
-        List.iter iter args
+
       | Lswitch(arg, sw) ->
         iter arg;
         List.iter (fun (key, case) -> iter case) sw.sw_consts;
@@ -742,32 +941,10 @@ let check file lam =
     end;
   in 
   begin 
-      iter lam; 
-      assert (!success) ; 
-      lam 
+    iter lam; 
+    assert (!success) ; 
+    lam 
   end      
-
-module Prim = struct 
-  type t = primitive
-  let mk name arity = 
-    Pccall {prim_name = name ; 
-            prim_native_name = "" ;
-            prim_alloc = false;
-            prim_native_float = false;
-            prim_arity = arity;
-
-           }
-  let js_is_nil : t = 
-    mk "js_is_nil" 1 
-  let js_is_undef : t = 
-    mk "js_is_undef" 1 
-  let js_is_nil_undef : t  = 
-    mk "js_is_nil_undef" 1 
-end
-
-
-
-
 
 type binop = t -> t -> t 
 
@@ -776,13 +953,93 @@ type triop = t -> t -> t -> t
 type unop = t -> t 
 
 
+
+exception Not_simple_form 
+
+(** Simplfiy such behavior
+    {[ 
+      (apply
+         (function prim/1024 prim/1023 prim/1022
+                     ([js] (js_fn_make_2 prim/1024) prim/1023 prim/1022)) .. )
+    ]}
+    Note that [external] functions are forced to do eta-conversion
+    when combined with [|>] operator, we need to make sure beta-reduction 
+    is applied though since `[@bs.splice]` needs such guarantee.
+    Since `[@bs.splice] is the tail position
+*)
+let rec is_eta_conversion_exn
+    params inner_args outer_args : t list = 
+  match params, inner_args, outer_args with 
+  | x::xs, Lvar y::ys, r::rest 
+    when Ident.same x y ->
+    r :: is_eta_conversion_exn xs ys rest 
+  | x::xs, 
+    (Lprim ({primitive = Pjs_fn_make _; 
+             args = [Lvar y] } as p ) ::ys),
+    r :: rest when Ident.same x y -> 
+    Lprim ({p with args = [ r]}) :: 
+    is_eta_conversion_exn xs ys rest 
+  | [], [], [] -> []
+  | _, _, _ -> raise_notrace Not_simple_form
+
+
 let var id : t = Lvar id
+let global_module id = Lglobal_module id 
 let const ct : t = Lconst ct 
+
+
+(** FIXME: more robust inlining check later, we should inline it before we add stub code
+*)
 let apply fn args loc status : t = 
-  Lapply { fn; args;  loc  ;
-           status }
-let function_ ~arity ~kind ~params ~body : t = 
-  Lfunction { arity; kind; params ; body}
+  match fn with 
+  | Lfunction {function_kind ; params ;  
+               body = Lprim {primitive = 
+                               (Pundefined_to_opt | Pnull_to_opt | Pnull_undefined_to_opt | Pis_null | Pis_null_undefined | Pjs_boolean_to_bool | Pjs_typeof ) as wrap;
+                             args = [Lprim ({primitive; args = inner_args} as primitive_call)]
+                            } 
+              } ->
+    begin match is_eta_conversion_exn params inner_args args with
+      | args 
+        -> 
+        Lprim {primitive = wrap ; args = [Lprim { primitive_call with args ; loc = loc }] ; loc }
+      | exception _ -> 
+        Lapply { fn; args; loc; status }
+    end  
+  | Lfunction {function_kind ; params; 
+               body = Lsequence (Lprim ({primitive; args = inner_args}as primitive_call), (Lconst _ as const )) }
+    ->  
+    begin match is_eta_conversion_exn params inner_args args with
+      | args 
+        -> 
+        Lsequence(Lprim { primitive_call with args ; loc = loc }, const)
+      | exception _ -> 
+        Lapply { fn; args;  loc;    status }
+    end 
+  | Lfunction {function_kind ; params; 
+               body =Lprim ({primitive; args = inner_args}as primitive_call) } 
+
+    ->
+    begin match is_eta_conversion_exn params inner_args args with
+      | args 
+        -> 
+        Lprim { primitive_call with args ; loc = loc }
+      | exception _ -> 
+        Lapply { fn; args;  loc;    status }
+    end 
+
+  (*  | Lfunction {kind; params ; 
+                 body = Lapply {fn = new_fn ; args = inner_args; status }
+                } when is_eta_conversion params inner_args args ->
+      Lapply {fn = new_fn ; args ; loc = loc; status } 
+  *)
+  (* same as previous App status*)
+  | _ -> 
+    Lapply { fn; args;  loc  ;
+             status }
+
+
+let function_ ~arity ~function_kind ~params ~body : t = 
+  Lfunction { arity; function_kind; params ; body}
 
 let let_ kind id e body :  t 
   = Llet (kind,id,e,body)
@@ -793,18 +1050,20 @@ let if_ (a : t) (b : t) c =
   match a with
   | Lconst v ->
     begin match v with
-      | Const_pointer (x, _)  | Const_base(Const_int x)
+      | Const_pointer (x, _)  | (Const_int x)
         ->
         if x <> 0 then b else c
-      | Const_base (Const_char x) ->
+      | (Const_char x) ->
         if Char.code x <> 0 then b else c
-      | Const_base (Const_int32 x) ->
+      | (Const_int32 x) ->
         if x <> 0l then b else c
-      | Const_base (Const_int64 x) ->
+      |  (Const_int64 x) ->
         if x <> 0L then b else c
-      | Const_base (Const_nativeint x) ->
+      | (Const_nativeint x) ->
         if x <> 0n then b else c
-      | Const_base (Const_string _ | Const_float _ ) -> b
+      | Const_string _ 
+      | Const_float _
+      | Const_unicode _
       | Const_block _
       | Const_float_array _
       | Const_immstring _ -> b
@@ -813,35 +1072,18 @@ let if_ (a : t) (b : t) c =
 
 let switch lam (lam_switch : switch) : t =
   match lam with
-  | Lconst ((Const_pointer (i,_) | Const_base (Const_int i)))
+  | Lconst ((Const_pointer (i,_) |  (Const_int i)))
     ->
-    begin try List.assoc i lam_switch.sw_consts
-      with  Not_found ->
-      match lam_switch.sw_failaction with
-      | Some x -> x
-      | None -> assert false
-    end
+    Ext_list.assoc_by_int lam_switch.sw_failaction i lam_switch.sw_consts
   | Lconst (Const_block (i,_,_)) ->
-    begin try List.assoc i lam_switch.sw_blocks
-      with  Not_found ->
-      match lam_switch.sw_failaction with
-      | Some x -> x
-      | None -> assert false
-    end
+    Ext_list.assoc_by_int lam_switch.sw_failaction i lam_switch.sw_blocks
   | _ -> 
     Lswitch(lam,lam_switch)
 
 let stringswitch (lam : t) cases default : t = 
   match lam with
-  | Lconst (Const_base (Const_string (a,_))) ->
-    begin
-      try List.assoc a cases with Not_found ->
-        begin
-          match default with
-          | Some x -> x
-          | None -> assert false
-        end
-    end
+  | Lconst (Const_string a) ->    
+    Ext_list.assoc_by_string default a cases     
   | _ -> Lstringswitch(lam, cases, default)
 
 
@@ -866,6 +1108,9 @@ let sequand l r = if_ l r false_
 let seq a b : t = 
   Lsequence (a, b)
 
+let append_unit a  = 
+  Lsequence (a,unit)
+
 let while_ a b : t  = 
   Lwhile(a,b)
 
@@ -875,7 +1120,7 @@ let try_  body id  handler : t =
 let for_ v e1 e2 dir e3 : t  = 
   Lfor(v,e1,e2,dir,e3)
 
-let event l (_event : Lambda.lambda_event) = l 
+
 
 let ifused v l : t  = 
   Lifused (v,l)
@@ -889,7 +1134,7 @@ let staticcatch  a b c : t = Lstaticcatch(a,b,c)
 
 let staticraise a b : t = Lstaticraise(a,b)
 
-let comparison (cmp : Lambda.comparison) a b : bool = 
+let comparison (cmp : comparison) a b : bool = 
   match cmp with 
   | Ceq -> a = b 
   | Cneq -> a <> b 
@@ -900,11 +1145,11 @@ let comparison (cmp : Lambda.comparison) a b : bool =
 
 module Lift = struct 
   let int i : t =
-    Lconst (Const_base (Const_int i))
+    Lconst ((Const_int i))
 
 
   let int32 i : t =
-    Lconst (Const_base (Const_int32 i))
+    Lconst ((Const_int32 i))
 
   let bool b = if b then true_ else false_
 
@@ -912,46 +1157,46 @@ module Lift = struct
      yet , due to cross platform problem
   *) 
   let float b  : t = 
-    Lconst (Const_base (Const_float b))
+    Lconst ((Const_float b))
 
   let nativeint b : t = 
-    Lconst (Const_base (Const_nativeint b))
+    Lconst ((Const_nativeint b))
 
   let int32 b : t = 
-    Lconst (Const_base (Const_int32 b))
+    Lconst ((Const_int32 b))
 
   let int64 b : t =
-    Lconst (Const_base (Const_int64 b))
+    Lconst ((Const_int64 b))
   let string b : t =
-    Lconst (Const_base (Const_string (b, None)))
+    Lconst ((Const_string (b)))
   let char b : t =
-    Lconst (Const_base (Const_char b))    
+    Lconst ((Const_char b))    
 end
 
-let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t = 
+let prim ~primitive:(prim : primitive) ~args:(ll : t list) loc  : t = 
   let default () : t = Lprim { primitive = prim ;args =  ll ; loc} in 
   match ll with 
   | [Lconst a] -> 
     begin match prim, a  with 
-      | Pnegint, (Const_base (Const_int a))
+      | Pnegint, ((Const_int a))
         -> Lift.int (- a)
-      (* | Pfloatofint, (Const_base (Const_int a)) *)
+      (* | Pfloatofint, ( (Const_int a)) *)
       (*   -> Lift.float (float_of_int a) *)
-      | Pintoffloat, (Const_base (Const_float a))
+      | Pintoffloat, ( (Const_float a))
         -> 
         Lift.int (int_of_float (float_of_string a))
       (* | Pnegfloat -> Lift.float (-. a) *)
       (* | Pabsfloat -> Lift.float (abs_float a) *)
-      | Pstringlength, (Const_base (Const_string (a,_)) ) 
+      | Pstringlength, Const_string a
         -> 
         Lift.int (String.length a)
-      (* | Pnegbint Pnativeint, (Const_base (Const_nativeint i)) *)
+      (* | Pnegbint Pnativeint, ( (Const_nativeint i)) *)
       (*   ->   *)
       (*   Lift.nativeint (Nativeint.neg i) *)
-      | Pnegbint Pint32, (Const_base (Const_int32 a))
+      | Pnegbint Pint32, Const_int32 a
         -> 
         Lift.int32 (Int32.neg a)
-      | Pnegbint Pint64, (Const_base (Const_int64 a))
+      | Pnegbint Pint64, Const_int64 a
         -> 
         Lift.int64 (Int64.neg a)
       | Pnot , Const_pointer (a,_) 
@@ -962,17 +1207,17 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
 
   | [Lconst a ; Lconst b] -> 
     begin match prim, a, b  with 
-      | Pbintcomp(_, cmp), Const_base (Const_int32 a), Const_base (Const_int32 b)
+      | Pbintcomp(_, cmp),  (Const_int32 a),  (Const_int32 b)
         -> Lift.bool (comparison cmp a b)
-      | Pbintcomp(_, cmp), Const_base (Const_int64 a), Const_base (Const_int64 b)
+      | Pbintcomp(_, cmp),  (Const_int64 a),  (Const_int64 b)
         -> Lift.bool (comparison cmp a b)
-      | Pbintcomp(_, cmp), Const_base (Const_nativeint a), Const_base (Const_nativeint b)
+      | Pbintcomp(_, cmp),  (Const_nativeint a),  (Const_nativeint b)
         -> Lift.bool (comparison cmp a b)
-      | Pfloatcomp  cmp, Const_base (Const_nativeint a), Const_base (Const_nativeint b)
+      | Pfloatcomp  cmp,  (Const_nativeint a),  (Const_nativeint b)
         -> Lift.bool (comparison cmp a b)
       | Pintcomp cmp ,
-        (Const_base (Const_int a) | Const_pointer (a,_)),
-        (Const_base (Const_int b) | Const_pointer (b,_))
+        ( (Const_int a) | Const_pointer (a,_)),
+        ( (Const_int b) | Const_pointer (b,_))
         -> Lift.bool (comparison cmp a b)
       | (Paddint
         | Psubint
@@ -984,7 +1229,7 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
         | Pxorint
         | Plslint
         | Plsrint
-        | Pasrint),Const_base (Const_int a),  Const_base (Const_int b)
+        | Pasrint), (Const_int a),   (Const_int b)
         ->
         (* WE SHOULD keep it as [int], to preserve types *)
         let aa,bb = Int32.of_int a, Int32.of_int  b in 
@@ -1015,7 +1260,7 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
         | Pandbint Pint32
         | Porbint Pint32
         | Pxorbint Pint32
-        ), Const_base (Const_int32 aa),  Const_base (Const_int32 bb)
+        ),  (Const_int32 aa),   (Const_int32 bb)
         -> 
         begin match prim with 
           | Paddbint _  -> Lift.int32 (Int32.add aa bb)
@@ -1028,11 +1273,11 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
           | Pxorbint _ -> Lift.int32 (Int32.logxor aa bb)
           | _ -> default ()
         end
-      | Plslbint Pint32, Const_base (Const_int32 aa), Const_base (Const_int b)
+      | Plslbint Pint32,  (Const_int32 aa),  (Const_int b)
         -> Lift.int32 (Int32.shift_left  aa b )
-      | Plsrbint Pint32, Const_base (Const_int32 aa), Const_base (Const_int b)
+      | Plsrbint Pint32,  (Const_int32 aa),  (Const_int b)
         -> Lift.int32 (Int32.shift_right_logical  aa b )
-      | Pasrbint Pint32, Const_base (Const_int32 aa), Const_base (Const_int b)
+      | Pasrbint Pint32,  (Const_int32 aa),  (Const_int b)
         -> Lift.int32 (Int32.shift_right  aa b )
 
       | (Paddbint Pint64
@@ -1043,7 +1288,7 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
         | Pandbint Pint64
         | Porbint Pint64
         | Pxorbint Pint64
-        ), Const_base (Const_int64 aa),  Const_base (Const_int64 bb)
+        ),  (Const_int64 aa),   (Const_int64 bb)
         -> 
         begin match prim with 
           | Paddbint _  -> Lift.int64 (Int64.add aa bb)
@@ -1056,11 +1301,11 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
           | Pxorbint _ -> Lift.int64 (Int64.logxor aa bb)
           | _ -> default ()
         end
-      | Plslbint Pint64, Const_base (Const_int64 aa), Const_base (Const_int b)
+      | Plslbint Pint64,  (Const_int64 aa),  (Const_int b)
         -> Lift.int64 (Int64.shift_left  aa b )
-      | Plsrbint Pint64, Const_base (Const_int64 aa), Const_base (Const_int b)
+      | Plsrbint Pint64,  (Const_int64 aa),  (Const_int b)
         -> Lift.int64 (Int64.shift_right_logical  aa b )
-      | Pasrbint Pint64, Const_base (Const_int64 aa), Const_base (Const_int b)
+      | Pasrbint Pint64,  (Const_int64 aa),  (Const_int b)
         -> Lift.int64 (Int64.shift_right  aa b )
       | Psequand, Const_pointer (a, _), Const_pointer( b, _)
         -> 
@@ -1068,12 +1313,12 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
       | Psequor, Const_pointer (a, _), Const_pointer( b, _)
         -> 
         Lift.bool (a = 1 || b = 1)
-      | Pstringadd, Const_base(Const_string (a, None)),
-        Const_base (Const_string (b,None))
+      | Pstringadd, (Const_string (a)),
+        (Const_string (b))
         ->
         Lift.string (a ^ b)
-      | (Pstringrefs | Pstringrefu), Const_base(Const_string(a,None)),
-        (Const_base(Const_int b)| Const_pointer (b,_))
+      | (Pstringrefs | Pstringrefu), (Const_string(a)),
+        ((Const_int b)| Const_pointer (b,_))
         ->
         begin try Lift.char (String.get a b)
           with  _ -> default ()
@@ -1087,43 +1332,88 @@ let prim ~primitive:(prim : Prim.t) ~args:(ll : t list) loc  : t =
 let not_ loc x  : t = 
   prim ~primitive:Pnot ~args:[x] loc
 
-let lam_prim ~primitive:( p : Lambda.primitive) ~args loc  : t = 
+let may_depend = Lam_module_ident.Hash_set.add 
+
+
+let rec no_auto_uncurried_arg_types 
+    (xs : Ast_arg.kind list)  = 
+  match xs with 
+  | [] -> true 
+  | {arg_type = Fn_uncurry_arity _ } :: _ ->
+    false 
+  | _ :: xs -> no_auto_uncurried_arg_types xs 
+
+
+let result_wrap loc (result_type : Ast_ffi_types.return_wrapper) result  = 
+  begin match result_type with 
+    | Return_replaced_with_unit  
+      -> append_unit result              
+    | Ast_ffi_types.Return_null_to_opt -> prim ~primitive:(Pnull_to_opt) ~args:[result] loc 
+    | Ast_ffi_types.Return_null_undefined_to_opt -> prim ~primitive:(Pnull_undefined_to_opt) ~args:[result] loc 
+    | Ast_ffi_types.Return_undefined_to_opt -> prim ~primitive:(Pundefined_to_opt) ~args:[result] loc 
+    | Ast_ffi_types.Return_to_ocaml_bool ->
+      prim ~primitive:(Pjs_boolean_to_bool) ~args:[result] loc 
+    | Return_unset
+    | Return_identity -> 
+      result 
+
+  end 
+(* TODO: sort out the order here
+   consolidate {!Lam_compile_external_call.assemble_args_splice}
+*)
+let rec transform_uncurried_arg_type loc (arg_types : Ast_arg.kind list) 
+    (args : t list ) = 
+  match arg_types,args with 
+  | { arg_type = Fn_uncurry_arity n ; arg_label } :: xs,
+    y::ys -> 
+    let (o_arg_types, o_args) = 
+      transform_uncurried_arg_type loc xs ys in 
+    { Ast_arg.arg_type = Nothing ; arg_label } :: o_arg_types , 
+    prim ~primitive:(Pjs_fn_make n) ~args:[y] loc :: o_args 
+  |  x  ::xs, y::ys -> 
+    begin match x with 
+      | {arg_type = Arg_cst _ }  -> 
+        let o_arg_types, o_args = transform_uncurried_arg_type loc xs args in 
+        x :: o_arg_types , o_args 
+      | _ -> 
+        let o_arg_types, o_args = transform_uncurried_arg_type loc xs ys in 
+        x :: o_arg_types , y:: o_args 
+    end
+  | [] , [] 
+  | _::_, [] 
+  | [], _::_ as ok -> ok    
+
+
+(** drop Lseq (List! ) etc *)
+let rec drop_global_marker (lam : t) =
+  match lam with 
+  | Lsequence (Lglobal_module id, rest) -> 
+    drop_global_marker rest
+  | _ -> lam
+
+
+let lam_prim ~primitive:( p : Lambda.primitive) ~args loc : t = 
   match p with 
   | Pint_as_pointer 
   | Pidentity ->  
     begin match args with [x] -> x | _ -> assert false end
-  | Pbytes_to_string 
+  | Pccall _ -> assert false      
+  | Prevapply -> assert false     
+  | Pdirapply -> assert false 
+  | Ploc loc -> assert false (* already compiled away here*)    
+
+  | Pbytes_to_string (* handled very early *) 
     -> prim ~primitive:Pbytes_to_string ~args loc
   | Pbytes_of_string -> prim ~primitive:Pbytes_of_string ~args loc
   | Pignore -> (* Pignore means return unit, it is not an nop *)
-    begin match args with [x] -> seq x unit | _ -> assert false end
-  | Prevapply 
-    -> 
-    begin match args with 
-      | [x ; Lapply{fn; args}]
-        -> apply fn (args @[x]) loc App_na
-      | [x; f] ->  apply f [x] loc App_na
-      | _ -> assert false 
-    end
-
-  | Pdirapply ->
-    begin match args with 
-      | [Lapply{fn ; args }; x ] 
-        -> 
-        apply fn (args @ [x]) loc App_na
-      | [f;x] -> apply f [x] loc App_na
-      | _ -> assert false 
-    end
-  | Ploc loc -> assert false (* already compiled away here*)
+    begin match args with [x] -> seq x unit | _ -> assert false end  
   | Pgetglobal id ->
-    if Ident.is_predef_exn id then
-      prim ~primitive:(Pglobal_exception id) ~args loc       
-    else       
-      prim ~primitive:(Pgetglobal id) ~args loc
+    assert false 
   | Psetglobal id -> 
     (* we discard [Psetglobal] in the beginning*)
     begin match args with 
-      | [biglambda] -> biglambda
+      | [biglambda] -> 
+        drop_global_marker biglambda 
       | _ -> assert false 
     end
   (* prim ~primitive:(Psetglobal id) ~args loc *)
@@ -1143,29 +1433,15 @@ let lam_prim ~primitive:( p : Lambda.primitive) ~args loc  : t =
     -> prim ~primitive:(Pduprecord(repr,i)) ~args loc
   | Plazyforce -> prim ~primitive:Plazyforce ~args loc
 
-  | Pccall a -> 
-    let prim_name = a.prim_name in
-    if Pervasives.not @@ Ext_string.starts_with prim_name "js_" then 
-      prim ~primitive:(Pccall a ) ~args loc else 
-    if prim_name =  Literals.js_debugger then 
-      prim ~primitive:Pdebugger ~args loc else 
-    if prim_name =  Literals.js_fn_run || prim_name = Literals.js_method_run then
-      prim ~primitive:(Pjs_fn_run (int_of_string a.prim_native_name)) ~args loc else 
-    if prim_name = Literals.js_fn_mk then 
-      prim ~primitive:(Pjs_fn_make (int_of_string a.prim_native_name)) ~args loc else                
-    if prim_name = Literals.js_fn_method then 
-      prim ~primitive:(Pjs_fn_method (int_of_string a.prim_native_name)) ~args loc else
-    if prim_name = Literals.js_fn_runmethod then 
-      prim ~primitive:(Pjs_fn_runmethod (int_of_string a.prim_native_name)) ~args loc 
-    else
-      prim ~primitive:(Pccall a) ~args loc
+
   | Praise _ ->
     if Js_config.get_no_any_assert () then 
       begin match args with 
         | [Lprim {primitive = Pmakeblock (0, _, _) ; 
                   args = [ 
                     Lprim {primitive = Pglobal_exception ({name = "Assert_failure"} as id); args =  []}; 
-                    _
+                    _ (* can be destructed [match Predef.path_assert_failure with Pident x -> x | _ -> assert false] [Predef.builtin_idents] 
+                         [Predef.builtin_values] *)
                   ]
                  } ] when Ident.global id
           -> assert_false_unit
@@ -1272,8 +1548,8 @@ let preprocess_deps (groups : bindings) : _ * Ident.t array * Int_vec.t array   
     Ordered_hash_map_local_ident.create len in 
   let mask = Hash_set_ident_mask.create len in   
   List.iter (fun (x,lam) -> 
-    Ordered_hash_map_local_ident.add domain x lam;
-    Hash_set_ident_mask.add_unmask mask x;
+      Ordered_hash_map_local_ident.add domain x lam;
+      Hash_set_ident_mask.add_unmask mask x;
     ) groups ;
   let int_mapping = Ordered_hash_map_local_ident.to_sorted_array domain in 
   let node_vec = Array.make (Array.length int_mapping) (Int_vec.empty ()) in
@@ -1282,41 +1558,41 @@ let preprocess_deps (groups : bindings) : _ * Ident.t array * Int_vec.t array   
       let base_key =  node_vec.(key_index) in 
       ignore (hit_mask mask lam) ;
       mask |> Hash_set_ident_mask.iter_and_unmask (fun ident hit  -> 
-      if hit then 
-      begin 
-        let key = Ordered_hash_map_local_ident.rank domain ident in 
-        Int_vec.push key base_key;
-      end
-      );
+          if hit then 
+            begin 
+              let key = Ordered_hash_map_local_ident.rank domain ident in 
+              Int_vec.push key base_key;
+            end
+        );
 
     ) ;
   domain, int_mapping , node_vec
 
 (** TODO: even for a singleton recursive function, tell whehter it is recursive or not ? *)
- let scc_bindings (groups : bindings) : bindings list = 
-   match groups with 
-   | [ _ ] -> [ groups ]
-   | _ -> 
+let scc_bindings (groups : bindings) : bindings list = 
+  match groups with 
+  | [ _ ] -> [ groups ]
+  | _ -> 
     let domain, int_mapping, node_vec = preprocess_deps groups in 
     let clusters = Ext_scc.graph node_vec in 
     if Int_vec_vec.length clusters <= 1 then [ groups]
     else 
-        Int_vec_vec.fold_right (fun  (v : Int_vec.t) acc ->
-            let bindings =
-              Int_vec.map_into_list (fun i -> 
-                  let id = int_mapping.(i) in 
-                  let lam  = Ordered_hash_map_local_ident.find_value domain  id in  
-                  (id,lam)
-                ) v  in 
-            match bindings with 
-            | [ id,(Lfunction _ as lam) ] ->
-              let base_key = Ordered_hash_map_local_ident.rank domain id in    
-              if Int_vec_util.mem base_key node_vec.(base_key) then       
-                 bindings :: acc 
-              else  [(id, lam)] :: acc    
-            | _ ->  
+      Int_vec_vec.fold_right (fun  (v : Int_vec.t) acc ->
+          let bindings =
+            Int_vec.map_into_list (fun i -> 
+                let id = int_mapping.(i) in 
+                let lam  = Ordered_hash_map_local_ident.find_value domain  id in  
+                (id,lam)
+              ) v  in 
+          match bindings with 
+          | [ id,(Lfunction _ as lam) ] ->
+            let base_key = Ordered_hash_map_local_ident.rank domain id in    
+            if Int_vec_util.mem base_key node_vec.(base_key) then       
               bindings :: acc 
-          )  clusters []
+            else  [(id, lam)] :: acc    
+          | _ ->  
+            bindings :: acc 
+        )  clusters []
 (* single binding, it does not make sense to do scc,
    we can eliminate {[ let rec f x = x + x  ]}, but it happens rarely in real world 
 *)
@@ -1351,14 +1627,113 @@ let scc  (groups :  bindings)  ( lam : t) ( body : t)
           )  clusters body 
   end
 
-let convert exports lam = 
-  let alias = Ident_hashtbl.create 64 in 
+
+type required_modules = Lam_module_ident.Hash_set.t
+
+
+let convert exports lam : _ * _  = 
+  let alias_tbl = Ident_hashtbl.create 64 in 
+  let exit_map = Int_hashtbl.create 0 in 
+  let may_depends = Lam_module_ident.Hash_set.create 0 in 
+
   let rec
-    aux (lam : Lambda.lambda) : t = 
+    aux_js_primitive (p: Primitive.description) (args : Lambda.lambda list) loc =
+    let s = p.prim_name in
+    if s = "#raw_expr" then 
+      begin match args with 
+        | [Lconst( Const_base (Const_string(s,_)))] -> 
+          prim ~primitive:(Praw_js_code_exp s)
+            ~args:[] loc 
+        | _ -> assert false 
+      end  
+    else if s = "#raw_stmt" then 
+      begin match args with 
+        | [Lconst( Const_base (Const_string(s,_)))] -> 
+          prim ~primitive:(Praw_js_code_stmt s)
+            ~args:[] loc         
+        | _ -> assert false 
+      end 
+    else if s =  "#debugger"  then 
+      (* ATT: Currently, the arity is one due to PPX *)
+      prim ~primitive:Pdebugger ~args:[] loc 
+    else 
+      let args = List.map aux args in 
+      let primitive = match s with 
+        | "#apply" -> Pjs_runtime_apply
+        | "#apply1"
+        | "#apply2"
+        | "#apply3"
+        | "#apply4"
+        | "#apply5"
+        | "#apply6"
+        | "#apply7"
+        | "#apply8" -> Pjs_apply
+        | "#undefined_to_opt" -> Pundefined_to_opt
+        | "#null_undefined_to_opt" -> Pnull_undefined_to_opt
+        | "#null_to_opt" -> Pnull_to_opt
+        | "#is_nil"  -> Pis_null
+        | "#is_undef" -> Pis_undefined
+        | "#is_nil_undef" -> Pis_null_undefined
+        | "#string_append" -> Pstringadd
+
+        | "#is_instance_array" -> Pjs_is_instance_array
+        | "#string_of_small_int_array" -> Pjs_string_of_small_array
+        (* {[String.fromCharCode.apply(null,x)]} 
+           Note if we have better suport [@bs.splice],
+           we can get rid of it*)
+        | "#obj_set_length" -> Pcaml_obj_set_length
+        | "#obj_length" -> Pcaml_obj_length
+        | "#boolean_to_bool" -> Pjs_boolean_to_bool
+
+        | "#function_length" -> Pjs_function_length
+
+        | "#unsafe_lt" -> Pjscomp Clt 
+        | "#unsafe_gt" -> Pjscomp Cgt 
+        | "#unsafe_le" -> Pjscomp Cle 
+        | "#unsafe_ge" -> Pjscomp Cge
+        | "#unsafe_eq" -> Pjscomp Ceq
+        | "#unsafe_neq" -> Pjscomp Cneq
+
+        | "#typeof" -> Pjs_typeof
+        | "#fn_run" | "#method_run" -> Pjs_fn_run(int_of_string p.prim_native_name)
+        | "#fn_mk" -> Pjs_fn_make (int_of_string p.prim_native_name)
+        | "#fn_method" -> Pjs_fn_method (int_of_string p.prim_native_name)
+        | "#unsafe_downgrade" -> Pjs_unsafe_downgrade (Ext_string.empty,loc)
+        | _ -> Location.raise_errorf ~loc
+                 "@{<error>Error:@} internal error, using unrecorgnized primitive %s" s 
+      in
+      prim ~primitive ~args loc 
+  and aux_constant ( const : Lambda.structured_constant) : constant = 
+    match const with 
+    | Const_base (Const_int i) -> (Const_int i)
+    | Const_base (Const_char i) -> (Const_char i)
+    | Const_base (Const_string(i,opt)) ->
+      begin match opt with 
+        | Some opt when 
+            Ext_string.equal opt Literals.escaped_j_delimiter ->
+          Const_unicode i
+        | _ ->   
+          Const_string i
+      end 
+    | Const_base (Const_float i) -> (Const_float i)
+    | Const_base (Const_int32 i) -> (Const_int32 i)
+    | Const_base (Const_int64 i) -> (Const_int64 i)
+    | Const_base (Const_nativeint i) -> (Const_nativeint i)
+    | Const_pointer(i,p) -> Const_pointer (i,p)
+    | Const_float_array (s) -> Const_float_array(s)
+    | Const_immstring s -> Const_immstring s 
+    | Const_block (i,t,xs) -> 
+      Const_block (i,t, List.map aux_constant xs)
+  and aux (lam : Lambda.lambda) : t = 
     match lam with 
-    | Lvar x -> Lvar (Ident_hashtbl.find_default alias x x)
+    | Lvar x -> 
+      let var = Ident_hashtbl.find_default alias_tbl x x in
+      if Ident.persistent var then 
+        Lglobal_module var 
+      else       
+        Lvar var       
     | Lconst x -> 
-      Lconst x 
+      Lconst (aux_constant x )
     | Lapply (fn,args,loc) 
       ->  
       begin match fn with 
@@ -1400,38 +1775,100 @@ let convert exports lam =
               prim ~primitive:Pstringadd ~args:[l;r] loc 
             | _ ->  apply (aux fn) args loc  App_na
           end
+        (*  
+        | Lfunction(kind,params,Lprim(prim,inner_args,inner_loc))
+          when List.for_all2_no_exn (fun x y -> 
+          match y with 
+          | Lambda.Lvar y when Ident.same x y -> true
+          | _ -> false 
+           ) params inner_args
+          -> 
+          let rec aux outer_args params = 
+            match outer_args, params with 
+            | x::xs , _::ys -> 
+              x :: aux xs ys 
+            | [], [] -> []
+            | x::xs, [] -> 
+            | [], y::ys 
+          if Ext_list.same_length inner_args args then 
+            aux (Lprim(prim,args,inner_loc))
+          else 
+
+           {[
+             (fun x y -> f x y) (computation;e) --> 
+             (fun y -> f (computation;e) y) 
+           ]}
+              is wrong
+
+              or 
+           {[
+             (fun x y -> f x y ) ([|1;2;3|]) --> 
+             (fun y -> f [|1;2;3|] y) 
+           ]}
+              is also wrong.
+
+              It seems, we need handle [@bs.splice] earlier
+
+              or 
+           {[
+             (fun x y -> f x y) ([|1;2;3|]) --> 
+             let x0, x1, x2 =1,2,3 in 
+             (fun y -> f [|x0;x1;x2|] y)                
+           ]}
+              But this still need us to know [@bs.splice] in advance
+
+
+           we should not remove it immediately, since we have to be careful 
+                  where it is used, it can be [exported], [Lvar] or [Lassign] etc 
+                  The other common mistake is that 
+           {[
+             let x = y (* elimiated x/y*)
+             let u = x  (* eliminated u/x *)
+           ]}
+
+            however, [x] is already eliminated 
+           To improve the algorithm
+           {[
+             let x = y (* x/y *)
+             let u = x (* u/y *)
+           ]}
+                  This looks more correct, but lets be conservative here
+
+                  global module inclusion {[ include List ]}
+                  will cause code like {[ let include =a Lglobal_module (list)]}
+
+                  when [u] is global, it can not be bound again, 
+                  it should always be the leaf 
+        *)
         | _ -> 
+
+          (** we need do this eargly in case [aux fn] add some wrapper *)
           apply (aux fn) (List.map aux args) 
             loc App_na
       end
-    | Lfunction (kind,  params,body)
+    | Lfunction (Tupled,_,_) -> assert false
+    | Lfunction (Curried,  params,body)
       ->  function_ 
-            ~arity:(List.length params) ~kind ~params 
+            ~arity:(List.length params) ~function_kind:Curried ~params 
             ~body:(aux body)
     | Llet (kind,id,e,body) 
       ->
-      begin match kind, e with 
-        | Alias , Lvar u ->
-          (* we should not remove it immediately, since we have to be careful 
-             where it is used, it can be [exported], [Lvar] or [Lassign] etc 
-             The other common mistake is that 
-             {[
-               let x = y (* elimiated x/y*)
-               let u = x  (* eliminated u/x *)
-             ]}
 
-             however, [x] is already eliminated 
-             To improve the algorithm
-             {[
-               let x = y (* x/y *)
-               let u = x (* u/y *)
-             ]}
-             This looks more correct, but lets be conservative here
-          *)          
-          Ident_hashtbl.add alias id (Ident_hashtbl.find_default alias u u);
+      begin match kind, e with 
+        | Alias , (Lvar u ) ->
+          let new_u = (Ident_hashtbl.find_default alias_tbl u u) in
+          Ident_hashtbl.add alias_tbl id new_u ;
+          if Ident_set.mem id exports then 
+            Llet(kind, id, Lvar new_u, aux body)
+          else aux body   
+        | Alias ,  Lprim (Pgetglobal u,[], _) when not (Ident.is_predef_exn u)
+          ->         
+          Ident_hashtbl.add alias_tbl id u;          
+          may_depend may_depends (Lam_module_ident.of_ml u);
+
           if Ident_set.mem id exports then 
             Llet(kind, id, Lvar u, aux body)
-          else aux body 
+          else aux body   
 
         | _, _ -> Llet(kind,id,aux e, aux body)
       end
@@ -1442,9 +1879,93 @@ let convert exports lam =
       let lam = Lletrec (bindings, body) in 
       scc bindings lam body  
     (* inlining will affect how mututal recursive behave *)
+    | Lprim(Prevapply, [x ; f ],  outer_loc) 
+    | Lprim(Pdirapply, [f ; x],  outer_loc) -> 
+      begin match f with 
+        (* [x|>f] 
+           TODO: [airty = 0] when arity =0, it can not be escaped user can only
+           write  [f x ] instead of [x |> f ]
+        *)
+        | Lfunction(kind, [param],Lprim(external_fn,[Lvar inner_arg],inner_loc))
+          when Ident.same param inner_arg 
+          -> 
+          aux  (Lprim(external_fn,  [x], outer_loc))
+
+        |  Lapply(Lfunction(kind, params,Lprim(external_fn,inner_args,inner_loc)), args, outer_loc ) (* x |> f a *) 
+
+          when Ext_list.for_all2_no_exn (fun x y -> match y with Lambda.Lvar y when Ident.same x y  -> true | _ -> false ) params inner_args
+               &&            
+               Ext_list.length_larger_than_n 1 inner_args args
+          -> 
+
+          aux (Lprim(external_fn, args @ [x], outer_loc))
+        | _ -> 
+          let x  = aux x in 
+          let f =  aux f in 
+          begin match  f with 
+            | Lapply{fn;args} ->
+              apply fn (args @[x]) outer_loc App_na 
+            | _ -> 
+              apply f [x] outer_loc App_na        
+          end 
+      end
+    | Lprim (Prevapply, _, _ ) -> assert false       
+    | Lprim(Pdirapply, _, _) -> assert false   
+    | Lprim(Pccall a, args, loc)  -> 
+      let prim_name = a.prim_name in    
+      let prim_name_len  = String.length prim_name in 
+        begin match Ast_ffi_types.from_string a.prim_native_name with 
+          | Ffi_normal ->
+            if prim_name_len > 0 && String.unsafe_get prim_name 0 = '#' then 
+              aux_js_primitive a args loc 
+            else 
+              (* COMPILER CHECK *)
+              (* Here the invariant we should keep is that all exception 
+                 created should be captured
+              *)
+              if a.prim_name = "caml_set_oo_id" then (**)
+                begin match  args with 
+                  | [ Lprim (Pmakeblock(tag,( Blk_exception| Blk_extension), _),
+                             Lconst (Const_base(Const_string(name,_))) :: _,
+                             loc
+                            )] 
+                    -> prim ~primitive:(Pcreate_extension name) ~args:[] loc 
+                  | _ -> 
+                    let args = List.map aux args in 
+                    prim ~primitive:(Pccall a) ~args loc
+                end
+              else  
+                let args = List.map aux args in 
+                prim ~primitive:(Pccall a) ~args loc
+          | Ffi_obj_create labels ->
+            let args = List.map aux args in 
+            prim ~primitive:(Pjs_object_create labels) ~args loc 
+          | Ffi_bs(arg_types, result_type, ffi) ->
+            let args = List.map aux args in 
+            if no_auto_uncurried_arg_types arg_types then   
+              result_wrap loc result_type @@ prim ~primitive:(Pjs_call(prim_name, arg_types, ffi)) 
+                ~args loc 
+            else 
+              let n_arg_types, n_args = 
+                transform_uncurried_arg_type loc  arg_types args in 
+              result_wrap loc result_type @@
+              prim ~primitive:(Pjs_call (prim_name, n_arg_types, ffi))
+                ~args:n_args loc 
+        end
+    | Lprim (Pgetglobal id, args, loc) ->   
+      let args = List.map aux args in 
+      if Ident.is_predef_exn id then 
+        Lprim {primitive = Pglobal_exception id; args ; loc}
+      else 
+        begin 
+          may_depend may_depends (Lam_module_ident.of_ml id);
+          assert (args = []);
+          Lglobal_module id 
+        end  
     | Lprim (primitive,args, loc) 
-      -> aux_primitive loc primitive args 
-    (* Lprim {primitive ; args = List.map aux args } *)
+      -> 
+      let args = List.map aux args in
+      lam_prim ~primitive ~args loc 
     | Lswitch (e,s) -> 
       Lswitch (aux e, aux_switch s)
     | Lstringswitch (e, cases, default,_) -> 
@@ -1453,13 +1974,33 @@ let convert exports lam =
                      | None -> None
                      | Some x -> Some (aux x)
                     )    
-
+    | Lstaticraise (id,[]) ->
+      begin match Int_hashtbl.find_opt exit_map id  with
+      | None -> Lstaticraise (id,[])
+      | Some new_id -> Lstaticraise (new_id,[])
+      end               
     | Lstaticraise (id, args) -> 
       Lstaticraise (id, List.map aux args)
+    | Lstaticcatch (b, (i,[]), Lstaticraise (j,[]) ) 
+      -> (* peep-hole [i] aliased to [j] *)
+
+        let new_i = Int_hashtbl.find_default exit_map j j in 
+        Int_hashtbl.add exit_map i new_i ; 
+        aux b
     | Lstaticcatch (b, (i, ids), handler) -> 
       Lstaticcatch (aux b, (i,ids), aux handler)
-    | Ltrywith (b, id, handler) -> 
-      Ltrywith (aux b, id, aux handler)
+    | Ltrywith (b, id, handler) ->
+      let body = aux b in 
+      let handler = aux handler in 
+      if exception_id_destructed id handler then 
+       let newId = Ident.create ("raw_" ^ id.name) in 
+        Ltrywith (body, newId, 
+                let_ StrictOpt id 
+                  (prim ~primitive:Pwrap_exn ~args:[var newId] Location.none)
+                  handler
+               ) 
+      else 
+       Ltrywith( body, id, handler)
     | Lifthenelse (b,then_,else_) -> 
       Lifthenelse (aux b, aux then_, aux else_)
     | Lsequence (a,b) 
@@ -1473,8 +2014,7 @@ let convert exports lam =
     | Lsend (kind, a,b,ls, loc) -> 
       (* Format.fprintf Format.err_formatter "%a@." Printlambda.lambda b ; *)
       begin match aux b with 
-        | Lprim {primitive =  Pccall {prim_name };  args; loc}
-          when prim_name = Literals.js_unsafe_downgrade
+        | Lprim {primitive =  Pjs_unsafe_downgrade(_,loc);  args} 
           -> 
           begin match kind, ls with 
             | Public (Some name), [] -> 
@@ -1483,14 +2023,13 @@ let convert exports lam =
             | _ -> assert false 
           end
         | b ->     
-          (* Format.fprintf Format.err_formatter "weird: %d@." (Obj.tag (Obj.repr b));  *)
           Lsend(kind, aux a,  b, List.map aux ls, loc )
       end
-    | Levent (e, event) -> aux e 
+    | Levent (e, event) ->
+      (* disabled by upstream*)
+      assert false
     | Lifused (id, e) -> 
       Lifused(id, aux e) (* TODO: remove it ASAP *)
-  and aux_primitive loc (primitive : Lambda.primitive) args = 
-    lam_prim ~primitive ~args:(List.map aux args) loc
   and aux_switch (s : Lambda.lambda_switch) : switch = 
     { sw_numconsts = s.sw_numconsts ; 
       sw_consts = List.map (fun (i, lam) -> i, aux lam) s.sw_consts;
@@ -1501,6 +2040,6 @@ let convert exports lam =
         | None -> None 
         | Some a -> Some (aux a)
     }  in 
-  aux lam 
+  aux lam , may_depends
 
 

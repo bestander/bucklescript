@@ -59,6 +59,31 @@ let pp_alias_tbl fmt (tbl : Lam_stats.alias_tbl) =
   Ident_hashtbl.iter (fun k v -> pp fmt "@[%a -> %a@]@." Ident.print k Ident.print v)
     tbl
 
+
+let pp_kind fmt (kind : Lam_stats.kind) = 
+  match kind with 
+  | ImmutableBlock (arr,_) -> 
+    pp fmt "Imm(%d)" (Array.length arr)
+  | MutableBlock (arr) ->     
+    pp fmt "Mutable(%d)" (Array.length arr)
+  | Constant _  ->
+    pp fmt "Constant"
+  | Module id -> 
+    pp fmt "%s/%d" id.name id.stamp 
+  | Function _ -> 
+    pp fmt "function"
+  | Exception ->
+    pp fmt "Exception" 
+  | Parameter -> 
+    pp fmt "Parameter"  
+  | NA -> 
+    pp fmt "NA"
+
+let pp_ident_tbl fmt (ident_tbl : Lam_stats.ident_tbl) = 
+  Ident_hashtbl.iter (fun k v -> pp fmt "@[%a -> %a@]@." 
+    Ident.print k pp_kind v)
+    ident_tbl
+      
 let merge 
     ((n : int ), params as y)
     (x : Lam.function_arities) : Lam.function_arities = 
@@ -92,10 +117,7 @@ let rec get_arity
 
     end
   | Llet(_,_,_, l ) -> get_arity meta l 
-  (* | Lprim (Pccall {prim_name = "js_pure_expr"; prim_attributes},  *)
-  (*          [Lconst (Const_base (Const_string (_str,_)))]) *)
-  (*   -> *)
-  (*   (\* Ext_log.dwarn __LOC__ "called %s %d" str (List.length prim_attributes ); *\) *)
+
   (*   begin match Parsetree_util.has_arity prim_attributes with *)
   (*     | Some arity ->  *)
   (*       (\* Ext_log.dwarn __LOC__ "arity %d" arity; *\) *)
@@ -103,13 +125,14 @@ let rec get_arity
   (*     | None -> NA *)
   (*   end *)
   | Lprim {primitive = Pfield (n,_); 
-           args =  [Lprim {primitive = Pgetglobal id; args = []; _}]; _} ->
+           args =  [ Lglobal_module id  ]; _} ->
     Lam_compile_env.find_and_add_if_not_exist (id, n) meta.env
       ~not_found:(fun _ -> assert false)
       ~found:(fun x -> x.arity )
   | Lprim {primitive = Pfield _; _} -> NA (** TODO *)
   | Lprim {primitive = Praise ;  _} -> Determin(true,[], true)
   | Lprim {primitive = Pccall _; _} -> Determin(false, [], false)
+  | Lglobal_module _ (* TODO: fix me never going to happen assert false  *)
   | Lprim _  -> Determin(true,[] ,false)
   (* shall we handle primitive in a direct way, 
       since we know all the information
@@ -159,7 +182,7 @@ let rec get_arity
         in
         take xs (List.length args) 
     end
-  | Lfunction {arity; kind; params; body = l} -> 
+  | Lfunction {arity; function_kind; params; body = l} -> 
     merge (arity, Some params)  (get_arity meta l)
   | Lswitch(l, {sw_failaction; 
                 sw_consts; 

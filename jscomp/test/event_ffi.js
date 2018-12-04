@@ -1,8 +1,8 @@
 'use strict';
 
-var Caml_int32 = require("../../lib/js/caml_int32");
-var Curry      = require("../../lib/js/curry");
-var List       = require("../../lib/js/list");
+var List       = require("../../lib/js/list.js");
+var Curry      = require("../../lib/js/curry.js");
+var Caml_int32 = require("../../lib/js/caml_int32.js");
 
 function h0(x) {
   return x();
@@ -37,10 +37,9 @@ function h34(x) {
 }
 
 function ocaml_run(param, param$1) {
-  var x = 1;
-  var y = param;
-  var z = param$1;
-  return (x + y | 0) + z | 0;
+  return function (x, y, z) {
+            return (x + y | 0) + z | 0;
+          }(1, param, param$1);
 }
 
 function a0() {
@@ -62,13 +61,11 @@ function a3(x, y, z) {
   return (x + y | 0) + z | 0;
 }
 
-function a4(param, param$1, param$2, param$3) {
-  return Curry._4(function (x, y, z) {
-              var u = (Caml_int32.imul(x, x) + Caml_int32.imul(y, y) | 0) + Caml_int32.imul(z, z) | 0;
-              return function (d) {
-                return u + d | 0;
-              };
-            }, param, param$1, param$2, param$3);
+function a4(x, y, z, param) {
+  var u = (Caml_int32.imul(x, x) + Caml_int32.imul(y, y) | 0) + Caml_int32.imul(z, z) | 0;
+  return function (d) {
+            return u + d | 0;
+          }(param);
 }
 
 function a44(x, y, z, d) {
@@ -113,4 +110,4 @@ exports.a44       = a44;
 exports.b44       = b44;
 exports.test_as   = test_as;
 exports.xx        = xx;
-/* partial_arg Not a pure module */
+/* No side effect */

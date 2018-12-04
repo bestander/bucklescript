@@ -192,8 +192,15 @@ let compile  ~filename output_prefix env _sigs
 #end      
     Lam_compile_env.reset () ;
   in 
-  let lam = Lam.convert export_ident_sets lam in 
-  let _d  = Lam_util.dump env  in
+  let lam, may_required_modules = Lam.convert export_ident_sets lam in 
+  let _d  = fun s lam -> 
+    let result = Lam_util.dump env s lam  in
+#if BS_DEBUG then 
+    Ext_log.dwarn __LOC__ "CHECK PASS %s@." s;
+    ignore @@ Lam.check (Js_config.get_current_file ()) lam;
+#end
+    result 
+  in
   let _j = Js_pass_debug.dump in
   let lam = _d "initial"  lam in
   let lam  = Lam_pass_deep_flatten.deep_flatten lam in
@@ -230,11 +237,11 @@ let compile  ~filename output_prefix env _sigs
     |>  Lam_pass_remove_alias.simplify_alias meta 
     |> _d "alpha_conversion"
     |>  Lam_pass_alpha_conversion.alpha_conversion meta
-    |> _d "simplify_lets"
+    |> _d "before-simplify_lets"
     (* we should investigate a better way to put different passes : )*)
     |> Lam_pass_lets_dce.simplify_lets 
 
-    |> _d "simplify_lets"
+    |> _d "before-simplify-exits"
     (* |> (fun lam -> Lam_pass_collect.collect_helper meta lam 
        ; Lam_pass_remove_alias.simplify_alias meta lam) *)
     (* |> Lam_group_pass.scc_pass
@@ -242,15 +249,17 @@ let compile  ~filename output_prefix env _sigs
     |> Lam_pass_exits.simplify_exits
     |> _d "simplify_lets"
 #if BS_DEBUG then    
-    |> Lam.check (Js_config.get_current_file () ) 
+    |> (fun lam -> 
+       let () = 
+        Ext_log.dwarn __LOC__
+        "[@Alias_table:@ %a@]@." Lam_stats_util.pp_alias_tbl meta.alias_tbl;
+        Ext_log.dwarn __LOC__
+        "[@Ident_table:@ %a@]@." Lam_stats_util.pp_ident_tbl meta.ident_tbl;
+        in 
+      Lam.check (Js_config.get_current_file ()) lam
+    ) 
 #end    
   in
-  (* Debug identifier table *)
-  (* Lam_stats_util.pp_alias_tbl Format.err_formatter meta.alias_tbl; *)
-  (* Lam_stats_util.dump_exports_arities meta ; *)
-  (* Lam_stats_util.pp_arities_tbl Format.err_formatter meta.arities_tbl; *)
-
-  (* Dump for debugger *)
 
   let ({Lam_coercion.groups = rest } as coerced_input ) = 
     Lam_coercion.coerce_and_group_big_lambda  
@@ -301,12 +310,18 @@ let compile  ~filename output_prefix env _sigs
   in
   let maybe_pure = no_side_effects rest
   in
+#if BS_DEBUG then 
+  let () = Ext_log.dwarn __LOC__ "\n@[[TIME:]Pre-compile: %f@]@."  (Sys.time () *. 1000.) in      
+#end  
   let body  = 
     rest
     |> List.map (fun group -> compile_group meta group)
     |> Js_output.concat
     |> Js_output.to_block
   in
+#if BS_DEBUG then 
+  let () = Ext_log.dwarn __LOC__ "\n@[[TIME:]Post-compile: %f@]@."  (Sys.time () *. 1000.) in      
+#end    
   (* The file is not big at all compared with [cmo] *)
   (* Ext_marshal.to_file (Ext_filename.chop_extension filename ^ ".mj")  js; *)
   let js = 
@@ -328,9 +343,8 @@ let compile  ~filename output_prefix env _sigs
   |> _j "shake"
   |> ( fun (js:  J.program) -> 
       let external_module_ids = 
-        Lam_compile_env.get_requried_modules  
-          meta.env
-          meta.required_modules  
+        Lam_compile_env.get_required_modules  
+          may_required_modules  
           (Js_fold_basic.calculate_hard_dependencies js.block)
         |>
         (fun x ->
@@ -369,7 +383,7 @@ let lambda_as_module
   begin 
     Js_config.set_current_file filename ;  
 #if BS_DEBUG then    
-    Js_config.set_debug_file "gpr_1072.ml";
+    Js_config.set_debug_file "webpack_config.ml";
 #end    
     let lambda_output = compile ~filename output_prefix env sigs lam in
     let (//) = Filename.concat in 
@@ -385,7 +399,7 @@ let lambda_as_module
     | NonBrowser (_, []) -> 
       (* script mode *)
       let output_chan chan =         
-        Js_dump.dump_deps_program ~output_prefix `NodeJS lambda_output chan in
+        Js_dump.dump_deps_program ~output_prefix NodeJS lambda_output chan in
       (if !Js_config.dump_js then output_chan stdout);
       if not @@ !Clflags.dont_write_files then 
         Ext_pervasives.with_file_as_chan 

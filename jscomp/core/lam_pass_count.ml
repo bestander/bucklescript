@@ -36,7 +36,13 @@ let absorb_info (x : used_info) (y : used_info) =
     x.times <- x0 + y0;
     if captured then x.captured <- true
 
+let pp_info fmt (x : used_info) = 
+  Format.fprintf fmt "(<captured:%b>:%d)"  x.captured x.times
 
+let pp_occ_tbl fmt tbl = 
+  Ident_hashtbl.iter (fun k v -> 
+      Format.fprintf fmt "@[%a@ %a@]@." Ident.print k pp_info v 
+    ) tbl 
 (* The global table [occ] associates to each let-bound identifier
    the number of its uses (as a reference):
    - 0 if never used
@@ -126,18 +132,19 @@ let collect_occurs  lam : occ_tbl =
       (* Lalias-bound variables are never assigned, so don't increase
          this ident's refcount *)
       count bv l
-
+    | Lglobal_module _ -> ()
     | Lprim {args; _} -> List.iter (count bv ) args
     | Lletrec(bindings, body) ->
       List.iter (fun (v, l) -> count bv l) bindings;
       count bv body
-    | Lapply{fn = Lfunction{kind= Curried; params; body};  args; _}
+        (** Note there is a difference here when do beta reduction for *)
+    | Lapply{fn = Lfunction{function_kind= Curried; params; body};  args; _}
       when  Ext_list.same_length params args ->
       count bv (Lam_beta_reduce.beta_reduce  params body args)
-    | Lapply{fn = Lfunction{kind = Tupled; params; body};
-             args = [Lprim {primitive = Pmakeblock _;  args; _}]; _}
-      when  Ext_list.same_length params  args ->
-      count bv (Lam_beta_reduce.beta_reduce   params body args)
+    (* | Lapply{fn = Lfunction{function_kind = Tupled; params; body}; *)
+    (*          args = [Lprim {primitive = Pmakeblock _;  args; _}]; _} *)
+    (*   when  Ext_list.same_length params  args -> *)
+    (*   count bv (Lam_beta_reduce.beta_reduce   params body args) *)
     | Lapply{fn = l1; args= ll; _} ->
       count bv l1; List.iter (count bv) ll 
     | Lconst cst -> ()

@@ -31,74 +31,21 @@ type command =
     args : string array 
   }  
 
-(* http://stackoverflow.com/questions/1510922/waiting-for-all-child-processes-before-parent-resumes-execution-unix*)
 
-let rec wait_all_children acc = 
-  if acc = 0 then ()
-  else 
-    match Unix.wait () with 
-    | pid, process_status -> 
-      wait_all_children (acc - 1)
-
-
-
-let run_commands commands = 
-  let rec aux acc commands = 
-    match commands with
-    | [ ] -> 
-      begin 
-        print_endline "Waiting for all children";
-        wait_all_children acc;
-        print_endline "All jobs finished"
-      end
-    | (cmd : command) :: rest -> 
-      match Unix.fork () with 
-      | 0 -> 
-        Unix.chdir cmd.cwd;
-        Unix.execvp cmd.cmd cmd.args
-      | _pid -> 
-        aux (acc + 1 )rest in 
-  aux 0 commands    
-
-
-let run_command_execvp cmd =
+let log cmd = 
+    Format.fprintf Format.std_formatter "@{<info>Entering@} %s @." cmd.cwd ;  
+    Format.fprintf Format.std_formatter "@{<info>Cmd:@} " ; 
+    for i = 0 to Array.length cmd.args - 1 do
+      Format.print_string cmd.args.(i);
+      Format.print_string Ext_string.single_space
+    done;
+    Format.print_newline ()
+let fail cmd =
+  Format.fprintf Format.err_formatter "@{<error>Failure:@} %s \n Location: %s@." cmd.cmd cmd.cwd
+let run_command_execv_unix  cmd =
   match Unix.fork () with 
   | 0 -> 
-    print_endline ( "* Entering " ^ cmd.cwd);
-    print_string "* " ; 
-    for i = 0 to Array.length cmd.args - 1 do
-      print_string cmd.args.(i);
-      print_string " "
-    done;
-    print_newline ();
-    Unix.chdir cmd.cwd;
-    Unix.execvp cmd.cmd cmd.args 
-  | pid -> 
-    match Unix.waitpid [] pid  with 
-    | pid, process_status ->       
-      match process_status with 
-      | Unix.WEXITED eid ->
-        if eid <> 0 then 
-          begin 
-            prerr_endline ("* Failure : " ^ cmd.cmd ^ "\n* Location: " ^ cmd.cwd);
-            exit eid
-          end
-      | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> 
-        begin 
-          prerr_endline (cmd.cmd ^ " interrupted");
-          exit 2 
-        end
-
-let run_command_execv cmd =
-  match Unix.fork () with 
-  | 0 -> 
-    print_endline ( "* Entering " ^ cmd.cwd);
-    print_string "* " ; 
-    for i = 0 to Array.length cmd.args - 1 do
-      print_string cmd.args.(i);
-      print_string " "
-    done;
-    print_newline ();
+    log cmd;
     Unix.chdir cmd.cwd;
     Unix.execv cmd.cmd cmd.args 
   | pid -> 
@@ -108,17 +55,54 @@ let run_command_execv cmd =
       | Unix.WEXITED eid ->
         if eid <> 0 then 
           begin 
-            prerr_endline ("* Failure : " ^ cmd.cmd ^ "\n* Location: " ^ cmd.cwd);
-            exit eid
-          end
+            fail cmd;
+            exit eid    
+          end;
       | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> 
         begin 
-          prerr_endline (cmd.cmd ^ " interrupted");
+          Format.fprintf Format.err_formatter "@{<error>Interrupted:@} %s@." cmd.cmd;
           exit 2 
         end        
-(*  
-let () = 
-  run_commands 
-    (Array.init 5 (fun i -> {cmd = "sleep"; args = [|"sleep"; "4" |]; cwd = "."})
-     |> Array.to_list)   
-*)     
+
+
+(** TODO: the args are not quoted, here 
+  we are calling a very limited set of `bsb` commands, so that 
+  we are safe
+*)
+let run_command_execv_win (cmd : command) =
+  let old_cwd = Unix.getcwd () in 
+  log cmd;
+  Unix.chdir cmd.cwd;
+  let eid =
+    Sys.command 
+      (String.concat Ext_string.single_space 
+                           ( Filename.quote cmd.cmd ::( List.tl  @@ Array.to_list cmd.args))) in 
+  if eid <> 0 then 
+    begin 
+      fail cmd;
+      exit eid    
+    end
+  else  begin 
+    print_endline ("* Leaving " ^ cmd.cwd ^ " into " ^ old_cwd );
+    Unix.chdir old_cwd
+  end
+
+
+let run_command_execv = 
+    if Ext_sys.is_windows_or_cygwin then 
+      run_command_execv_win
+    else run_command_execv_unix  
+(** it assume you have permissions, so always catch it to fail 
+    gracefully
+*)
+
+let rec remove_dir_recursive dir = 
+  if Sys.is_directory dir then 
+    begin 
+      let files = Sys.readdir dir in 
+      for i = 0 to Array.length files - 1 do 
+        remove_dir_recursive (Filename.concat dir (Array.unsafe_get files i))
+      done ;
+      Unix.rmdir dir 
+    end
+  else Sys.remove dir 

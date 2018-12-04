@@ -96,16 +96,37 @@ let map2i f a b =
   else
     Array.mapi (fun i a -> f i  a ( Array.unsafe_get b i )) a 
 
-let to_list_map f a =
-  let rec tolist i res =
+
+ let rec tolist_aux a f  i res =
     if i < 0 then res else
       let v = Array.unsafe_get a i in
-      tolist (i - 1)
+      tolist_aux a f  (i - 1)
         (match f v with
          | Some v -> v :: res
-         | None -> res) in
-  tolist (Array.length a - 1) []
+         | None -> res) 
 
+let to_list_map f a = 
+  tolist_aux a f (Array.length a - 1) []
+
+let to_list_map_acc f a acc = 
+  tolist_aux a f (Array.length a - 1) acc
+
+
+(* TODO: What would happen if [f] raise, memory leak? *)
+let of_list_map f a = 
+  match a with 
+  | [] -> [||]
+  | h::tl -> 
+    let hd = f h in 
+    let len = List.length tl + 1 in 
+    let arr = Array.make len hd  in
+    let rec fill i = function
+    | [] -> arr 
+    | hd :: tl -> 
+      Array.unsafe_set arr i (f hd); 
+      fill (i + 1) tl in 
+    fill 1 tl
+  
 (**
 {[
 # rfind_with_index [|1;2;3|] (=) 2;;
@@ -159,3 +180,7 @@ let exists p a =
     else if p (Array.unsafe_get a i) then true
     else loop (succ i) in
   loop 0
+
+
+let is_empty arr =
+  Array.length arr = 0

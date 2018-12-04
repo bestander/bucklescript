@@ -1,8 +1,8 @@
 'use strict';
 
-var Block    = require("../../lib/js/block");
-var Ext_list = require("./ext_list");
-var Mt       = require("./mt");
+var Mt       = require("./mt.js");
+var Block    = require("../../lib/js/block.js");
+var Ext_list = require("./ext_list.js");
 
 var suites_000 = /* tuple */[
   "drop",
@@ -75,8 +75,7 @@ var suites_001 = /* :: */[
                                     /* [] */0
                                   ]
                                 ];
-                        }
-                        else {
+                        } else {
                           return /* :: */[
                                   0,
                                   /* [] */0

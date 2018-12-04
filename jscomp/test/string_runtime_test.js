@@ -1,11 +1,10 @@
 'use strict';
 
-var Block       = require("../../lib/js/block");
-var Caml_string = require("../../lib/js/caml_string");
-var Caml_string = require("../../lib/js/caml_string");
-var Mt          = require("./mt");
-var Bytes       = require("../../lib/js/bytes");
-var List        = require("../../lib/js/list");
+var Mt          = require("./mt.js");
+var List        = require("../../lib/js/list.js");
+var Block       = require("../../lib/js/block.js");
+var Bytes       = require("../../lib/js/bytes.js");
+var Caml_string = require("../../lib/js/caml_string.js");
 
 var suites_000 = /* tuple */[
   "string_of_char_array",

@@ -22,23 +22,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
+(** Contains functionality for dealing with values that can be both [null] and [undefined] *)
+
 type + 'a t = 'a Js.null_undefined
-external to_opt : 'a t -> 'a option = "js_from_nullable_def"
+external to_opt : 'a t -> 'a option = "#null_undefined_to_opt"
 external return : 'a -> 'a t = "%identity"
-external test : 'a t -> bool =  "js_is_nil_undef"
+external test : 'a t -> bool =  "#is_nil_undef"
+external null : 'a t = "null" [@@bs.val]
+external undefined : 'a t = "undefined" [@@bs.val]
 external empty : 'a t = "undefined" [@@bs.val]
+[@@ocaml.deprecated "Please use `null` or `undefined` instead"]
 
 let bind x f =
   match to_opt x with
-  | None -> empty
-  | Some x -> return (f  x [@bs])
+  | None -> (Obj.magic (x: 'a t): 'b t)
+  | Some x -> return (f x [@bs])
 
 let iter x f =
-  match to_opt  x with
+  match to_opt x with
   | None -> ()
   | Some x -> f x [@bs]
 
 let from_opt x =
   match x with
-  | None -> empty
+  | None -> undefined
   | Some x -> return x

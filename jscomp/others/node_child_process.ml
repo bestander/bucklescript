@@ -22,9 +22,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
+(** Node Child Process API *)
+
 type option 
 
 external option : ?cwd:string -> ?encoding:string -> unit -> option = "" [@@bs.obj]
 
 (* TODO: when no option it would return buffer  *)
 external execSync : string -> option -> string = "" [@@bs.module "child_process"]
+
+(* Note we have to make it abstract type, since if you declare it as
+   [ < pid : float > Js.t ], then you will create other external
+   functions which will work with this type too, it is not what you want
+*)
+type spawnResult
+
+
+external spawnSync : string -> spawnResult = "" [@@bs.module "child_process"]
+
+external readAs : spawnResult -> 
+  < pid : int ; 
+    status : int Js.null;
+    signal : string Js.null ; 
+    stdout : Node.string_buffer Js.null ;
+    stderr : Node.string_buffer Js.null > Js.t = 
+  "%identity"

@@ -1,7 +1,7 @@
 include ../Makefile.shared
 
 CAMLC=../bin/bsc.exe
-
+BSPACK=../bin/bspack.exe
 INCLUDES= -I ../stdlib  -I ../runtime -I ../others/
 
 OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi test_scope \
@@ -67,11 +67,11 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	ppx_this_obj_field single_module_alias \
 	sexpm sexpm_test sexp js_json_test array_subtle_test  \
 	bytes_split_gpr_743_test module_splice_test hello.foo \
-	ffi_splice_test node_path_test js_string_test string_unicode_test node_fs_test\
+	ffi_splice_test node_path_test js_string_test js_array_test string_unicode_test node_fs_test\
 	flow_parser_reg_test	utf8_decode_test stream_parser_test condition_compilation_test semver_test update_record_test installation_test app_root_finder derive_projector_test\
 	gpr_904_test gpr_858_unit2_test inner_unused \
 	set_gen bal_tree string_set string_set_test \
-	math_test bal_set_mini gpr_974_test test_cpp\
+	js_math_test bal_set_mini gpr_974_test test_cpp\
 	global_module_alias_test class_fib_open_recursion_test\
 	topsort_test flexible_array_test\
 	gray_code_test alias_test\
@@ -79,19 +79,97 @@ OTHERS := literals a test_ari test_export2 test_internalOO test_obj_simple_ffi t
 	minimal_test\
 	gpr_1063_test\
 	gpr_977_test\
-	gpr_1072
+	gpr_1072\
+	submodule\
+	submodule_call\
+	side_effect\
+	side_effect_free\
+	include_side_effect_free\
+	include_side_effect\
+	exception_alias\
+	prepend_data_ffi\
+	gbk\
+	gpr_1072_reg\
+	gpr_1150\
+	gpr_1154_test\
+	obj_curry_test\
+	gpr_1170\
+	js_re_test\
+	js_dict_test\
+	name_mangle_test\
+	oo_js_test_date\
+	functor_ffi\
+	js_typed_array_test\
+	gpr_1240_missing_unbox\
+	js_null_undefined_test js_null_test js_undefined_test\
+	gpr_1268\
+	bs_auto_uncurry\
+	bs_auto_uncurry_test\
+	chn_test\
+	return_check\
+	bs_splice_partial\
+	gpr_return_type_unused_attribute\
+	test\
+	undef_regression2_test\
+	js_global_test\
+	js_float_test\
+	js_int_test\
+	bang_primitive\
+	compare_test\
+	js_cast_test\
+	gpr_1423_nav\
+	gpr_1423_app_test\
+	export_keyword\
+	key_word_property\
+	key_word_property2\
+	key_word_property_plus_test\
+	global_mangles\
+	gpr_1438\
+	unicode_type_error\
+	arity_deopt\
+	switch_case_test\
+	bb\
+	ocaml_parsetree_test\
+	ocaml_typedtree_test\
+	gpr_1484\
+	gpr_1481\
+	custom_error_test\
+	exception_rebound_err\
+	js_exception_catch_test\
+	gpr_1503_test\
+	gpr_1501_test\
+	exception_repr_test\
+	nested_pattern_match_test\
+	caml_sys_poly_fill_test\
+	argv_test\
+	promise_catch_test\
+	exception_rebind_test\
+	exception_def\
+	test_other_exn\
+	rebind_module\
+	rebind_module_test\
+	js_promise_basic_test\
+	exn_error_pattern\
+	string_interp_test\
+	gpr_1539_test\
+	webpack_config
+
+
+# bs_uncurry_test
+# needs Lam to get rid of Uncurry arity first
 
 
 
 
-SOURCE_LIST :=  $(OTHERS) 
+SOURCE_LIST :=  $(OTHERS)
 TESTS := $(addsuffix .cmj, $(SOURCE_LIST) )
 ## since we use ppx
-$(addsuffix .cmi, $(OTHERS)): ../runtime/js.cmi 
-$(addsuffix .cmj, $(OTHERS)): ../runtime/js.cmj 
+$(addsuffix .cmi, $(OTHERS)): ../runtime/js.cmi
+$(addsuffix .cmj, $(OTHERS)): ../runtime/js.cmj
 
-COMPFLAGS+=  $(MODULE_FLAGS) -w -40 
-COMPFLAGS+=  -bs-no-version-header -bs-diagnose -bs-cross-module-opt -bs-package-name  bs-platform
+# It is okay to test deprecated API
+COMPFLAGS+=  $(MODULE_FLAGS) -w -40 -warn-error A+8-3-30-26
+COMPFLAGS+=  -bs-no-version-header -bs-no-error-unused-attribute -bs-diagnose -bs-cross-module-opt -bs-package-name  bs-platform
 
 
 $(TESTS): $(CAMLC)
@@ -122,10 +200,13 @@ number_lexer.ml: number_lexer.mll
 	$(CAMLLEX) $<
 simple_lexer_test.ml: simple_lexer_test.mll
 	$(CAMLLEX) $<
+ocaml_parsetree_test.ml: ocaml_parsetree_main.ml
+	$(BSPACK) -bs-main Ocaml_parsetree_main -bs-MD  -I ../../ocaml/parsing/ -I ../../ocaml/utils/ -o $@
+
+ocaml_typedtree_test.ml: ocaml_typed_tree_main.ml
+	$(BSPACK) -bs-main Ocaml_typed_tree_main -bs-MD -I ../../ocaml/parsing/ -I ../../ocaml/utils/ -I ../../ocaml/typing/ -o $@
 
 -include .depend
 
 depend:
 	$(CAMLDEP) -native $(INCLUDES) *.mli *.ml | sed -e 's/\.cmx/.cmj/g' > .depend
-
-

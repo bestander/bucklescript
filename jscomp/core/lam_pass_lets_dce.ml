@@ -23,7 +23,7 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
       ->
       Ident_hashtbl.add subst v (simplif (Lam.var w));
       simplif l2
-    | Llet((Strict | StrictOpt as kind) ,
+    | Llet(Strict as kind,
            v, (Lprim {primitive = (Pmakeblock(0, tag_info, Mutable) 
                                    as primitive); 
                       args = [linit] ; loc}), lbody)
@@ -50,12 +50,14 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
         | {times = 1; captured = false }, _ 
         | {times = 1; captured = true }, (Lconst _ | Lvar _)
         |  _, (Lconst 
-                 (Const_base (
+                 ((
                      Const_int _ | Const_char _ | Const_float _ | Const_int32 _ 
                      | Const_nativeint _ )
                  | Const_pointer _ ) (* could be poly-variant [`A] -> [65a]*)
               | Lprim {primitive = Pfield (_);
-                       args = [Lprim {primitive = Pgetglobal _;  _}]}
+                       args = [ 
+                         Lglobal_module _
+                       ]}
               ) 
           (* Const_int64 is no longer primitive
              Note for some constant which is not 
@@ -64,33 +66,63 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
           *)
           ->
           Ident_hashtbl.add subst v (simplif l1); simplif l2
-        | _, Lconst (Const_base (Const_string (s,_)) ) -> 
+        | _, Lconst (Const_string s ) -> 
+          (** only "" added for later inlining *)
           Ident_hashtbl.add string_table v s;
           Lam.let_ Alias v l1 (simplif l2)
           (* we need move [simplif l2] later, since adding Hashtbl does have side effect *)
         | _ -> Lam.let_ Alias v (simplif l1) (simplif l2)
         (* for Alias, in most cases [l1] is already simplified *)
       end
-    | Llet(StrictOpt as kind, v, l1, l2) ->
+    | Llet(StrictOpt as kind, v, l1, lbody) ->
       (** can not be inlined since [l1] depend on the store
           {[
             let v = [|1;2;3|]
           ]}
           get [StrictOpt] here,  we can not inline v, 
           since the value of [v] can be changed
+          
+          GPR #1476 
+          Note to pass the sanitizer, we do need remove dead code (not just best effort)
+          This logic is tied to {!Lam_pass_count.count}
+          {[
+            if kind = Strict || used v then count bv l1
+          ]}
+          If the code which should be removed is not removed, it will hold references 
+          to other variables which is already removed.
       *)
       if not @@ used v 
-      then simplif l2
-      else 
-        let l1 = simplif l1 in         
+      then simplif lbody (* GPR #1476 *)
+      else
         begin match l1 with 
-        | Lconst(Const_base(Const_string(s,_))) -> 
-          Ident_hashtbl.add string_table v s; 
-          (* we need move [simplif l2] later, since adding Hashtbl does have side effect *)
-          Lam.let_ Alias v l1 (simplif l2)
+        | (Lprim {primitive = (Pmakeblock(0, tag_info, Mutable) 
+                                    as primitive); 
+                       args = [linit] ; loc})
+          -> 
+          let slinit = simplif linit in
+          let slbody = simplif lbody in
+          begin 
+            try (** TODO: record all references variables *)
+              Lam_util.refine_let
+                ~kind:Variable v slinit
+                (Lam_pass_eliminate_ref.eliminate_ref v slbody)
+            with Lam_pass_eliminate_ref.Real_reference ->
+              Lam_util.refine_let 
+                ~kind v (Lam.prim ~primitive ~args:[slinit] loc)
+                slbody
+          end
+
         | _ -> 
-          Lam_util.refine_let ~kind v l1 (simplif l2)
-        end  
+          let l1 = simplif l1 in         
+          begin match l1 with 
+            | Lconst(Const_string s) -> 
+              Ident_hashtbl.add string_table v s; 
+              (* we need move [simplif lbody] later, since adding Hashtbl does have side effect *)
+              Lam.let_ Alias v l1 (simplif lbody)
+            | _ -> 
+              Lam_util.refine_let ~kind v l1 (simplif lbody)
+          end  
+        end
     (* TODO: check if it is correct rollback to [StrictOpt]? *)
 
     | Llet((Strict | Variable as kind), v, l1, l2) -> 
@@ -105,7 +137,7 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
         let l1 = (simplif l1) in 
         
          begin match kind, l1 with 
-         | Strict, Lconst(Const_base(Const_string(s,_)))
+         | Strict, Lconst((Const_string s))
            -> 
             Ident_hashtbl.add string_table v s;
             Lam.let_ Alias v l1 (simplif l2)
@@ -122,21 +154,21 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
       else simplif l2
     | Lsequence(l1, l2) -> Lam.seq (simplif l1) (simplif l2)
 
-    | Lapply{fn = Lfunction{kind =  Curried; params; body};  args; _}
+    | Lapply{fn = Lfunction{function_kind =  Curried; params; body};  args; _}
       when  Ext_list.same_length params args ->
       simplif (Lam_beta_reduce.beta_reduce  params body args)
-    | Lapply{ fn = Lfunction{kind = Tupled; params; body};
-              args = [Lprim {primitive = Pmakeblock _;  args; _}]; _}
-      (** TODO: keep track of this parameter in ocaml trunk,
-          can we switch to the tupled backend?
-      *)
-      when  Ext_list.same_length params  args ->
-      simplif (Lam_beta_reduce.beta_reduce params body args)
+    (* | Lapply{ fn = Lfunction{function_kind = Tupled; params; body}; *)
+    (*           args = [Lprim {primitive = Pmakeblock _;  args; _}]; _} *)
+    (*   (\** TODO: keep track of this parameter in ocaml trunk, *)
+    (*       can we switch to the tupled backend? *)
+    (*   *\) *)
+    (*   when  Ext_list.same_length params  args -> *)
+    (*   simplif (Lam_beta_reduce.beta_reduce params body args) *)
 
     | Lapply{fn = l1;args =  ll; loc; status} -> 
       Lam.apply (simplif l1) (List.map simplif ll) loc status
-    | Lfunction{arity; kind; params; body = l} ->
-      Lam.function_ ~arity ~kind ~params ~body:(simplif l)
+    | Lfunction{arity; function_kind; params; body = l} ->
+      Lam.function_ ~arity ~function_kind ~params ~body:(simplif l)
     | Lconst _ -> lam
     | Lletrec(bindings, body) ->
       Lam.letrec 
@@ -148,7 +180,7 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
         let r' = simplif r in
         let opt_l = 
           match l' with 
-          | Lconst(Const_base(Const_string(ls,_))) -> Some ls 
+          | Lconst((Const_string ls)) -> Some ls 
           | Lvar i -> Ident_hashtbl.find_opt string_table i 
           | _ -> None in 
         match opt_l with   
@@ -156,13 +188,13 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
         | Some l_s -> 
           let opt_r = 
             match r' with 
-            | Lconst (Const_base (Const_string(rs,_))) -> Some rs 
+            | Lconst ( (Const_string rs)) -> Some rs 
             | Lvar i -> Ident_hashtbl.find_opt string_table i 
             | _ -> None in 
             begin match opt_r with 
             | None -> Lam.prim ~primitive:Pstringadd ~args:[l';r'] loc 
             | Some r_s -> 
-              Lam.const ((Const_base(Const_string(l_s^r_s, None))))
+              Lam.const (Const_string(l_s^r_s))
             end
       end
 
@@ -173,7 +205,7 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
       let r' = simplif r in 
       let opt_l =
          match l' with 
-         | Lconst (Const_base(Const_string(ls,_))) -> 
+         | Lconst (Const_string ls) -> 
             Some ls 
          | Lvar i -> Ident_hashtbl.find_opt string_table i 
          | _ -> None in 
@@ -181,14 +213,15 @@ let lets_helper (count_var : Ident.t -> Lam_pass_count.used_info) lam =
       | None -> Lam.prim ~primitive ~args:[l';r'] loc 
       | Some l_s -> 
         match r with 
-        |Lconst(Const_base(Const_int i)) -> 
+        |Lconst((Const_int i)) -> 
           if i < String.length l_s && i >=0  then
-            Lam.const (Const_base (Const_char l_s.[i]))
+            Lam.const ((Const_char l_s.[i]))
           else 
             Lam.prim ~primitive ~args:[l';r'] loc 
         | _ -> 
           Lam.prim ~primitive ~args:[l';r'] loc 
       end    
+    | Lglobal_module _ -> lam    
     | Lprim {primitive; args; loc} 
       -> Lam.prim ~primitive ~args:(List.map simplif args) loc
     | Lswitch(l, sw) ->
@@ -238,4 +271,7 @@ let apply_lets  occ lambda =
 
 let simplify_lets  (lam : Lam.t) = 
   let occ =  Lam_pass_count.collect_occurs  lam in 
+#if BS_DEBUG then 
+  Ext_log.dwarn "OCCTBL" "@[%a@]@." Lam_pass_count.pp_occ_tbl occ ;
+#end
   apply_lets  occ   lam

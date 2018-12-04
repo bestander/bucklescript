@@ -1,6 +1,6 @@
 'use strict';
 
-var Block = require("../../lib/js/block");
+var Block = require("../../lib/js/block.js");
 
 function collect_eq(test_id, suites, loc, x, y) {
   test_id[0] = test_id[0] + 1 | 0;
@@ -42,7 +42,7 @@ function collect_approx(test_id, suites, loc, x, y) {
     /* tuple */[
       loc + (" id " + test_id[0]),
       function () {
-        return /* Approx */Block.__(2, [
+        return /* Approx */Block.__(5, [
                   x,
                   y
                 ]);

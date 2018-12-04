@@ -1,10 +1,10 @@
 'use strict';
 
-var Int32       = require("../../lib/js/int32");
-var Caml_int32  = require("../../lib/js/caml_int32");
-var Block       = require("../../lib/js/block");
-var Caml_string = require("../../lib/js/caml_string");
-var Mt          = require("./mt");
+var Mt          = require("./mt.js");
+var Block       = require("../../lib/js/block.js");
+var Int32       = require("../../lib/js/int32.js");
+var Caml_int32  = require("../../lib/js/caml_int32.js");
+var Caml_string = require("../../lib/js/caml_string.js");
 
 function hash_variant(s) {
   var accu = 0;
@@ -13,8 +13,7 @@ function hash_variant(s) {
   }
   if (accu > 1073741823) {
     return accu - -2147483648 | 0;
-  }
-  else {
+  } else {
     return accu;
   }
 }
@@ -27,8 +26,7 @@ function hash_variant2(s) {
   accu = accu & 2147483647;
   if (accu > 1073741823) {
     return accu - -2147483648 | 0;
-  }
-  else {
+  } else {
     return accu;
   }
 }
@@ -36,8 +34,7 @@ function hash_variant2(s) {
 function fib(n) {
   if (n !== 0 && n !== 1) {
     return fib(n - 1 | 0) + fib(n - 2 | 0) | 0;
-  }
-  else {
+  } else {
     return 1;
   }
 }
@@ -104,7 +101,7 @@ Mt.from_pair_suites("int_overflow_test.ml", /* :: */[
                 ],
                 /* :: */[
                   /* tuple */[
-                    'File "int_overflow_test.ml", line 37, characters 2-9',
+                    "File \"int_overflow_test.ml\", line 37, characters 2-9",
                     function () {
                       return /* Eq */Block.__(0, [
                                 hash_variant2("xxyyzzuuxxzzyy00112233"),
@@ -114,7 +111,7 @@ Mt.from_pair_suites("int_overflow_test.ml", /* :: */[
                   ],
                   /* :: */[
                     /* tuple */[
-                      'File "int_overflow_test.ml", line 38, characters 2-9',
+                      "File \"int_overflow_test.ml\", line 38, characters 2-9",
                       function () {
                         return /* Eq */Block.__(0, [
                                   hash_variant2("xxyyzxzzyy"),
@@ -152,7 +149,40 @@ Mt.from_pair_suites("int_overflow_test.ml", /* :: */[
                                       ]);
                             }
                           ],
-                          /* [] */0
+                          /* :: */[
+                            /* tuple */[
+                              "int32_mul",
+                              function () {
+                                return /* Eq */Block.__(0, [
+                                          -33554431,
+                                          -33554431
+                                        ]);
+                              }
+                            ],
+                            /* :: */[
+                              /* tuple */[
+                                "File \"int_overflow_test.ml\", line 44, characters 3-10",
+                                function () {
+                                  return /* Eq */Block.__(0, [
+                                            Number("3") | 0,
+                                            3
+                                          ]);
+                                }
+                              ],
+                              /* :: */[
+                                /* tuple */[
+                                  "File \"int_overflow_test.ml\", line 46, characters 3-10",
+                                  function () {
+                                    return /* Eq */Block.__(0, [
+                                              Number("3.2") | 0,
+                                              3
+                                            ]);
+                                  }
+                                ],
+                                /* [] */0
+                              ]
+                            ]
+                          ]
                         ]
                       ]
                     ]

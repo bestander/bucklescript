@@ -1,36 +1,35 @@
 'use strict';
 
-var Char                    = require("../../lib/js/char");
-var Printf                  = require("../../lib/js/printf");
-var Caml_int32              = require("../../lib/js/caml_int32");
-var Block                   = require("../../lib/js/block");
-var Caml_bytes              = require("../../lib/js/caml_bytes");
-var Caml_string             = require("../../lib/js/caml_string");
-var Curry                   = require("../../lib/js/curry");
-var Sys                     = require("../../lib/js/sys");
-var Format                  = require("../../lib/js/format");
-var Caml_io                 = require("../../lib/js/caml_io");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var Printexc                = require("../../lib/js/printexc");
-var $$String                = require("../../lib/js/string");
-var Buffer                  = require("../../lib/js/buffer");
-var Bytes                   = require("../../lib/js/bytes");
-var Pervasives              = require("../../lib/js/pervasives");
-var List                    = require("../../lib/js/list");
+var Sys                     = require("../../lib/js/sys.js");
+var Char                    = require("../../lib/js/char.js");
+var List                    = require("../../lib/js/list.js");
+var Block                   = require("../../lib/js/block.js");
+var Bytes                   = require("../../lib/js/bytes.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Buffer                  = require("../../lib/js/buffer.js");
+var Format                  = require("../../lib/js/format.js");
+var Js_exn                  = require("../../lib/js/js_exn.js");
+var Printf                  = require("../../lib/js/printf.js");
+var $$String                = require("../../lib/js/string.js");
+var Caml_io                 = require("../../lib/js/caml_io.js");
+var Printexc                = require("../../lib/js/printexc.js");
+var Caml_bytes              = require("../../lib/js/caml_bytes.js");
+var Caml_int32              = require("../../lib/js/caml_int32.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_string             = require("../../lib/js/caml_string.js");
+var Caml_missing_polyfill   = require("../../lib/js/caml_missing_polyfill.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function _with_in(filename, f) {
   var ic = Pervasives.open_in_bin(filename);
   try {
     var x = Curry._1(f, ic);
-    (function () {
-          throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-        }());
+    Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
     return x;
   }
-  catch (e){
-    (function () {
-          throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-        }());
+  catch (raw_e){
+    var e = Js_exn.internalToOCamlException(raw_e);
+    Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
     return /* `Error */[
             106380200,
             Printexc.to_string(e)
@@ -47,16 +46,13 @@ function _must_escape(s) {
         if (c !== 59) {
           if (c !== 92) {
             exit = 1;
-          }
-          else {
+          } else {
             throw Pervasives.Exit;
           }
-        }
-        else {
+        } else {
           throw Pervasives.Exit;
         }
-      }
-      else if (c >= 11) {
+      } else if (c >= 11) {
         if (c >= 32) {
           switch (c - 32 | 0) {
             case 1 : 
@@ -74,15 +70,12 @@ function _must_escape(s) {
                 throw Pervasives.Exit;
             
           }
-        }
-        else {
+        } else {
           exit = 1;
         }
-      }
-      else if (c >= 9) {
+      } else if (c >= 9) {
         throw Pervasives.Exit;
-      }
-      else {
+      } else {
         exit = 1;
       }
       if (exit === 1) {
@@ -98,8 +91,7 @@ function _must_escape(s) {
   catch (exn){
     if (exn === Pervasives.Exit) {
       return /* true */1;
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -118,8 +110,7 @@ function to_buf(b, t) {
               return to_buf(b, t$prime);
             }, l);
         return Buffer.add_char(b, /* ")" */41);
-      }
-      else {
+      } else {
         return Curry._2(Printf.bprintf(b, /* Format */[
                         /* Char_literal */Block.__(12, [
                             /* "(" */40,
@@ -131,12 +122,10 @@ function to_buf(b, t) {
                         "(%a)"
                       ]), to_buf, l[0]);
       }
-    }
-    else {
+    } else {
       return Buffer.add_string(b, "()");
     }
-  }
-  else {
+  } else {
     var s = t[1];
     if (_must_escape(s)) {
       return Curry._1(Printf.bprintf(b, /* Format */[
@@ -150,10 +139,9 @@ function to_buf(b, t) {
                                 ])
                             ])
                         ]),
-                      '"%s"'
+                      "\"%s\""
                     ]), $$String.escaped(s));
-    }
-    else {
+    } else {
       return Buffer.add_string(b, s);
     }
   }
@@ -212,8 +200,7 @@ function print(fmt, t) {
                       ]),
                     ")@]"
                   ]);
-      }
-      else {
+      } else {
         return Curry._2(Format.fprintf(fmt, /* Format */[
                         /* Formatting_gen */Block.__(18, [
                             /* Open_box */Block.__(1, [/* Format */[
@@ -237,12 +224,10 @@ function print(fmt, t) {
                         "@[<hov2>(%a)@]"
                       ]), print, l[0]);
       }
-    }
-    else {
+    } else {
       return Format.pp_print_string(fmt, "()");
     }
-  }
-  else {
+  } else {
     var s = t[1];
     if (_must_escape(s)) {
       return Curry._1(Format.fprintf(fmt, /* Format */[
@@ -256,10 +241,9 @@ function print(fmt, t) {
                                 ])
                             ])
                         ]),
-                      '"%s"'
+                      "\"%s\""
                     ]), $$String.escaped(s));
-    }
-    else {
+    } else {
       return Format.pp_print_string(fmt, s);
     }
   }
@@ -278,8 +262,7 @@ function print_noindent(fmt, t) {
               return print_noindent(fmt, t$prime);
             }, l);
         return Format.pp_print_char(fmt, /* ")" */41);
-      }
-      else {
+      } else {
         return Curry._2(Format.fprintf(fmt, /* Format */[
                         /* Char_literal */Block.__(12, [
                             /* "(" */40,
@@ -291,12 +274,10 @@ function print_noindent(fmt, t) {
                         "(%a)"
                       ]), print_noindent, l[0]);
       }
-    }
-    else {
+    } else {
       return Format.pp_print_string(fmt, "()");
     }
-  }
-  else {
+  } else {
     var s = t[1];
     if (_must_escape(s)) {
       return Curry._1(Format.fprintf(fmt, /* Format */[
@@ -310,10 +291,9 @@ function print_noindent(fmt, t) {
                                 ])
                             ])
                         ]),
-                      '"%s"'
+                      "\"%s\""
                     ]), $$String.escaped(s));
-    }
-    else {
+    } else {
       return Format.pp_print_string(fmt, s);
     }
   }
@@ -337,16 +317,12 @@ function to_file_seq(filename, seq) {
   try {
     var x = Curry._1(f, oc);
     Caml_io.caml_ml_flush(oc);
-    (function () {
-          throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-        }());
+    Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
     return x;
   }
   catch (e){
     Caml_io.caml_ml_flush(oc);
-    (function () {
-          throw "caml_ml_close_channel not implemented by bucklescript yet\n";
-        }());
+    Caml_missing_polyfill.not_implemented("caml_ml_close_channel not implemented by bucklescript yet\n");
     throw e;
   }
 }
@@ -387,8 +363,7 @@ function make($staropt$star, refill) {
 function _is_digit(c) {
   if (/* "0" */48 <= c) {
     return +(c <= /* "9" */57);
-  }
-  else {
+  } else {
     return /* false */0;
   }
 }
@@ -399,8 +374,7 @@ function _refill(t, k_succ, k_fail) {
   t[/* len */4] = n;
   if (n) {
     return Curry._1(k_succ, t);
-  }
-  else {
+  } else {
     return Curry._1(k_fail, t);
   }
 }
@@ -421,8 +395,7 @@ function _get(t) {
   if (c === /* "\n" */10) {
     t[/* col */6] = 1;
     t[/* line */5] = t[/* line */5] + 1 | 0;
-  }
-  else {
+  } else {
     t[/* col */6] = t[/* col */6] + 1 | 0;
   }
   return c;
@@ -478,23 +451,19 @@ function expr(k, t) {
       return _refill(t, function (param) {
                   return expr(k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       if (c >= 11) {
         if (c !== 32) {
           return expr_starting_with(c, k, t);
-        }
-        else {
+        } else {
           continue ;
           
         }
-      }
-      else if (c >= 9) {
+      } else if (c >= 9) {
         continue ;
         
-      }
-      else {
+      } else {
         return expr_starting_with(c, k, t);
       }
     }
@@ -507,8 +476,7 @@ function expr_starting_with(c, k, t) {
     if (c !== 59) {
       if (c !== 92) {
         exit = 1;
-      }
-      else {
+      } else {
         return _error(t, /* Format */[
                     /* String_literal */Block.__(11, [
                         "unexpected '\\'",
@@ -517,14 +485,12 @@ function expr_starting_with(c, k, t) {
                     "unexpected '\\'"
                   ]);
       }
-    }
-    else {
+    } else {
       return skip_comment(function (_, _$1) {
                   return expr(k, t);
                 }, t);
     }
-  }
-  else if (c >= 11) {
+  } else if (c >= 11) {
     if (c >= 32) {
       switch (c - 32 | 0) {
         case 0 : 
@@ -552,12 +518,10 @@ function expr_starting_with(c, k, t) {
                       ]);
         
       }
-    }
-    else {
+    } else {
       exit = 1;
     }
-  }
-  else {
+  } else {
     exit = c >= 9 ? 2 : 1;
   }
   switch (exit) {
@@ -583,27 +547,23 @@ function expr_list(acc, k, t) {
       return _refill(t, function (param) {
                   return expr_list(acc, k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       var exit = 0;
       var switcher = c - 9 | 0;
       if (switcher > 23 || switcher < 0) {
         if (switcher !== 32) {
           exit = 1;
-        }
-        else {
+        } else {
           return Curry._2(k, /* None */0, /* `List */[
                       848054398,
                       List.rev(acc)
                     ]);
         }
-      }
-      else if (switcher > 22 || switcher < 2) {
+      } else if (switcher > 22 || switcher < 2) {
         continue ;
         
-      }
-      else {
+      } else {
         exit = 1;
       }
       if (exit === 1) {
@@ -614,8 +574,7 @@ function expr_list(acc, k, t) {
                       if (match !== 40) {
                         if (match !== 41) {
                           exit = 1;
-                        }
-                        else {
+                        } else {
                           return Curry._2(k, /* None */0, /* `List */[
                                       848054398,
                                       List.rev(/* :: */[
@@ -624,8 +583,7 @@ function expr_list(acc, k, t) {
                                           ])
                                     ]);
                         }
-                      }
-                      else {
+                      } else {
                         return expr_list(/* [] */0, function (_, l) {
                                     return expr_list(/* :: */[
                                                 l,
@@ -633,8 +591,7 @@ function expr_list(acc, k, t) {
                                               ], k, t);
                                   }, t);
                       }
-                    }
-                    else {
+                    } else {
                       exit = 1;
                     }
                     if (exit === 1) {
@@ -668,16 +625,14 @@ function atom(k, t) {
                 }, function (param) {
                   return _return_atom(/* None */0, k, param);
                 });
-    }
-    else {
+    } else {
       var c = _get(t);
       var exit = 0;
       if (c >= 35) {
         if (c >= 42) {
           if (c !== 92) {
             exit = 1;
-          }
-          else {
+          } else {
             return _error(t, /* Format */[
                         /* String_literal */Block.__(11, [
                             "unexpected '\\' in non-quoted string",
@@ -686,12 +641,10 @@ function atom(k, t) {
                         "unexpected '\\' in non-quoted string"
                       ]);
           }
-        }
-        else {
+        } else {
           exit = c >= 40 ? 2 : 1;
         }
-      }
-      else if (c >= 11) {
+      } else if (c >= 11) {
         if (c >= 32) {
           switch (c - 32 | 0) {
             case 0 : 
@@ -710,12 +663,10 @@ function atom(k, t) {
                           ]);
             
           }
-        }
-        else {
+        } else {
           exit = 1;
         }
-      }
-      else {
+      } else {
         exit = c >= 9 ? 2 : 1;
       }
       switch (exit) {
@@ -736,22 +687,19 @@ function quoted(k, t) {
       return _refill(t, function (param) {
                   return quoted(k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       var exit = 0;
       if (c !== 34) {
         if (c !== 92) {
           exit = 1;
-        }
-        else {
+        } else {
           return escaped(function (c) {
                       Buffer.add_char(t[/* atom */2], c);
                       return quoted(k, t);
                     }, t);
         }
-      }
-      else {
+      } else {
         return _return_atom(/* None */0, k, t);
       }
       if (exit === 1) {
@@ -769,16 +717,14 @@ function escaped(k, t) {
     return _refill(t, function (param) {
                 return escaped(k, param);
               }, _error_eof);
-  }
-  else {
+  } else {
     var c = _get(t);
     var exit = 0;
     var exit$1 = 0;
     if (c >= 92) {
       if (c >= 117) {
         exit$1 = 2;
-      }
-      else {
+      } else {
         switch (c - 92 | 0) {
           case 0 : 
               return Curry._1(k, /* "\\" */92);
@@ -815,11 +761,9 @@ function escaped(k, t) {
           
         }
       }
-    }
-    else if (c !== 34) {
+    } else if (c !== 34) {
       exit$1 = 2;
-    }
-    else {
+    } else {
       return Curry._1(k, /* "\"" */34);
     }
     if (exit$1 === 2) {
@@ -827,8 +771,7 @@ function escaped(k, t) {
         return read2int(c - /* "0" */48 | 0, function (n) {
                     return Curry._1(k, Char.chr(n));
                   }, t);
-      }
-      else {
+      } else {
         exit = 1;
       }
     }
@@ -853,13 +796,11 @@ function read2int(i, k, t) {
     return _refill(t, function (param) {
                 return read2int(i, k, param);
               }, _error_eof);
-  }
-  else {
+  } else {
     var c = _get(t);
     if (_is_digit(c)) {
       return read1int(Caml_int32.imul(10, i) + (c - /* "0" */48 | 0) | 0, k, t);
-    }
-    else {
+    } else {
       return Curry._1(_error(t, /* Format */[
                       /* String_literal */Block.__(11, [
                           "unexpected char '",
@@ -879,13 +820,11 @@ function read1int(i, k, t) {
     return _refill(t, function (param) {
                 return read1int(i, k, param);
               }, _error_eof);
-  }
-  else {
+  } else {
     var c = _get(t);
     if (_is_digit(c)) {
       return Curry._1(k, Caml_int32.imul(10, i) + (c - /* "0" */48 | 0) | 0);
-    }
-    else {
+    } else {
       return Curry._1(_error(t, /* Format */[
                       /* String_literal */Block.__(11, [
                           "unexpected char '",
@@ -906,14 +845,12 @@ function skip_comment(k, t) {
       return _refill(t, function (param) {
                   return skip_comment(k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var match = _get(t);
       if (match !== 10) {
         continue ;
         
-      }
-      else {
+      } else {
         return Curry._2(k, /* None */0, /* () */0);
       }
     }
@@ -928,23 +865,19 @@ function expr_or_end(k, t) {
                 }, function () {
                   return /* End */3455931;
                 });
-    }
-    else {
+    } else {
       var c = _get(t);
       if (c >= 11) {
         if (c !== 32) {
           return expr_starting_with(c, k, t);
-        }
-        else {
+        } else {
           continue ;
           
         }
-      }
-      else if (c >= 9) {
+      } else if (c >= 9) {
         continue ;
         
-      }
-      else {
+      } else {
         return expr_starting_with(c, k, t);
       }
     }
@@ -966,8 +899,7 @@ function parse_string(s) {
   var refill = function (bytes, i, _) {
     if (stop[0]) {
       return 0;
-    }
-    else {
+    } else {
       stop[0] = /* true */1;
       Bytes.blit_string(s, 0, bytes, i, n);
       return n;
@@ -980,8 +912,7 @@ function parse_string(s) {
             106380200,
             "unexpected end of file"
           ];
-  }
-  else {
+  } else {
     return res;
   }
 }
@@ -996,8 +927,7 @@ function parse_chan(bufsize, ic) {
             106380200,
             "unexpected end of file"
           ];
-  }
-  else {
+  } else {
     return res;
   }
 }
@@ -1010,11 +940,7 @@ function parse_chan_gen(bufsize, ic) {
     var e = next(d);
     if (typeof e === "number") {
       return /* None */0;
-    }
-    else if (e[0] >= 106380200) {
-      return /* Some */[e];
-    }
-    else {
+    } else {
       return /* Some */[e];
     }
   };
@@ -1033,11 +959,9 @@ function parse_chan_list(bufsize, ic) {
               17724,
               List.rev(acc)
             ];
-    }
-    else if (e[0] >= 106380200) {
+    } else if (e[0] >= 106380200) {
       return e;
-    }
-    else {
+    } else {
       _acc = /* :: */[
         e[1],
         acc
@@ -1078,8 +1002,7 @@ function MakeDecode(funarg) {
   var _is_digit = function (c) {
     if (/* "0" */48 <= c) {
       return +(c <= /* "9" */57);
-    }
-    else {
+    } else {
       return /* false */0;
     }
   };
@@ -1089,8 +1012,7 @@ function MakeDecode(funarg) {
                 t[/* len */4] = n;
                 if (n) {
                   return Curry._1(k_succ, t);
-                }
-                else {
+                } else {
                   return Curry._1(k_fail, t);
                 }
               });
@@ -1111,8 +1033,7 @@ function MakeDecode(funarg) {
     if (c === /* "\n" */10) {
       t[/* col */6] = 1;
       t[/* line */5] = t[/* line */5] + 1 | 0;
-    }
-    else {
+    } else {
       t[/* col */6] = t[/* col */6] + 1 | 0;
     }
     return c;
@@ -1165,23 +1086,19 @@ function MakeDecode(funarg) {
         return _refill(t, function (param) {
                     return expr(k, param);
                   }, _error_eof);
-      }
-      else {
+      } else {
         var c = _get(t);
         if (c >= 11) {
           if (c !== 32) {
             return expr_starting_with(c, k, t);
-          }
-          else {
+          } else {
             continue ;
             
           }
-        }
-        else if (c >= 9) {
+        } else if (c >= 9) {
           continue ;
           
-        }
-        else {
+        } else {
           return expr_starting_with(c, k, t);
         }
       }
@@ -1193,8 +1110,7 @@ function MakeDecode(funarg) {
       if (c !== 59) {
         if (c !== 92) {
           exit = 1;
-        }
-        else {
+        } else {
           return _error(t, /* Format */[
                       /* String_literal */Block.__(11, [
                           "unexpected '\\'",
@@ -1203,14 +1119,12 @@ function MakeDecode(funarg) {
                       "unexpected '\\'"
                     ]);
         }
-      }
-      else {
+      } else {
         return skip_comment(function (_, _$1) {
                     return expr(k, t);
                   }, t);
       }
-    }
-    else if (c >= 11) {
+    } else if (c >= 11) {
       if (c >= 32) {
         switch (c - 32 | 0) {
           case 0 : 
@@ -1238,12 +1152,10 @@ function MakeDecode(funarg) {
                         ]);
           
         }
-      }
-      else {
+      } else {
         exit = 1;
       }
-    }
-    else {
+    } else {
       exit = c >= 9 ? 2 : 1;
     }
     switch (exit) {
@@ -1268,27 +1180,23 @@ function MakeDecode(funarg) {
         return _refill(t, function (param) {
                     return expr_list(acc, k, param);
                   }, _error_eof);
-      }
-      else {
+      } else {
         var c = _get(t);
         var exit = 0;
         var switcher = c - 9 | 0;
         if (switcher > 23 || switcher < 0) {
           if (switcher !== 32) {
             exit = 1;
-          }
-          else {
+          } else {
             return Curry._2(k, /* None */0, /* `List */[
                         848054398,
                         List.rev(acc)
                       ]);
           }
-        }
-        else if (switcher > 22 || switcher < 2) {
+        } else if (switcher > 22 || switcher < 2) {
           continue ;
           
-        }
-        else {
+        } else {
           exit = 1;
         }
         if (exit === 1) {
@@ -1299,8 +1207,7 @@ function MakeDecode(funarg) {
                         if (match !== 40) {
                           if (match !== 41) {
                             exit = 1;
-                          }
-                          else {
+                          } else {
                             return Curry._2(k, /* None */0, /* `List */[
                                         848054398,
                                         List.rev(/* :: */[
@@ -1309,8 +1216,7 @@ function MakeDecode(funarg) {
                                             ])
                                       ]);
                           }
-                        }
-                        else {
+                        } else {
                           return expr_list(/* [] */0, function (_, l) {
                                       return expr_list(/* :: */[
                                                   l,
@@ -1318,8 +1224,7 @@ function MakeDecode(funarg) {
                                                 ], k, t);
                                     }, t);
                         }
-                      }
-                      else {
+                      } else {
                         exit = 1;
                       }
                       if (exit === 1) {
@@ -1351,16 +1256,14 @@ function MakeDecode(funarg) {
                   }, function (param) {
                     return _return_atom(/* None */0, k, param);
                   });
-      }
-      else {
+      } else {
         var c = _get(t);
         var exit = 0;
         if (c >= 35) {
           if (c >= 42) {
             if (c !== 92) {
               exit = 1;
-            }
-            else {
+            } else {
               return _error(t, /* Format */[
                           /* String_literal */Block.__(11, [
                               "unexpected '\\' in non-quoted string",
@@ -1369,12 +1272,10 @@ function MakeDecode(funarg) {
                           "unexpected '\\' in non-quoted string"
                         ]);
             }
-          }
-          else {
+          } else {
             exit = c >= 40 ? 2 : 1;
           }
-        }
-        else if (c >= 11) {
+        } else if (c >= 11) {
           if (c >= 32) {
             switch (c - 32 | 0) {
               case 0 : 
@@ -1393,12 +1294,10 @@ function MakeDecode(funarg) {
                             ]);
               
             }
-          }
-          else {
+          } else {
             exit = 1;
           }
-        }
-        else {
+        } else {
           exit = c >= 9 ? 2 : 1;
         }
         switch (exit) {
@@ -1418,22 +1317,19 @@ function MakeDecode(funarg) {
         return _refill(t, function (param) {
                     return quoted(k, param);
                   }, _error_eof);
-      }
-      else {
+      } else {
         var c = _get(t);
         var exit = 0;
         if (c !== 34) {
           if (c !== 92) {
             exit = 1;
-          }
-          else {
+          } else {
             return escaped(function (c) {
                         Buffer.add_char(t[/* atom */2], c);
                         return quoted(k, t);
                       }, t);
           }
-        }
-        else {
+        } else {
           return _return_atom(/* None */0, k, t);
         }
         if (exit === 1) {
@@ -1450,16 +1346,14 @@ function MakeDecode(funarg) {
       return _refill(t, function (param) {
                   return escaped(k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       var exit = 0;
       var exit$1 = 0;
       if (c >= 92) {
         if (c >= 117) {
           exit$1 = 2;
-        }
-        else {
+        } else {
           switch (c - 92 | 0) {
             case 0 : 
                 return Curry._1(k, /* "\\" */92);
@@ -1496,11 +1390,9 @@ function MakeDecode(funarg) {
             
           }
         }
-      }
-      else if (c !== 34) {
+      } else if (c !== 34) {
         exit$1 = 2;
-      }
-      else {
+      } else {
         return Curry._1(k, /* "\"" */34);
       }
       if (exit$1 === 2) {
@@ -1508,8 +1400,7 @@ function MakeDecode(funarg) {
           return read2int(c - /* "0" */48 | 0, function (n) {
                       return Curry._1(k, Char.chr(n));
                     }, t);
-        }
-        else {
+        } else {
           exit = 1;
         }
       }
@@ -1533,13 +1424,11 @@ function MakeDecode(funarg) {
       return _refill(t, function (param) {
                   return read2int(i, k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       if (_is_digit(c)) {
         return read1int(Caml_int32.imul(10, i) + (c - /* "0" */48 | 0) | 0, k, t);
-      }
-      else {
+      } else {
         return Curry._1(_error(t, /* Format */[
                         /* String_literal */Block.__(11, [
                             "unexpected char '",
@@ -1558,13 +1447,11 @@ function MakeDecode(funarg) {
       return _refill(t, function (param) {
                   return read1int(i, k, param);
                 }, _error_eof);
-    }
-    else {
+    } else {
       var c = _get(t);
       if (_is_digit(c)) {
         return Curry._1(k, Caml_int32.imul(10, i) + (c - /* "0" */48 | 0) | 0);
-      }
-      else {
+      } else {
         return Curry._1(_error(t, /* Format */[
                         /* String_literal */Block.__(11, [
                             "unexpected char '",
@@ -1584,14 +1471,12 @@ function MakeDecode(funarg) {
         return _refill(t, function (param) {
                     return skip_comment(k, param);
                   }, _error_eof);
-      }
-      else {
+      } else {
         var match = _get(t);
         if (match !== 10) {
           continue ;
           
-        }
-        else {
+        } else {
           return Curry._2(k, /* None */0, /* () */0);
         }
       }
@@ -1605,23 +1490,19 @@ function MakeDecode(funarg) {
                   }, function () {
                     return Curry._1(funarg[/* return */0], /* End */3455931);
                   });
-      }
-      else {
+      } else {
         var c = _get(t);
         if (c >= 11) {
           if (c !== 32) {
             return expr_starting_with(c, k, t);
-          }
-          else {
+          } else {
             continue ;
             
           }
-        }
-        else if (c >= 9) {
+        } else if (c >= 9) {
           continue ;
           
-        }
-        else {
+        } else {
           return expr_starting_with(c, k, t);
         }
       }

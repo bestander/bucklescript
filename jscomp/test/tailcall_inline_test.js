@@ -1,9 +1,9 @@
 'use strict';
 
-var Block      = require("../../lib/js/block");
-var $$Array    = require("../../lib/js/array");
-var Mt         = require("./mt");
-var Caml_array = require("../../lib/js/caml_array");
+var Mt         = require("./mt.js");
+var $$Array    = require("../../lib/js/array.js");
+var Block      = require("../../lib/js/block.js");
+var Caml_array = require("../../lib/js/caml_array.js");
 
 function f() {
   var f$1 = function (_acc, _n) {
@@ -15,15 +15,14 @@ function f() {
         _acc = acc + n | 0;
         continue ;
         
-      }
-      else {
+      } else {
         return acc;
       }
     };
   };
   var v = Caml_array.caml_make_vect(10, 0);
   for(var i = 0; i <= 9; ++i){
-    v[i] = f$1(0, i);
+    Caml_array.caml_array_set(v, i, f$1(0, i));
   }
   return v;
 }

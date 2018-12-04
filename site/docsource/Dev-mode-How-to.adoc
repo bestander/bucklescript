@@ -1,8 +1,8 @@
 ## Contributions
 
-First, thanks for your interest in contribution,
-there are plenty of ways in contributions, like blogging, sharing your experience,
-open sourcing your libraries using BuckleScript, they are all deeply appreciated.
+First, thanks for your interest in contributing!
+There are plenty of ways to make contributions, like blogging, sharing your experience,
+open sourcing your libraries using BuckleScript. They are all deeply appreciated.
 
 This section will focus on how to contribute to this repo.
 
@@ -28,15 +28,15 @@ change `j.ml` (most likely you won't), so you probably don't need it
 The build target is
 [source,sh]
 -----------
-make bin/bsb.exe
+make -C bin bsb.exe
 -----------
 
 So whenever you change files relevant to the build tool `bsb.exe`, try it and do some
-test, if it works, send a pull request!
+test. If it works, send a pull request!
 
 
 Note that for most binaries in BuckleScript, we also have a **release mode**, which will pack
-all relevant files into a single file, this is important, since it will cut all our dev-dependencies,
+all relevant files into a single file. This is important, since it will cut all our dev-dependencies,
 so the user does not need install those tools.
 
 
@@ -46,14 +46,14 @@ You can verify it by typing
 make snapshotml # see the diffs in jscomp/bin
 ----------
 
-But please **don't commit** those changes in PR, it will cause painful merge conflicts
+But please **don't commit** those changes in PR, it will cause painful merge conflicts.
 
 
 ### Contributing to `bsc.exe`
 
 [source,sh]
 -----------
-make bin/bsc.exe # build the compiler in dev mode
+make -C bin bsc.exe # build the compiler in dev mode
 -----------
 
 [source,sh]
@@ -69,7 +69,7 @@ make snapshotml
 ----------
 
 This will actually snapshot your changes into a single ml file and used in npm distribution.
-But please **don't commit** those changes in PR, it will cause painful merge conflicts
+But please **don't commit** those changes in PR, it will cause painful merge conflicts.
 
 ### Contributing to the runtime
 
@@ -97,7 +97,7 @@ For example some simple tests would be like:
 --------------
 let suites : _ Mt.pair_suites =
    ["hey", (fun _ -> Eq(true, 3 > 2));
-       "hi", (fun _ ->  Neq(2,3));
+       "hi", (fun _ -> Neq(2,3));
        "hello", (fun _ -> Approx(3.0, 3.0));
        "throw", (fun _ -> ThrowAny(fun _ -> raise 3))
        ]
@@ -110,6 +110,39 @@ Suppose you have mocha installed, if not, try `npm install mocha`
 
 `mocha -R list jscomp/test/your_test_file.js`
 
+To build libs, tests and run all tests:
+
+`make libs && make -C test all && npm test`
+
 * See the coverage
 
 `npm run cover`
+
+### Contributing to the documentation
+
+You'll need http://asciidoctor.org/[Asciidoctor] installed. Modify the section you want in `site/docsource/`, then run `site/docsource/build.sh`.
+
+### Contributing to the API reference
+
+The API reference is generated from doc comments in the source code. Here's a good example: https://github.com/bloomberg/bucklescript/blob/master/jscomp/others/js_re.mli#L146-L161
+
+Some tips and guidelines:
+
+* The first sentence or line should be a very short summary. This is used in indexes and by tools like merlin.
+* Ideally, every function should have *at least one* `@example`
+* Cross-reference another definition with `{! identifier}`. But use them sparingly, they're a bit verbose (currently, at least).
+* Wrap non-cross-referenced identifiers and other code in `[ ... ]`
+* Escape `{`, `}`, `[`, `]` and `@` using `\`
+* It's possible to use `{%html ...}` to generate custom html, but use this very, very sparingly.
+* A number of "documentation tags" are provided that would be nice to use, but unfortunately they're often not supported for `external`s. Which is of course most of the API.
+* `@param` usually doesn't work. Use `{b <param>} ...` instead
+* `@returns` usually doesn't work. Use `{b returns} ...` instead.
+* Always use `@deprecated` when applicable.
+* Always use `@raise` when applicable.
+* Always provide a `@see` tag pointing to MDN for more information when available.
+
+See http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html#sec333[Ocamldoc documentation] for a lot more details.
+
+To generate the html, run `make docs` in `jscomp/`.
+
+Html generation uses a custom generator located in `odoc_gen/` and custom styles located in `docs/api_static`.

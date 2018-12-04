@@ -27,13 +27,14 @@ type public =
   | Export_set of String_set.t 
   | Export_none
     
+type dir_index = int 
 
 type  file_group = 
-  { dir : string ;
-    sources : Binary_cache.t ; 
-    resources : string list ;
-    bs_dependencies : string list;
-    public : public
+  { dir : string ; (* currently relative path expected for ninja file generation *)
+    sources : Binary_cache.file_group_rouces ; 
+    resources : string list ; (* relative path *)
+    public : public;
+    dir_index : dir_index; 
   } 
 
 type t = 
@@ -42,15 +43,27 @@ type t =
     globbed_dirs : string list ; 
   }
 
+val lib_dir_index : dir_index 
 
-val parsing_source : 
-  string -> Ext_json.t String_map.t -> t
+val get_current_number_of_dev_groups : unit -> int 
+
+type parsing_cxt = {
+  no_dev : bool ;
+  dir_index : dir_index ; 
+  cwd : string ;
+  root : string 
+}
+
 
 (** entry is to the 
     [sources] in the schema
+
+    [parsing_sources cxt json]
+    given a root, return an object which is
+    all relative paths, this function will do the IO
 *)
 val parsing_sources : 
-  string -> 
-  Ext_json.t array ->
+  parsing_cxt ->
+  Ext_json_types.t  ->
   t 
   

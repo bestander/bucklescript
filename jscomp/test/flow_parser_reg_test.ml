@@ -13322,7 +13322,7 @@ module Flow_parser_js
  *
  *)
 
-external createRegex : string -> string -> _ = "RegExp" [@@bs.new]
+external createRegex : string -> string -> 'a = "RegExp" [@@bs.new]
 
 module JsTranslator : sig
   val translation_errors: (Loc.t * Parse_error.t) list ref
@@ -13351,7 +13351,7 @@ end = struct
     regexp
 end
 
-external throw : _ -> _ = "throw" [@@bs.val]
+external throw : 'a -> 'b = "throw" [@@bs.val]
 
 (* let parse_options jsopts = Parser_env.(
   let opts = default_parse_options in
@@ -13384,9 +13384,9 @@ external throw : _ -> _ = "throw" [@@bs.val]
   opts
 ) *)
 
-external setRetErrors : _ -> string -> _ -> unit = "" [@@bs.set_index]
-external setEName : _ -> string -> _ -> unit = "" [@@bs.set_index]
-external newError : _ -> _ = "Error" [@@bs.new]
+external setRetErrors : 'a -> string -> 'b -> unit = "" [@@bs.set_index]
+external setEName : 'a -> string -> 'b -> unit = "" [@@bs.set_index]
+external newError : 'a -> 'b = "Error" [@@bs.new]
 
 let parse content options =
   (* let parse_options = Some (parse_options options) in *)
@@ -13417,12 +13417,14 @@ let eq loc x y =
     (loc ^" id " ^ (string_of_int !test_id), (fun _ -> Mt.Eq(x,y))) :: !suites
 
 let v = 
-  Js.Undefined.bind [%node __dirname] begin fun [@bs] f -> 
+  match [%node __dirname] with
+  | Some f -> 
     let f =  Node.Path.join [|f; "flow_parser_sample.js"|] in
     let v : < range : int * int; ..> Js.t = 
       (Obj.magic (Flow_parser_js.parse (Node.Fs.readFileSync f `utf8 ) None )) in 
     eq __LOC__ (0,2842) (v## range)
-  end
+  | None -> assert false
+
 let () = Mt.from_pair_suites __FILE__ !suites
 
 end

@@ -61,4 +61,24 @@ val mkp : string -> unit
 *)
 val get_bsc_bsdep : string -> string * string
 val get_bsc_dir : string -> string                               
-val get_list_string : Ext_json.t array -> string list
+
+
+val get_list_string_acc : 
+    Ext_json_types.t array -> 
+    string list -> 
+    string list
+
+val get_list_string : 
+    Ext_json_types.t array -> 
+    string list
+
+val string_of_bsb_dev_include : int -> string 
+
+val resolve_bsb_magic_file : cwd:string -> desc:string -> string -> string
+
+type package_context = {
+  cwd : string ; 
+  top : bool ; 
+}
+
+val walk_all_deps : string -> (package_context -> unit) -> unit

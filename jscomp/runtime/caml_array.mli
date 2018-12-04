@@ -23,10 +23,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
 
+(** *)
 
-
-external new_uninitialized : int -> 'a array = "js_create_array"
-external append : 'a array -> 'a array -> 'a array = "js_array_append"
+external new_uninitialized : int -> 'a array = "Array" [@@bs.new]
+external append : 'a array -> 'a array -> 'a array = "concat" [@@bs.send]
 external make : int -> 'a -> 'a array = "caml_make_vect"
 
 val caml_array_sub : 'a array -> int -> int -> 'a array
@@ -36,3 +36,7 @@ val caml_array_concat : 'a array list -> 'a array
 val caml_make_vect : int -> 'a -> 'a array
 
 val caml_array_blit : 'a array -> int -> 'a array -> int -> int -> unit
+
+val caml_array_get: 'a array -> int -> 'a
+
+val caml_array_set: 'a array -> int -> 'a -> unit

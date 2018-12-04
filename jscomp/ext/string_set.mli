@@ -38,6 +38,7 @@ val exists: (elt -> bool) -> t -> bool
 val singleton: elt -> t
 val cardinal: t -> int
 val elements: t -> elt list
+val remove : elt -> t -> t
 val min_elt: t -> elt
 val max_elt: t -> elt
 val choose: t -> elt
@@ -51,6 +52,3 @@ val add: elt -> t -> t
 val of_list : elt list -> t
 val find : elt -> t -> elt 
 (***********************************************************************) 
-
-
-

@@ -28,7 +28,7 @@
 
 
 
-
+(** *)
 
 val bytes_of_string : string -> bytes
 val bytes_to_string : bytes -> string
@@ -43,6 +43,6 @@ val caml_blit_string : string -> int -> bytes -> int -> int -> unit
 val caml_blit_bytes : bytes -> int -> bytes -> int -> int -> unit
 val caml_string_get16 : string -> int -> int
 val caml_string_get32 : string -> int -> int
-val js_string_of_char : char -> string 
+val string_of_char : char -> string 
 
 val get : string -> int -> char 

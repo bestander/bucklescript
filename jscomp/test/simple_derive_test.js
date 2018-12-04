@@ -1,8 +1,8 @@
 'use strict';
 
-var Block      = require("../../lib/js/block");
-var Bs_dyn     = require("../../lib/js/bs_dyn");
-var Bs_dyn_lib = require("../../lib/js/bs_dyn_lib");
+var Block      = require("../../lib/js/block.js");
+var Bs_dyn     = require("../../lib/js/bs_dyn.js");
+var Bs_dyn_lib = require("../../lib/js/bs_dyn_lib.js");
 
 var shape = /* array */[
   "x",
@@ -146,16 +146,14 @@ function enum_to_value(x) {
                 1,
                 /* array */[]
               ]);
-    }
-    else {
+    } else {
       return /* Variant */Block.__(13, [
                 shape$2,
                 0,
                 /* array */[]
               ]);
     }
-  }
-  else {
+  } else {
     return /* Variant */Block.__(13, [
               shape$2,
               2,
@@ -174,4 +172,4 @@ exports.t_to_value  = t_to_value;
 exports.u           = u;
 exports.h           = h;
 exports.hh          = hh;
-/* vv_to_value Not a pure module */
+/* tt_to_value Not a pure module */

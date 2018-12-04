@@ -1,7 +1,7 @@
 'use strict';
 
-var Block  = require("../../lib/js/block");
-var Bs_dyn = require("../../lib/js/bs_dyn");
+var Block  = require("../../lib/js/block.js");
+var Bs_dyn = require("../../lib/js/bs_dyn.js");
 
 var all_branches_of_t_000 = /* constructors : array */[
   "Monday",
@@ -30,16 +30,14 @@ function _t_to_value(value) {
                 1,
                 /* array */[]
               ]);
-    }
-    else {
+    } else {
       return /* Variant */Block.__(13, [
                 all_branches_of_t,
                 0,
                 /* array */[]
               ]);
     }
-  }
-  else {
+  } else {
     switch (value.tag | 0) {
       case 0 : 
           return /* Variant */Block.__(13, [
@@ -94,4 +92,4 @@ function u_to_value(value) {
 
 exports.t_to_value = t_to_value;
 exports.u_to_value = u_to_value;
-/* t_to_value Not a pure module */
+/* No side effect */

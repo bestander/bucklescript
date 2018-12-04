@@ -17,16 +17,17 @@ open Types
 
 
 
-let rec struct_const ppf (cst : Lambda.structured_constant) =
+let rec struct_const ppf (cst : Lam.constant) =
   match cst with 
-  | Const_base(Const_int n) -> fprintf ppf "%i" n
-  | Const_base(Const_char c) -> fprintf ppf "%C" c
-  | Const_base(Const_string (s, _)) -> fprintf ppf "%S" s
+  |  (Const_int n) -> fprintf ppf "%i" n
+  |  (Const_char c) -> fprintf ppf "%C" c
+  |  (Const_string s) -> fprintf ppf "%S" s
+  |  (Const_unicode s) -> fprintf ppf "%S" s
   | Const_immstring s -> fprintf ppf "#%S" s
-  | Const_base(Const_float f) -> fprintf ppf "%s" f
-  | Const_base(Const_int32 n) -> fprintf ppf "%lil" n
-  | Const_base(Const_int64 n) -> fprintf ppf "%LiL" n
-  | Const_base(Const_nativeint n) -> fprintf ppf "%nin" n
+  |  (Const_float f) -> fprintf ppf "%s" f
+  |  (Const_int32 n) -> fprintf ppf "%lil" n
+  |  (Const_int64 n) -> fprintf ppf "%LiL" n
+  |  (Const_nativeint n) -> fprintf ppf "%nin" n
   | Const_pointer (n,_) -> fprintf ppf "%ia" n
   | Const_block(tag,_, []) ->
       fprintf ppf "[%i]" tag
@@ -100,19 +101,39 @@ let string_of_loc_kind (loc : Lambda.loc_kind) =
   | Loc_LOC -> "loc_LOC"
 
 let primitive ppf (prim : Lam.primitive) = match prim with 
+  (* | Pcreate_exception s -> fprintf ppf "[exn-create]%S" s  *)
+  | Pcreate_extension s -> fprintf ppf "[ext-create]%S" s 
+  | Pwrap_exn -> fprintf ppf "#exn"
+  | Pjs_string_of_small_array -> fprintf ppf "#string_of_small_array"
+  | Pjs_is_instance_array -> fprintf ppf "#is_instance_array"
+  | Pcaml_obj_length -> fprintf ppf "#obj_length"
+  | Pcaml_obj_set_length -> fprintf ppf "#obj_set_length"
   | Pinit_mod -> fprintf ppf "init_mod!"
   | Pupdate_mod -> fprintf ppf "update_mod!"
   | Pbytes_to_string -> fprintf ppf "bytes_to_string"
   | Pbytes_of_string -> fprintf ppf "bytes_of_string"
+  | Pjs_apply -> fprintf ppf "#apply"
+  | Pjs_runtime_apply -> fprintf ppf "#runtime_apply"
   | Pjs_unsafe_downgrade (s,_loc) -> fprintf ppf "##%s" s 
-  | Pjs_fn_run i -> fprintf ppf "js_fn_run_%i" i 
+  | Pjs_function_length -> fprintf ppf "#function_length"
+  | Pjs_fn_run i -> fprintf ppf "#fn_run_%i" i 
   | Pjs_fn_make i -> fprintf ppf "js_fn_make_%i" i
   | Pjs_fn_method i -> fprintf ppf "js_fn_method_%i" i 
   | Pjs_fn_runmethod i -> fprintf ppf "js_fn_runmethod_%i" i 
   | Pdebugger -> fprintf ppf "debugger"
-  | Pgetglobal id -> fprintf ppf "global %a" Ident.print id
+  | Lam.Praw_js_code_exp _ -> fprintf ppf "[raw.exp]"
+  | Lam.Praw_js_code_stmt _ -> fprintf ppf "[raw.stmt]"
   | Pglobal_exception id ->
-    fprintf ppf "global exception %a" Ident.print id                       
+    fprintf ppf "global exception %a" Ident.print id       
+  | Pjs_boolean_to_bool -> fprintf ppf "[boolean->bool]"
+  | Pjs_typeof -> fprintf ppf "[typeof]"
+  | Pnull_to_opt -> fprintf ppf "[null->opt]"              
+  | Pundefined_to_opt -> fprintf ppf "[undefined->opt]"     
+  | Pnull_undefined_to_opt -> 
+    fprintf ppf "[null/undefined->opt]"         
+  | Pis_null -> fprintf ppf "[?null]"
+  | Pis_undefined -> fprintf ppf "[?undefined]"
+  | Pis_null_undefined -> fprintf ppf "[?null?undefined]"
   (* | Psetglobal id -> fprintf ppf "setglobal %a" Ident.print id *)
   | Pmakeblock(tag, _, Immutable) -> fprintf ppf "makeblock %i" tag
   | Pmakeblock(tag, _, Mutable) -> fprintf ppf "makemutable %i" tag
@@ -125,6 +146,10 @@ let primitive ppf (prim : Lam.primitive) = match prim with
   | Pduprecord (rep, size) -> fprintf ppf "duprecord %a %i" record_rep rep size
   | Plazyforce -> fprintf ppf "force"
   | Pccall p -> fprintf ppf "%s" p.prim_name
+   | Pjs_call (prim_name, _, _) -> 
+      fprintf ppf  "%s[js]" prim_name 
+  | Pjs_object_create obj_create -> 
+    fprintf ppf "[js.obj]"
   | Praise  -> fprintf ppf "raise"
   | Psequand -> fprintf ppf "&&"
   | Psequor -> fprintf ppf "||"
@@ -142,8 +167,8 @@ let primitive ppf (prim : Lam.primitive) = match prim with
   | Plslint -> fprintf ppf "lsl"
   | Plsrint -> fprintf ppf "lsr"
   | Pasrint -> fprintf ppf "asr"
-  | Pintcomp(Ceq) -> fprintf ppf "=="
-  | Pintcomp(Cneq) -> fprintf ppf "!="
+  | Pintcomp(Ceq) -> fprintf ppf "==[int]"
+  | Pintcomp(Cneq) -> fprintf ppf "!=[int]"
   | Pintcomp(Clt) -> fprintf ppf "<"
   | Pintcomp(Cle) -> fprintf ppf "<="
   | Pintcomp(Cgt) -> fprintf ppf ">"
@@ -164,6 +189,13 @@ let primitive ppf (prim : Lam.primitive) = match prim with
   | Pfloatcomp(Cle) -> fprintf ppf "<=."
   | Pfloatcomp(Cgt) -> fprintf ppf ">."
   | Pfloatcomp(Cge) -> fprintf ppf ">=."
+  | Pjscomp(Ceq) -> fprintf ppf "#=="
+  | Pjscomp(Cneq) -> fprintf ppf "#!="
+  | Pjscomp(Clt) -> fprintf ppf "#<"
+  | Pjscomp(Cle) -> fprintf ppf "#<="
+  | Pjscomp(Cgt) -> fprintf ppf "#>"
+  | Pjscomp(Cge) -> fprintf ppf "#>="
+
   | Pstringlength -> fprintf ppf "string.length"
   | Pstringrefu -> fprintf ppf "string.unsafe_get"
   | Pstringrefs -> fprintf ppf "string.get"
@@ -205,7 +237,7 @@ let primitive ppf (prim : Lam.primitive) = match prim with
   | Plslbint bi -> print_boxed_integer "lsl" ppf bi
   | Plsrbint bi -> print_boxed_integer "lsr" ppf bi
   | Pasrbint bi -> print_boxed_integer "asr" ppf bi
-  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==" ppf bi
+  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==[bint]" ppf bi
   | Pbintcomp(bi, Cneq) -> print_boxed_integer "!=" ppf bi
   | Pbintcomp(bi, Clt) -> print_boxed_integer "<" ppf bi
   | Pbintcomp(bi, Cgt) -> print_boxed_integer ">" ppf bi
@@ -270,7 +302,7 @@ let kind = function
   | Variable -> "v" 
   | Recursive -> "r"
 
-let to_print_kind (k : Lambda.let_kind) : print_kind = 
+let to_print_kind (k : Lam.let_kind) : print_kind = 
   match k with 
   | Alias -> Alias 
   | Strict -> Strict
@@ -342,26 +374,29 @@ let lambda use_env env ppf v  =
   let rec lam ppf (l : Lam.t) = match l with 
   | Lvar id ->
       Ident.print ppf id
+  | Lam.Lglobal_module id -> 
+    fprintf ppf "global %a" Ident.print id
   | Lconst cst ->
       struct_const ppf cst
   | Lapply { fn; args; } ->
       let lams ppf args =
         List.iter (fun l -> fprintf ppf "@ %a" lam l) args in
       fprintf ppf "@[<2>(apply@ %a%a)@]" lam fn lams args
-  | Lfunction{ kind; params; body; _} ->
+  | Lfunction{ function_kind; params; body; _} ->
       let pr_params ppf params =
-        match kind with
+        match function_kind with
         | Curried ->
             List.iter (fun param -> fprintf ppf "@ %a" Ident.print param) params
-        | Tupled ->
-            fprintf ppf " (";
-            let first = ref true in
-            List.iter
-              (fun param ->
-                if !first then first := false else fprintf ppf ",@ ";
-                Ident.print ppf param)
-              params;
-            fprintf ppf ")" in
+        (* | Tupled -> *)
+        (*     fprintf ppf " ("; *)
+        (*     let first = ref true in *)
+        (*     List.iter *)
+        (*       (fun param -> *)
+        (*         if !first then first := false else fprintf ppf ",@ "; *)
+        (*         Ident.print ppf param) *)
+        (*       params; *)
+        (*     fprintf ppf ")"  *)
+      in
       fprintf ppf "@[<2>(function%a@ %a)@]" pr_params params lam body
   | Llet _ | Lletrec _ as x ->
       let args, body =   flatten x  in
@@ -377,13 +412,13 @@ let lambda use_env env ppf v  =
       fprintf ppf ")@ %a)@]"  lam body
   | Lprim { 
       primitive = Pfield (n,_); 
-      args = [ Lprim { primitive = Pgetglobal id; args = [] ; _}]
+      args = [ Lglobal_module id ]
       ;  _} when use_env ->
       fprintf ppf "%s.%s/%d" id.name (get_string (id,n) env) n
 
   | Lprim { 
       primitive  = Psetfield (n,_,_); 
-      args = [ Lprim { primitive = Pgetglobal id; args = [];  _} ;
+      args = [ Lglobal_module id  ;
                e ]
       ;  _} when use_env  ->
       fprintf ppf "@[<2>(%s.%s/%d <- %a)@]" id.name (get_string (id,n) env) n

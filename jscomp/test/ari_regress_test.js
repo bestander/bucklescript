@@ -1,8 +1,8 @@
 'use strict';
 
-var Block = require("../../lib/js/block");
-var Curry = require("../../lib/js/curry");
-var Mt    = require("./mt");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
+var Curry = require("../../lib/js/curry.js");
 
 var g = 7;
 
@@ -42,10 +42,9 @@ var suites_001 = /* :: */[
   /* tuple */[
     "curry2",
     function () {
-      Curry._1(v, 1);
       return /* Eq */Block.__(0, [
                 14,
-                Curry._1(v, 1)
+                (Curry._1(v, 1), Curry._1(v, 1))
               ]);
     }
   ],
@@ -61,7 +60,7 @@ var suites_001 = /* :: */[
     ],
     /* :: */[
       /* tuple */[
-        'File "ari_regress_test.ml", line 20, characters 4-11',
+        "File \"ari_regress_test.ml\", line 20, characters 4-11",
         function () {
           return /* Eq */Block.__(0, [
                     h[0],

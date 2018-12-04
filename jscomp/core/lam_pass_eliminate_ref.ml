@@ -22,7 +22,7 @@ let rec eliminate_ref id (lam : Lam.t) =
     if Ident.same v id then raise_notrace Real_reference else lam
   | Lprim {primitive = Pfield (0,_); args =  [Lvar v]} when Ident.same v id ->
     Lam.var id
-  | Lfunction{ kind; params; body} as lam ->
+  | Lfunction{ function_kind; params; body} as lam ->
     if Ident_set.mem id (Lam.free_variables  lam)
     then raise_notrace Real_reference
     else lam
@@ -67,6 +67,7 @@ let rec eliminate_ref id (lam : Lam.t) =
     Lam.letrec
       (List.map (fun (v, e) -> (v, eliminate_ref id e)) idel)
       (eliminate_ref id e2)
+  | Lam.Lglobal_module _ -> lam     
   | Lprim {primitive ; args ; loc} ->
     Lam.prim  ~primitive ~args:(List.map (eliminate_ref id) args) loc
   | Lswitch(e, sw) ->

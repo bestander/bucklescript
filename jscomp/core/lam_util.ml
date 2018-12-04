@@ -34,46 +34,16 @@ let string_of_lambda = Format.asprintf "%a" Lam_print.lambda
 let string_of_primitive = Format.asprintf "%a" Lam_print.primitive
 
 
-(* TODO: not very efficient .. *)
-(* exception Cyclic  *)
-
-(* let toplogical (get_deps : Ident.t -> Ident_set.t) (libs : Ident.t list) : Ident.t list = *)
-(*   let rec aux acc later todo round_progress = *)
-(*     match todo, later with *)
-(*     | [], [] ->  acc *)
-(*     | [], _ -> *)
-(*       if round_progress *)
-(*       then aux acc todo later false *)
-(*       else raise Cyclic *)
-(*     | x::xs, _ -> *)
-(*       if Ident_set.for_all (fun dep -> x == dep || List.mem dep acc) (get_deps x) *)
-(*       then aux (x::acc) later xs true *)
-(*       else aux acc (x::later) xs round_progress *)
-(*   in *)
-(*   let starts, todo = List.partition (fun lib -> Ident_set.is_empty @@ get_deps lib) libs in *)
-(*   aux starts [] todo false *)
-
-(* let sort_dag_args  param_args = *)
-(*   let todos = Ident_map.keys param_args  in *)
-(*   let idents = Ident_set.of_list  todos in *)
-(*   let dependencies  : Ident_set.t Ident_map.t =  *)
-(*     Ident_map.mapi (fun param arg -> Js_fold_basic.depends_j arg idents) param_args in *)
-(*   try   *)
-(*     Some (toplogical (fun k -> Ident_map.find_exn k dependencies) todos) *)
-(*   with Cyclic -> None  *)
 
 
 
-let add_required_module (x : Ident.t) (meta : Lam_stats.meta) = 
-  meta.required_modules <- Lam_module_ident.of_ml x :: meta.required_modules 
 
+(*
 let add_required_modules ( x : Ident.t list) (meta : Lam_stats.meta) = 
-  let required_modules = 
-    List.map 
-      (fun x -> Lam_module_ident.of_ml x)  x
-    @ meta.required_modules in
-  meta.required_modules <- required_modules
-
+  let meta_require_modules = meta.required_modules in
+  List.iter (fun x -> add meta_require_modules (Lam_module_ident.of_ml x)) x 
+*)
+  
 (* Apply a substitution to a lambda-term.
    Assumes that the bound variables of the lambda-term do not
    belong to the domain of the substitution.
@@ -88,14 +58,15 @@ let subst_lambda (s : Lam.t Ident_map.t) lam =
     | Lconst sc as l -> l
     | Lapply{fn; args; loc; status} -> 
       Lam.apply (subst fn) (List.map subst args) loc status
-    | Lfunction {arity; kind; params; body} -> 
-      Lam.function_ ~arity ~kind  ~params ~body:(subst body)
+    | Lfunction {arity; function_kind; params; body} -> 
+      Lam.function_ ~arity ~function_kind  ~params ~body:(subst body)
     | Llet(str, id, arg, body) -> 
       Lam.let_ str id (subst arg) (subst body)
     | Lletrec(decl, body) -> 
       Lam.letrec (List.map subst_decl decl) (subst body)
     | Lprim { primitive ; args; loc} -> 
       Lam.prim ~primitive ~args:(List.map subst args) loc
+    | Lam.Lglobal_module _ -> x  
     | Lswitch(arg, sw) ->
       Lam.switch (subst arg)
         {sw with sw_consts = List.map subst_case sw.sw_consts;
@@ -139,10 +110,10 @@ let subst_lambda (s : Lam.t Ident_map.t) lam =
     Even so, it's still correct
 *)
 let refine_let
-    ?kind param
+    ~kind param
     (arg : Lam.t) (l : Lam.t)  : Lam.t =
 
-  match (kind : Lambda.let_kind option), arg, l  with 
+  match (kind : Lam.let_kind ), arg, l  with 
   | _, _, Lvar w when Ident.same w param (* let k = xx in k *)
     -> arg (* TODO: optimize here -- it's safe to do substitution here *)
   | _, _, Lprim {primitive ; args =  [Lvar w]; loc ; _} when Ident.same w param 
@@ -164,10 +135,10 @@ let refine_let
         here we remove the definition of [param]
     *)
     Lam.apply fn [arg] loc status
-  | (Some (Strict | StrictOpt ) | None ),
+  | (Strict | StrictOpt ),
     ( Lvar _    | Lconst  _ | 
       Lprim {primitive = Pfield _ ;  
-             args = [Lprim {primitive = Pgetglobal _ ; args =  []; _}]; _}) , _ ->
+             args = [ Lglobal_module _ ]; _}) , _ ->
     (* (match arg with  *)
     (* | Lconst _ ->  *)
     (*     Ext_log.err "@[%a %s@]@."  *)
@@ -177,7 +148,7 @@ let refine_let
         since function evaluation is always delayed
     *)
     Lam.let_ Alias param arg l
-  | (Some (Strict | StrictOpt ) | None ), (Lfunction _ ), _ ->
+  | ( (Strict | StrictOpt ) ), (Lfunction _ ), _ ->
     (*It can be promoted to [Alias], however, 
         we don't want to do this, since we don't want the 
         function to be inlined to a block, for example
@@ -194,17 +165,17 @@ let refine_let
       | Some Strict, Lprim(Pmakeblock (_,_,Immutable),_) ->  
         Llet(StrictOpt, param, arg, l) 
   *)      
-  | Some Strict, _ ,_  when Lam_analysis.no_side_effects arg ->
+  | Strict, _ ,_  when Lam_analysis.no_side_effects arg ->
     Lam.let_ StrictOpt param arg l
-  | Some Variable, _, _ -> 
+  | Variable, _, _ -> 
     Lam.let_ Variable  param arg l
-  | Some kind, _, _ -> 
+  | kind, _, _ -> 
     Lam.let_ kind  param arg l
-  | None , _, _ -> 
-    Lam.let_ Strict param arg  l
+  (* | None , _, _ -> 
+    Lam.let_ Strict param arg  l *)
 
-let alias (meta : Lam_stats.meta) (k:Ident.t) (v:Ident.t) 
-    (v_kind : Lam_stats.kind) (let_kind : Lambda.let_kind) =
+let alias_ident_or_global (meta : Lam_stats.meta) (k:Ident.t) (v:Ident.t) 
+    (v_kind : Lam_stats.kind) (let_kind : Lam.let_kind) =
   (** treat rec as Strict, k is assigned to v 
       {[ let k = v ]}
   *)
@@ -258,7 +229,7 @@ let alias (meta : Lam_stats.meta) (k:Ident.t) (v:Ident.t)
       a temporary field 
 
    3. It would be nice that when the block is mutable, its 
-       mutable fields are explicit
+       mutable fields are explicit, since wen can not inline an mutable block access
 *)
 
 let element_of_lambda (lam : Lam.t) : Lam_stats.element = 
@@ -266,30 +237,30 @@ let element_of_lambda (lam : Lam.t) : Lam_stats.element =
   | Lvar _ 
   | Lconst _ 
   | Lprim {primitive = Pfield _ ; 
-           args =  [ Lprim { primitive = Pgetglobal _; args =  []; _}];
+           args =  [ Lglobal_module _ ];
            _} -> SimpleForm lam
   (* | Lfunction _  *)
   | _ -> NA 
 
 let kind_of_lambda_block kind (xs : Lam.t list) : Lam_stats.kind = 
-  xs 
-  |> List.map element_of_lambda 
-  |> (fun ls -> Lam_stats.ImmutableBlock (Array.of_list  ls, kind))
+  Lam_stats.ImmutableBlock( Ext_array.of_list_map (fun x -> 
+  element_of_lambda x ) xs , kind)
 
-let get lam v i tbl : Lam.t =
-  match (Ident_hashtbl.find_opt tbl v  : Lam_stats.kind option)   with 
+let field_flatten_get
+   lam v i (tbl : Lam_stats.kind Ident_hashtbl.t) : Lam.t =
+  match Ident_hashtbl.find_opt tbl v  with 
   | Some (Module g) -> 
     Lam.prim ~primitive:(Pfield (i, Lambda.Fld_na)) 
-      ~args:[Lam.prim ~primitive:(Pgetglobal g) ~args:[] Location.none] Location.none
+      ~args:[ Lam.global_module g ] Location.none
   | Some (ImmutableBlock (arr, _)) -> 
     begin match arr.(i) with 
-      | NA -> lam 
+      | NA -> lam ()
       | SimpleForm l -> l
     end
   | Some (Constant (Const_block (_,_,ls))) -> 
     Lam.const (List.nth  ls i)
   | Some _
-  | None -> lam 
+  | None -> lam ()
 
 
 (* TODO: check that if label belongs to a different 
@@ -305,14 +276,15 @@ let log_counter = ref 0
 
 
 let dump env ext  lam = 
-#if BS_COMPILER_IN_BROWSER then
+#if BS_COMPILER_IN_BROWSER || (undefined BS_DEBUG) then
       lam
-#else    
+#else
    if Js_config.is_same_file ()
     then 
       (* ATTENTION: easy to introduce a bug during refactoring when forgeting `begin` `end`*)
       begin 
         incr log_counter;
+        Ext_log.dwarn __LOC__ "\n@[[TIME:]%s: %f@]@." ext (Sys.time () *. 1000.);
         Lam_print.seriaize env 
           (Ext_filename.chop_extension 
              ~loc:__LOC__ 
@@ -321,7 +293,9 @@ let dump env ext  lam =
           ) lam;
       end;
   lam
-#end
+#end      
+  
+
 
 
 
@@ -354,42 +328,8 @@ let not_function (lam : Lam.t) =
    ]}   
 *)
 
-(*
-  let f x y =  x + y 
-  Invariant: there is no currying 
-  here since f's arity is 2, no side effect 
-  f 3 --> function(y) -> f 3 y 
-*)
-let eta_conversion n loc status fn args = 
-  let extra_args = Ext_list.init n
-      (fun _ ->   (Ident.create Literals.param)) in
-  let extra_lambdas = List.map (fun x -> Lam.var x) extra_args in
-  begin match List.fold_right (fun (lam : Lam.t) (acc, bind) ->
-      match lam with
-      | Lvar _
-      | Lconst (Const_base _ | Const_pointer _ | Const_immstring _ ) 
-      | Lprim {primitive = Pfield _;
-               args =  [Lprim {primitive = Pgetglobal _; _}]; _ }
-      | Lfunction _ 
-        ->
-        (lam :: acc, bind)
-      | _ ->
-        let v = Ident.create Literals.partial_arg in
-        (Lam.var v :: acc),  ((v, lam) :: bind)
-    ) (fn::args) ([],[])   with 
-  | fn::args , bindings ->
 
-    let rest : Lam.t = 
-      Lam.function_ ~arity:n ~kind:Curried ~params:extra_args
-        ~body:(Lam.apply fn (args @ extra_lambdas) 
-                 loc 
-                 status
-              ) in
-    List.fold_left (fun lam (id,x) ->
-        Lam.let_ Strict id x lam
-      ) rest bindings
-  | _, _ -> assert false
-  end
+
 
 
 

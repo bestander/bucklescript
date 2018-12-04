@@ -17,16 +17,17 @@
         "-bs-no-version-header",
         "-bs-cross-module-opt"
     ],
-    // "ppx-flags" : 
-    // [
-    //     "reason/bin/ppx_lwt"
-    // ],
+     "ppx-flags" : 
+     [
+         "reason/bin/ppx_lwt"
+     ],
     // "js-post-build" : 
     // {
     //     "cmd" : "cat"
     // },
     "sources": {
         "dir": "jscomp/test/",
+        // "dir" : 1,
         // "resources" : 
         // [
         //     "flow_parser_sample.js",
@@ -45,16 +46,9 @@
                     "a4_a5.ml",
                     "x.ml"
                 ]
-            },
-            {
-                "dir": "glob",
-                "files": {
-                    "slow-re": "glob.*\\.mli?",
-                    "excludes": [
-                        "glob_test_u.ml"
-                    ]
-                }
             }
+            , "glob"
+    
         ],
         "files": [
             // "ppx_lwt.ml",
@@ -327,9 +321,9 @@
             "infer_type_test.ml",
             "ignore_test.ml",
             "http_types.ml",
-            "hello_reason_dep.re",
+            /*"hello_reason_dep.re",
             "hello_reason.rei",
-            "hello_reason.re",
+            "hello_reason.re",*/
             "hello.foo.ml",
             "hashtbl_test.ml",
             "hash_test.ml",
@@ -467,7 +461,7 @@
                 "a.ml"
             ]
     }  
-    , "bsc-flags" : ["-w -40-30", "-w +a"]
+    // , "bsc-flags" : ["-w -40-30", "-w +a"]
     , "generate-merlin" : true
     // "ppx-flags": ["reason/bin/reactjs_jsx_ppx"]
     // ,

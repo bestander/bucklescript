@@ -1,16 +1,16 @@
 'use strict';
 
-var Int32      = require("../../lib/js/int32");
-var Ext_array  = require("./ext_array");
-var Block      = require("../../lib/js/block");
-var $$Array    = require("../../lib/js/array");
-var Curry      = require("../../lib/js/curry");
-var Format     = require("../../lib/js/format");
-var Mt         = require("./mt");
-var Caml_int64 = require("../../lib/js/caml_int64");
-var Caml_obj   = require("../../lib/js/caml_obj");
-var Pervasives = require("../../lib/js/pervasives");
-var Int64      = require("../../lib/js/int64");
+var Mt         = require("./mt.js");
+var $$Array    = require("../../lib/js/array.js");
+var Block      = require("../../lib/js/block.js");
+var Curry      = require("../../lib/js/curry.js");
+var Int32      = require("../../lib/js/int32.js");
+var Int64      = require("../../lib/js/int64.js");
+var Format     = require("../../lib/js/format.js");
+var Caml_obj   = require("../../lib/js/caml_obj.js");
+var Ext_array  = require("./ext_array.js");
+var Caml_int64 = require("../../lib/js/caml_int64.js");
+var Pervasives = require("../../lib/js/pervasives.js");
 
 function f(u, v) {
   return +(u > v);
@@ -864,8 +864,7 @@ function fib(_n, _a, _b) {
       _n = n - 1 | 0;
       continue ;
       
-    }
-    else {
+    } else {
       return a;
     }
   };
@@ -880,8 +879,7 @@ function fac(_n, _acc) {
       _n = n - 1 | 0;
       continue ;
       
-    }
-    else {
+    } else {
       return acc;
     }
   };
@@ -1151,10 +1149,10 @@ var suites = Pervasives.$at(/* :: */[
                                                           /* hi */0,
                                                           /* lo */286331153
                                                         ],
-                                                        /* int64 */[
-                                                          /* hi *//* hi */0 ^ /* hi */0,
-                                                          /* lo */((/* lo */2147483647 ^ /* lo */4009750271) >>> 0)
-                                                        ]
+                                                        Caml_int64.xor(a, /* int64 */[
+                                                              /* hi */0,
+                                                              /* lo */4009750271
+                                                            ])
                                                       ],
                                                       /* tuple */[
                                                         /* int64 */[

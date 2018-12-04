@@ -22,7 +22,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-(*tag::interface_all[]*)
+(** *)
+
+
 type symbol
 (**Js symbol type only available in ES6 *)
 
@@ -44,17 +46,18 @@ type _ t =
   | Symbol : symbol t
 
 val reify_type : 'a -> 'b t * 'b
-(** given any value it returns its type and the same value.
+(** Given any value it returns its type and the same value.
     Note that  since ['b t] is GADT, the type system will reify its type automatically,
-    for example
+    @example
     {[
     match reify_type "3" with
     | String, v -> v  ^ " this type safe control flow analysis will infer v as string"
     | _ -> assert false
     ]}
  *)
+
 val test : 'a -> 'b t -> bool
-(** {[
+(** @example{[
   test "x" String = true
   ]}*)
-(*end::interface_all[]*)
+

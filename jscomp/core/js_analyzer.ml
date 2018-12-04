@@ -83,12 +83,13 @@ let free_variables_of_expression used_idents defined_idents st =
 
 let rec no_side_effect_expression_desc (x : J.expression_desc)  = 
   match x with 
-  | Bool _ -> true 
-  | Var _ -> true 
-  | Access (a,b) -> no_side_effect a && no_side_effect b 
-  | Str (b,_) -> b
+  | Bool _ 
+  | Var _ 
+  | Unicode _ -> true 
   | Fun _ -> true
   | Number _ -> true (* Can be refined later *)
+  | Access (a,b) -> no_side_effect a && no_side_effect b 
+  | Str (b,_) -> b    
   | Array (xs,_mutable_flag)  
   | Caml_block (xs, _mutable_flag, _, _)
     ->
@@ -249,4 +250,14 @@ let rec is_constant (x : J.expression)  =
     -> List.for_all is_constant xs && is_constant tag 
   | Bin (op, a, b) -> 
     is_constant a && is_constant b     
+  | _ -> false 
+
+
+let rec is_simple_no_side_effect_expression (e : J.expression) = 
+  match e.expression_desc with  
+  | Var _ 
+  | Bool _ 
+  | Str _ 
+  | Number _ -> true
+  | Dot (e, (_ : string), _) -> is_simple_no_side_effect_expression e 
   | _ -> false 

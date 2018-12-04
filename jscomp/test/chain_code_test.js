@@ -1,7 +1,7 @@
 'use strict';
 
-var Block = require("../../lib/js/block");
-var Mt    = require("./mt");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
 
 var suites = [/* [] */0];
 
@@ -47,15 +47,13 @@ function f4(h, x, y) {
         ];
 }
 
-var h = {
-  x: {
-    y: {
-      z: 32
-    }
-  }
-};
-
-eq('File "chain_code_test.ml", line 28, characters 5-12', 32, h.x.y.z);
+eq("File \"chain_code_test.ml\", line 28, characters 5-12", 32, {
+      x: {
+        y: {
+          z: 32
+        }
+      }
+    }.x.y.z);
 
 Mt.from_pair_suites("chain_code_test.ml", suites[0]);
 

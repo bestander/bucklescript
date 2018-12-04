@@ -22,7 +22,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. *)
 
-(** refernce documentation: https://nodejs.org/api/fs.html *)
+(** Node FS API
+
+@see <https://blogs.janestreet.com/a-and-a/> refernce documentation
+*)
 
 (** Most fs functions let you omit the callback argument. If you do, a default
     callback is used that rethrows errors. To get a trace to the original call
@@ -124,5 +127,33 @@ external readFileSync :
   string = "readFileSync" 
 [@@bs.val] [@@bs.module "fs"]
 
-external existsSync : string -> Js.boolean = ""
+external readFileAsUtf8Sync : 
+  string -> (_[@bs.as "utf8"]) -> 
+  string = "readFileSync"
 [@@bs.val] [@@bs.module "fs"]  
+
+external existsSync : string -> bool = ""
+[@@bs.val] [@@bs.module "fs"]  
+
+external writeFileSync :
+  string ->
+  string ->
+  (
+    [ `hex
+    | `utf8
+    | `ascii
+    | `latin1
+    | `base64
+    | `ucs2
+    | `base64
+    | `binary
+    | `utf16le ][@bs.string]) ->
+  unit = "writeFileSync"
+[@@bs.val] [@@bs.module "fs"]
+
+external writeFileAsUtf8Sync :
+  string ->
+  string ->
+  (_[@bs.as "utf8"]) ->
+  unit = "writeFileSync"
+[@@bs.val] [@@bs.module "fs"]

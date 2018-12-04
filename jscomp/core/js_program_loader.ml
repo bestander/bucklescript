@@ -84,70 +84,98 @@ let string_of_module_id ~output_prefix
       | Ml  -> 
         let id = x.id in
         let modulename = String.uncapitalize id.name in
-        let js_file = Printf.sprintf "%s.js" modulename in
-        let rebase package_dir dep =
+        let js_file =  modulename ^ Literals.suffix_js in
+        let rebase different_package package_dir dep =
           let current_unit_dir =
             `Dir (Js_config.get_output_dir ~pkg_dir:package_dir module_system output_prefix) in
-          Ext_filename.node_relative_path  current_unit_dir dep 
+          Ext_filename.node_relative_path  different_package current_unit_dir dep 
         in 
-        let dependency_pkg_info = 
+        let cmj_path, dependency_pkg_info = 
           Lam_compile_env.get_package_path_from_cmj module_system x 
         in
         let current_pkg_info = 
           Js_config.get_current_package_name_and_path module_system  
         in
         begin match module_system,  dependency_pkg_info, current_pkg_info with
-          | _, `NotFound , _ -> 
-            Ext_pervasives.failwithf ~loc:__LOC__ 
-              " @[%s not found in search path - while compiling %s @] "
-              js_file !Location.input_name 
-          | `Goog , `Found (package_name, x), _  -> 
-            package_name  ^ "." ^  String.uncapitalize id.name
-          | `Goog, (`Empty | `Package_script _), _ 
+          | _, NotFound , _ 
             -> 
-            Ext_pervasives.failwithf ~loc:__LOC__ 
-              " @[%s was not compiled with goog support  in search path - while compiling %s @] "
-              js_file !Location.input_name 
-          | (`AmdJS | `NodeJS),
-            ( `Empty | `Package_script _) ,
-            `Found _  -> 
-            Ext_pervasives.failwithf ~loc:__LOC__
-              "@[dependency %s was compiled in script mode - while compiling %s in package mode @]"
-              js_file !Location.input_name
-          | _ , _, `NotFound -> assert false 
-          | (`AmdJS | `NodeJS), 
-            `Found(package_name, x),
-            `Found(current_package, path) -> 
+            Bs_exception.error (Missing_ml_dependency js_file)
+          | Goog, (Empty | Package_script _), _ 
+            -> 
+            Bs_exception.error (Dependency_script_module_dependent_not js_file)
+          | (AmdJS | NodeJS | Es6 | Es6_global | AmdJS_global),
+            ( Empty | Package_script _) ,
+            Found _  -> 
+            Bs_exception.error (Dependency_script_module_dependent_not js_file)
+          | Goog , Found (package_name, x), _  -> 
+            package_name  ^ "." ^  String.uncapitalize id.name
+          | (AmdJS | NodeJS| Es6 | Es6_global|AmdJS_global),
+           (Empty | Package_script _ | Found _ ), NotFound -> assert false
+
+          | (AmdJS | NodeJS | Es6 | Es6_global|AmdJS_global), 
+            Found(package_name, x),
+            Found(current_package, path) -> 
             if  current_package = package_name then 
               let package_dir = Lazy.force Ext_filename.package_dir in
-              rebase package_dir (`File (package_dir // x // modulename)) 
+              rebase false package_dir (`File (package_dir // x // js_file)) 
             else 
-              package_name // x // modulename
-          | (`AmdJS | `NodeJS), `Found(package_name, x), 
-            `Package_script(current_package)
+              begin match module_system with 
+              | AmdJS | NodeJS | Es6 -> 
+                package_name // x // js_file
+              | Goog -> assert false (* see above *)
+              | Es6_global 
+              | AmdJS_global -> 
+               (** lib/ocaml/xx.cmj --               
+                HACKING: FIXME
+                maybe we can caching relative package path calculation or employ package map *)
+                (* assert false  *)
+                
+                begin 
+                  Ext_filename.rel_normalized_absolute_path              
+                    (Js_config.get_output_dir ~pkg_dir:(Lazy.force Ext_filename.package_dir)
+                       module_system output_prefix)
+                    ((Filename.dirname 
+                        (Filename.dirname (Filename.dirname cmj_path))) // x // js_file)              
+                end
+              end
+          | (AmdJS | NodeJS | Es6 | AmdJS_global | Es6_global), Found(package_name, x), 
+            Package_script(current_package)
             ->    
             if current_package = package_name then 
               let package_dir = Lazy.force Ext_filename.package_dir in
-              rebase package_dir (`File (
-                  package_dir // x // modulename)) 
+              rebase false package_dir (`File (
+                  package_dir // x // js_file)) 
             else 
-              package_name // x // modulename
-          | (`AmdJS | `NodeJS), `Found(package_name, x), `Empty 
-            ->    package_name // x // modulename
-          |  (`AmdJS | `NodeJS), 
-             (`Empty | `Package_script _) , 
-             (`Empty  | `Package_script _)
+              package_name // x // js_file
+          | (AmdJS | NodeJS | Es6 | AmdJS_global | Es6_global), 
+            Found(package_name, x), Empty 
+            ->    package_name // x // js_file
+          |  (AmdJS | NodeJS | Es6 | AmdJS_global | Es6_global), 
+             (Empty | Package_script _) , 
+             (Empty  | Package_script _)
             -> 
             begin match Config_util.find_opt js_file with 
               | Some file -> 
                 let package_dir = Lazy.force Ext_filename.package_dir in
-                rebase package_dir (`File file) 
+                rebase true package_dir (`File file) 
+              (* Code path: when dependency is commonjs 
+                 while depedent is Empty or PackageScript
+              *)
               | None -> 
                 Bs_exception.error (Js_not_found js_file)
             end
+          
         end
-      | External name -> name in 
-    if Js_config.is_windows then Ext_string.replace_backward_slash result 
+      | External name -> name (* the literal string for external package *)
+        (** This may not be enough, 
+          1. For cross packages, we may need settle 
+            down a single js package
+          2. We may need es6 path for dead code elimination
+             But frankly, very few JS packages have no dependency, 
+             so having plugin may sound not that bad   
+        *)
+      in 
+    if Ext_sys.is_windows_or_cygwin then Ext_string.replace_backward_slash result 
     else result 
 #end
 

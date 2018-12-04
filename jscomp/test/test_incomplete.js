@@ -1,6 +1,6 @@
 'use strict';
 
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function f(x) {
   if (x > 3 || x < 1) {
@@ -12,8 +12,7 @@ function f(x) {
             2
           ]
         ];
-  }
-  else {
+  } else {
     return /* "a" */97;
   }
 }
@@ -21,8 +20,7 @@ function f(x) {
 function f2(x) {
   if (x) {
     return 0;
-  }
-  else {
+  } else {
     return 1;
   }
 }

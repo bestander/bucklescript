@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *)
+*)
 (* Authors: Jérôme Vouillon, Hongbo Zhang  *)
 
 
@@ -25,28 +25,28 @@
 (*
   http://stackoverflow.com/questions/2846283/what-are-the-rules-for-javascripts-automatic-semicolon-insertion-asi
   ASI catch up
-  {[
-  a=b
-  ++c
-  ---
-  a=b ++c
-  ====================
-  a ++
-  ---
-  a 
-  ++
-  ====================
-  a --
-  ---
-  a 
-  --
-  ====================
-  (continue/break/return/throw) a
-  ---
-  (continue/break/return/throw)
-  a
-  ====================
-  ]}
+   {[
+     a=b
+       ++c
+       ---
+       a=b ++c
+     ====================
+     a ++
+     ---
+     a 
+     ++
+     ====================
+     a --
+     ---
+     a 
+     --
+     ====================
+     (continue/break/return/throw) a
+     ---
+     (continue/break/return/throw)
+       a
+     ====================
+   ]}
 
 *)
 
@@ -61,6 +61,11 @@ module L = struct
   let return = "return"
   let eq = "="
   let require = "require"
+  let import = "import"
+  let from = "from"
+  let as_ = "as"
+  let export = "export"
+  let star = "*"
   let goog_require = "goog.require" 
   let goog_module = "goog.module"
   let lparen = "("
@@ -68,7 +73,7 @@ module L = struct
   let exports = "exports"
   let dot = "."
   let comma = ","
-  let colon = ":"
+  let colon = Ext_string.single_colon
   let throw = "throw"
   let default = "default"
   let length = "length"
@@ -113,6 +118,7 @@ module L = struct
   let minus_minus = "--"
   let caml_block = "Block"
   let caml_block_create = "__"
+  let case = "case" 
 end
 let return_indent = (String.length L.return / Ext_pp.indent_length) 
 
@@ -143,7 +149,7 @@ let best_string_quote s =
 *)
 let str_of_ident (cxt : Ext_pp_scope.t) (id : Ident.t)   =
   if Ext_ident.is_js id then (* reserved by compiler *)
-     ( id.name , cxt) 
+    ( id.name , cxt) 
   else 
     (* For fast/debug mode, we can generate the name as 
        [Printf.sprintf "%s$%d" name id.stamp] which is 
@@ -179,7 +185,7 @@ let array_str1 =
   Array.init 256 (fun i -> String.make 1 (Char.chr i)) 
 
 (** For conveting 
- 
+
 *)
 let array_conv =
   [|"0"; "1"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"; "a"; "b"; "c"; "d";
@@ -188,8 +194,8 @@ let array_conv =
 
 
 (* https://mathiasbynens.be/notes/javascript-escapes *)
-let pp_string f ?(quote='"') ?(utf=false) s =
-  let pp_raw_string f ?(utf=false) s = 
+let pp_string f  (* ?(utf=false)*) s =
+  let pp_raw_string f (* ?(utf=false)*) s = 
     let l = String.length s in
     for i = 0 to l - 1 do
       let c = String.unsafe_get s i in
@@ -209,7 +215,7 @@ let pp_string f ?(quote='"') ?(utf=false) s =
       | '\000' when i = l - 1 || (let next = String.unsafe_get s (i + 1) in (next < '0' || next > '9'))
         -> P.string f "\\0"
 
-      | '\\' when not utf -> P.string f "\\\\"
+      | '\\' (* when not utf*) -> P.string f "\\\\"
 
 
       | '\000' .. '\031'  | '\127'->
@@ -217,36 +223,52 @@ let pp_string f ?(quote='"') ?(utf=false) s =
         P.string f "\\x";
         P.string f (Array.unsafe_get array_conv (c lsr 4));
         P.string f (Array.unsafe_get array_conv (c land 0xf))
-      | '\128' .. '\255' when not utf ->
+      | '\128' .. '\255' (* when not utf*) ->
         let c = Char.code c in
         P.string f "\\x";
         P.string f (Array.unsafe_get array_conv (c lsr 4));
         P.string f (Array.unsafe_get array_conv (c land 0xf))
-      (* | '\'' -> P.string f "\\'" *)
-      (* | '\"' -> P.string f "\\\"" *)
+      | '\"' -> P.string f "\\\"" (* quote*)
       | _ ->
-        begin 
-          (if c = quote  then
-             P.string f "\\");           
           P.string f (Array.unsafe_get array_str1 (Char.code c))
-        end
     done
   in
-  let quote_s = String.make 1 quote in
-  P.string f quote_s;
-  pp_raw_string f ~utf s ;
-  P.string f quote_s
+  P.string f "\"";
+  pp_raw_string f (*~utf*) s ;
+  P.string f "\""
 ;;
 
+(** used in printing keys 
+    {[
+      {"x" : x};;
+      {x : x }
+    ]}
+*)
 let property_string f s = 
   if Ext_ident.property_no_need_convert s  then 
     P.string f s
   else 
-    pp_string f ~utf:true ~quote:(best_string_quote s) s
+    pp_string f s
 
-(* TODO: check utf's correct semantics *)
-let pp_quote_string f s = 
-  pp_string f ~utf:false ~quote:(best_string_quote s ) s 
+(** used in property access 
+    {[
+      f.x ;;
+      f["x"];;
+    ]}
+*)
+let property_access f s = 
+  if Ext_ident.property_no_need_convert s  then
+    begin 
+      P.string f L.dot;
+      P.string f s; 
+    end
+  else
+    begin 
+      P.bracket_group f 1 @@ fun _ ->
+      pp_string f s
+    end
+
+
 
 let rec comma_idents  cxt f (ls : Ident.t list)  =
   match ls with
@@ -305,10 +327,28 @@ type name =
   | Name_non_top of Ident.t
 
 
+(**
+   Turn [function f (x,y) { return a (x,y)} ] into [Curry.__2(a)],
+   The idea is that [Curry.__2] will guess the arity of [a], if it does 
+   hit, then there is no cost when passed
+*)
+
+
 (* TODO: refactoring 
    Note that {!pp_function} could print both statement and expression when [No_name] is given 
 *)
-let rec pp_function method_
+let rec
+
+  try_optimize_curry cxt f len function_ = 
+  begin           
+    P.string f Js_config.curry;
+    P.string f L.dot;
+    P.string f "__";
+    P.string f (Printf.sprintf "%d" len);
+    P.paren_group f 1 (fun _ -> expression 1 cxt f function_  )             
+  end              
+
+and  pp_function method_
     cxt (f : P.t) ?(name=No_name)  return 
     (l : Ident.t list) (b : J.block) (env : Js_fun_env.t ) =  
   match b, (name,  return)  with 
@@ -329,14 +369,7 @@ let rec pp_function method_
           | Var (Id i) -> Ident.same a i 
           | _ -> false) l ls ->
     let optimize  len p cxt f v =
-      if p then
-        begin           
-          P.string f Js_config.curry;
-          P.string f L.dot;
-          P.string f "__";
-          P.string f (Printf.sprintf "%d" len);
-          P.paren_group f 1 (fun _ -> arguments cxt f [function_])            
-        end              
+      if p then try_optimize_curry cxt f len function_      
       else
         vident cxt f v
     in
@@ -421,17 +454,17 @@ let rec pp_function method_
     in
     let lexical = Js_fun_env.get_lexical_scope env in
     let enclose  lexical  return = 
-        let handle lexical = 
-          if  Ident_set.is_empty lexical  
-          then
-            begin 
-              if return then 
-                begin 
-                  P.string f L.return ;
-                  P.space f
-                end ;
+      let handle lexical = 
+        if  Ident_set.is_empty lexical  
+        then
+          begin 
+            if return then 
+              begin 
+                P.string f L.return ;
+                P.space f
+              end ;
 
-              begin match name with 
+            begin match name with 
               | No_name -> 
                 P.string f L.function_;
                 P.space f ;
@@ -453,63 +486,63 @@ let rec pp_function method_
                 P.space f ;
                 ignore (ident inner_cxt f x);
                 param_body ();
-              end;
+            end;
           end
-          else
-            (* print as 
-               {[(function(x,y){...} (x,y))]}           
-            *)
-            let lexical = Ident_set.elements lexical in
-            (if return then
-               begin 
-                 P.string f L.return ; 
-                 P.space f
-               end
-             else 
-               begin match name with
-                 | No_name -> ()
-                 | Name_non_top name | Name_top name->
-                   P.string f L.var;
-                   P.space f;
-                   ignore @@ ident inner_cxt f name ;
-                   P.space f ;
-                   P.string f L.eq;
-                   P.space f ;
-               end
-            )   
-            ;
-            P.string f L.lparen;
-            P.string f L.function_; 
-            P.string f L.lparen;
-            ignore @@ comma_idents inner_cxt f lexical;
-            P.string f L.rparen;
-            P.brace_vgroup f 0  (fun _ -> 
-                begin 
-                  P.string f L.return ;
-                  P.space f;
-                  P.string f L.function_;
-                  P.space f ;
-                  (match name with 
-                   | No_name  -> () 
-                   | Name_non_top x | Name_top x -> ignore (ident inner_cxt f x));
-                  param_body ()
-                end);
-            P.string f L.lparen;
-            ignore @@ comma_idents inner_cxt f lexical;
-            P.string f L.rparen;
-            P.string f L.rparen;
-            begin match name with 
-              | No_name -> () (* expression *)
-              | _ -> semi f (* has binding, a statement *)
-            end
-        in 
-        begin match name with 
-          | Name_top name | Name_non_top name  when Ident_set.mem name lexical ->
-            (*TODO: when calculating lexical we should not include itself *)
-            let lexical =  (Ident_set.remove name lexical) in
-            handle lexical
-          | _ -> handle lexical 
-        end
+        else
+          (* print as 
+             {[(function(x,y){...} (x,y))]}           
+          *)
+          let lexical = Ident_set.elements lexical in
+          (if return then
+             begin 
+               P.string f L.return ; 
+               P.space f
+             end
+           else 
+             begin match name with
+               | No_name -> ()
+               | Name_non_top name | Name_top name->
+                 P.string f L.var;
+                 P.space f;
+                 ignore @@ ident inner_cxt f name ;
+                 P.space f ;
+                 P.string f L.eq;
+                 P.space f ;
+             end
+          )   
+          ;
+          P.string f L.lparen;
+          P.string f L.function_; 
+          P.string f L.lparen;
+          ignore @@ comma_idents inner_cxt f lexical;
+          P.string f L.rparen;
+          P.brace_vgroup f 0  (fun _ -> 
+              begin 
+                P.string f L.return ;
+                P.space f;
+                P.string f L.function_;
+                P.space f ;
+                (match name with 
+                 | No_name  -> () 
+                 | Name_non_top x | Name_top x -> ignore (ident inner_cxt f x));
+                param_body ()
+              end);
+          P.string f L.lparen;
+          ignore @@ comma_idents inner_cxt f lexical;
+          P.string f L.rparen;
+          P.string f L.rparen;
+          begin match name with 
+            | No_name -> () (* expression *)
+            | _ -> semi f (* has binding, a statement *)
+          end
+      in 
+      begin match name with 
+        | Name_top name | Name_non_top name  when Ident_set.mem name lexical ->
+          (*TODO: when calculating lexical we should not include itself *)
+          let lexical =  (Ident_set.remove name lexical) in
+          handle lexical
+        | _ -> handle lexical 
+      end
     in
     enclose lexical return 
     ;
@@ -518,58 +551,64 @@ let rec pp_function method_
 
 (* Assume the cond would not change the context, 
     since it can be either [int] or [string]
- *)
+*)
 and output_one : 'a . 
-    _ -> P.t -> (P.t -> 'a -> unit) -> 'a J.case_clause -> _
-    = fun cxt f  pp_cond
+                   _ -> P.t -> (P.t -> 'a -> unit) -> 'a J.case_clause -> _
+  = fun cxt f  pp_cond
     ({case = e; body = (sl,break)} : _ J.case_clause) -> 
-  let cxt = 
-    P.group f 1 @@ fun _ -> 
+    let cxt = 
+      P.group f 1 @@ fun _ -> 
       P.group f 1 @@ (fun _ -> 
-        P.string f "case ";
-        pp_cond  f e;
-        P.space f ;
-        P.string f L.colon  );
-      
+          P.string f L.case;
+          P.space f ;
+          pp_cond  f e; (* could be integer or string*)
+          P.space f ;
+          P.string f L.colon  );
+
       P.space f;
       P.group f 1 @@ fun _ ->
-        let cxt =
-          match sl with 
-          | [] -> cxt 
-          | _ ->
-              P.newline f ;
-              statement_list false cxt  f sl
-        in
-        (if break then 
-          begin
-            P.newline f ;
-            P.string f L.break;
-            semi f;
-          end) ;
-        cxt
-  in
-  P.newline f;
-  cxt 
+      let cxt =
+        match sl with 
+        | [] -> cxt 
+        | _ ->
+          P.newline f ;
+          statement_list false cxt  f sl
+      in
+      (if break then 
+         begin
+           P.newline f ;
+           P.string f L.break;
+           semi f;
+         end) ;
+      cxt
+    in
+    P.newline f;
+    cxt 
 
 and loop  :  'a . Ext_pp_scope.t ->
   P.t -> (P.t -> 'a -> unit) -> 'a J.case_clause list -> Ext_pp_scope.t
-      = fun  cxt  f pp_cond cases ->
-  match cases with 
-  | [] -> cxt 
-  | [x] -> output_one cxt f pp_cond x
-  | x::xs ->
+  = fun  cxt  f pp_cond cases ->
+    match cases with 
+    | [] -> cxt 
+    | [x] -> output_one cxt f pp_cond x
+    | x::xs ->
       let cxt = output_one cxt f pp_cond x 
       in loop  cxt f pp_cond  xs 
 
 and vident cxt f  (v : J.vident) =
   begin match v with 
-  | Id v | Qualified(v, _, None) ->  
+    | Id v | Qualified(v, _, None) ->  
       ident cxt f v
-  | Qualified (id,_, Some name) ->
+    | Qualified (id, (Ml | Runtime),  Some name) ->
       let cxt = ident cxt f id in
       P.string f L.dot;
       P.string f (Ext_ident.convert true name);
       cxt
+    | Qualified (id, External _, Some name) ->
+      let cxt = ident cxt f id in
+      property_access f name ;
+      cxt
+
   end
 
 and expression l cxt  f (exp : J.expression) : Ext_pp_scope.t = 
@@ -594,14 +633,14 @@ and
     else action ()
 
   | Fun (method_, l, b, env) ->  (* TODO: dump for comments *)
-      pp_function method_ cxt f false  l b env
+    pp_function method_ cxt f false  l b env
   (* TODO: 
      when [e] is [Js_raw_code] with arity
      print it in a more precise way
      It seems the optimizer already did work to make sure
      {[
        Call (Raw_js_code (s, Exp i), el, {Full})
-         when List.length el = i
+       when List.length el = i
      ]}
   *)
 
@@ -674,8 +713,8 @@ and
                   expression 1 cxt  f e  )
           end ) 
     in
-      if l > 15 then P.paren_group f 1 action   
-      else action ()
+    if l > 15 then P.paren_group f 1 action   
+    else action ()
 
 
   | Array_append (e, el) -> 
@@ -746,32 +785,37 @@ and
         P.string f name;
         P.paren_group f 1 (fun _ -> arguments cxt f el)
       )
-
+  | Unicode s -> 
+    P.string f "\"";
+    P.string f s ; 
+    P.string f "\"";
+    cxt 
   | Str (_, s) ->
     (*TODO --
        when utf8-> it will not escape '\\' which is definitely not we want
-     *)
-    let quote = best_string_quote s in 
-    pp_string f (* ~utf:(kind = `Utf8) *) ~quote s; cxt 
+    *)
+    pp_string f  s;
+    cxt 
+
   | Raw_js_code (s,info) -> 
     begin match info with 
-    | Exp -> 
-      P.string f "("; 
-      P.string f s ; 
-      P.string f ")";
-      cxt 
-    | Stmt -> 
-      P.newline f  ;
-      P.string f s ;
-      P.newline f ;
-      cxt 
+      | Exp -> 
+        P.string f "("; 
+        P.string f s ; 
+        P.string f ")";
+        cxt 
+      | Stmt -> 
+        P.newline f  ;
+        P.string f s ;
+        P.newline f ;
+        cxt 
     end
   | Number v ->
     let s = 
       match v with 
       | Float {f = v} -> 
         Js_number.caml_float_literal_to_js_string v 
-       (* attach string here for float constant folding?*)
+      (* attach string here for float constant folding?*)
       | Int { i = v; _} 
         -> Int32.to_string v (* check , js convention with ocaml lexical convention *)
       | Uint i
@@ -796,8 +840,8 @@ and
   | Int_of_boolean e -> 
     let action () = 
       P.group f 0 @@ fun _ -> 
-        P.string f "+" ;
-        expression 13 cxt f e 
+      P.string f "+" ;
+      expression 13 cxt f e 
     in
     (* need to tweak precedence carefully 
        here [++x --> +(+x)]
@@ -848,9 +892,9 @@ and
     (* TODO: parenthesize when necessary *)
     begin match delta, op with 
       | {expression_desc = Number (Int { i =  1l; _})}, Plus
-        (* TODO: float 1. instead, 
-             since in JS, ++ is a float operation           
-        *)        
+      (* TODO: float 1. instead, 
+           since in JS, ++ is a float operation           
+      *)        
       | {expression_desc = Number (Int { i =  -1l; _})}, Minus
         ->
         P.string f L.plusplus;
@@ -939,15 +983,15 @@ and
     (* Note that we should not apply any smart construtor here, 
        it's purely  a convenice for pretty-printing
     *)    
-    expression_desc cxt l f (Bin (Plus, {expression_desc = Str (true,""); comment = None}, e))    
+    expression_desc cxt l f (Bin (Plus, E.empty_string_literal , e))    
 
   | Bin (Minus, {expression_desc = Number (Int {i=0l;_} | Float {f = "0."})}, e) 
-      (* TODO:
-         Handle multiple cases like
-         {[ 0. - x ]}
-         {[ 0.00 - x ]}
-         {[ 0.000 - x ]}
-       *)
+    (* TODO:
+       Handle multiple cases like
+       {[ 0. - x ]}
+       {[ 0.00 - x ]}
+       {[ 0.000 - x ]}
+    *)
     ->
     let action () = 
       P.string f "-" ;
@@ -964,7 +1008,7 @@ and
     let action () = 
       (* We are more conservative here, to make the generated code more readable
           to the user
-       *)
+      *)
 
       let cxt = expression lft cxt  f e1 in
       P.space f; 
@@ -1006,21 +1050,21 @@ and
        with regard tag  *)
     begin match tag.expression_desc, tag_info with 
 
-    | Number (Int { i = 0l ; _})  , 
-      (Blk_tuple | Blk_array | Blk_variant _ | Blk_record _ | Blk_na | Blk_module _
-      |  Blk_constructor (_, 1) (* Sync up with {!Js_dump}*)
-      ) 
-      -> expression_desc cxt l f  (Array (el, mutable_flag))
-    (* TODO: for numbers like 248, 255 we can reverse engineer to make it 
-       [Obj.xx_flag], but we can not do this in runtime libraries
-    *)
+      | Number (Int { i = 0l ; _})  , 
+        (Blk_tuple | Blk_array | Blk_variant _ | Blk_record _ | Blk_na | Blk_module _
+        |  Blk_constructor (_, 1) (* Sync up with {!Js_dump}*)
+        ) 
+        -> expression_desc cxt l f  (Array (el, mutable_flag))
+      (* TODO: for numbers like 248, 255 we can reverse engineer to make it 
+         [Obj.xx_flag], but we can not do this in runtime libraries
+      *)
 
-    | _, _
-      -> 
-      P.string f L.caml_block; 
-      P.string f L.dot ;
-      P.string f L.caml_block_create;
-      P.paren_group f 1 (fun _ -> arguments cxt f [tag; E.arr mutable_flag el])
+      | _, _
+        -> 
+        P.string f L.caml_block; 
+        P.string f L.dot ;
+        P.string f L.caml_block_create;
+        P.paren_group f 1 (fun _ -> arguments cxt f [tag; E.arr mutable_flag el])
     end
   | Caml_block_tag e ->
     P.group f 1 (fun _ ->  
@@ -1034,9 +1078,9 @@ and
     ->
     let action () = 
       P.group f 1 @@ fun _ -> 
-        let cxt = expression 15 cxt f e in
-        P.bracket_group f 1 @@ fun _ -> 
-          expression 0 cxt f e' 
+      let cxt = expression 15 cxt f e in
+      P.bracket_group f 1 @@ fun _ -> 
+      expression 0 cxt f e' 
     in
     if l > 15 then P.paren_group f 1 action else action ()
 
@@ -1051,16 +1095,7 @@ and
   | Dot (e, s,normal) ->
     let action () = 
       let cxt = expression 15 cxt f e in
-      if Ext_ident.property_no_need_convert s  then
-        begin 
-          P.string f L.dot;
-          P.string f s; 
-        end
-      else
-        begin 
-          P.bracket_group f 1 @@ fun _ ->
-          pp_string f (* ~utf:(kind = `Utf8) *) ~quote:( best_string_quote s) s
-        end;
+      property_access f s ;
       (* See [Js_program_loader.obj_of_exports] 
          maybe in the ast level we should have 
          refer and export
@@ -1071,23 +1106,23 @@ and
   | New (e,  el) ->
     let action () = 
       P.group f 1 @@ fun _ -> 
-        P.string f L.new_;
-        P.space f;
-        let cxt = expression 16 cxt f e in
-        P.paren_group f 1 @@ fun _ -> 
-          match el with 
-          | Some el  -> arguments cxt f el  
-          | None -> cxt
+      P.string f L.new_;
+      P.space f;
+      let cxt = expression 16 cxt f e in
+      P.paren_group f 1 @@ fun _ -> 
+      match el with 
+      | Some el  -> arguments cxt f el  
+      | None -> cxt
     in
     if l > 15 then P.paren_group f 1 action else action ()
 
   | Array_of_size e ->
     let action () = 
       P.group f 1 @@ fun _ -> 
-        P.string f L.new_;
-        P.space f;
-        P.string f L.array;
-        P.paren_group f 1 @@ fun _ -> expression 0 cxt f e
+      P.string f L.new_;
+      P.space f;
+      P.string f L.array;
+      P.paren_group f 1 @@ fun _ -> expression 0 cxt f e
     in
     if l > 15 then P.paren_group f 1 action else action ()
 
@@ -1194,15 +1229,15 @@ and variable_declaration top cxt f
               ~name:(if top then Name_top name else Name_non_top name) 
               false params b env 
           | _, _ -> 
-              P.string f L.var;
-              P.space f;
-              let cxt = ident cxt f name in
-              P.space f ;
-              P.string f L.eq;
-              P.space f ;
-              let cxt = expression 1 cxt f e in
-              semi f;
-              cxt 
+            P.string f L.var;
+            P.space f;
+            let cxt = ident cxt f name in
+            P.space f ;
+            P.string f L.eq;
+            P.space f ;
+            let cxt = expression 1 cxt f e in
+            semi f;
+            cxt 
         end
     end
 and ipp_comment : 'a . P.t -> 'a  -> unit = fun   f comment -> 
@@ -1212,19 +1247,21 @@ and ipp_comment : 'a . P.t -> 'a  -> unit = fun   f comment ->
 (** don't print a new line -- ASI 
     FIXME: this still does not work in some cases...
     {[
-    return /* ... */
-    [... ]
+      return /* ... */
+      [... ]
     ]}
 *)
 
 and pp_comment f comment = 
-  if String.length comment > 0 then 
-    P.string f "/* "; P.string f comment ; P.string f " */" 
+  if String.length comment > 0 then
+    begin 
+      P.string f "/* "; P.string f comment ; P.string f " */"
+    end
 
 and pp_comment_option f comment  = 
-    match comment with 
-    | None -> ()
-    | Some x -> pp_comment f x
+  match comment with 
+  | None -> ()
+  | Some x -> pp_comment f x
 and statement top cxt f 
     ({statement_desc = s;  comment ; _} : J.statement)  : Ext_pp_scope.t =
 
@@ -1234,19 +1271,19 @@ and statement top cxt f
 and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t = 
   match s with
   | Block [] -> 
-      ipp_comment f  L.empty_block; (* debugging*)
-      cxt
+    ipp_comment f  L.empty_block; (* debugging*)
+    cxt
   | Exp {expression_desc = Var _;}
     -> (* Does it make sense to optimize here? *)
-      semi f; cxt 
+    semi f; cxt 
 
   | Block b -> (* No braces needed here *)
-      ipp_comment f L.start_block;
-      let cxt = statement_list top cxt  f b in
-      ipp_comment f  L.end_block;
-      cxt
+    ipp_comment f L.start_block;
+    let cxt = statement_list top cxt  f b in
+    ipp_comment f  L.end_block;
+    cxt
   | Variable l ->
-      variable_declaration top cxt  f l
+    variable_declaration top cxt  f l
   | Exp e ->
     (* Parentheses are required when the expression
        starts syntactically with "{" or "function" 
@@ -1290,6 +1327,7 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
       | Math _
       | Var _ 
       | Str _ 
+      | Unicode _
       | Array _ 
       | Caml_block  _ 
       | FlatCall _ 
@@ -1303,7 +1341,7 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
       | J.Anything_to_number _ 
       | Int_of_boolean _ -> false
       (* e = function(x){...}(x);  is good
-       *)
+      *)
     in
     let cxt = 
       (
@@ -1323,127 +1361,127 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
       block cxt f s1
     in
     begin match s2 with 
-     | None | (Some []) 
-     | Some [{statement_desc = (Block [] | Exp {expression_desc = Var _;} ); }]
-       -> P.newline f; cxt
-     | Some [{statement_desc = If _} as nest]
-     | Some [{statement_desc = Block [ {statement_desc = If _ ; _} as nest] ; _}]
-       ->
-       P.newline f;
-       P.string f L.else_;
-       P.space f;
-       statement false cxt f nest 
-     | Some s2 -> 
-       P.newline f;
-       P.string f L.else_;
-       P.space f ;
-       block  cxt f s2 
+      | None | (Some []) 
+      | Some [{statement_desc = (Block [] | Exp {expression_desc = Var _;} ); }]
+        -> P.newline f; cxt
+      | Some [{statement_desc = If _} as nest]
+      | Some [{statement_desc = Block [ {statement_desc = If _ ; _} as nest] ; _}]
+        ->
+        P.space f;
+        P.string f L.else_;
+        P.space f;
+        statement false cxt f nest 
+      | Some s2 -> 
+        P.space f;
+        P.string f L.else_;
+        P.space f ;
+        block  cxt f s2 
     end
 
   | While (label, e, s, _env) ->  (*  FIXME: print scope as well *)
-      begin 
-        (match label with 
-        | Some i ->
-            P.string f i ; 
-            P.string f L.colon;
-            P.newline f ;
-        | None -> ());
-        let cxt = 
-          match e.expression_desc with
-          | Number (Int {i = 1l}) ->
-              P.string f L.while_;
-              P.string f "(";
-              P.string f L.true_;
-              P.string f ")"; 
-              P.space f ;
-              cxt 
-          | _ -> 
-              P.string f L.while_;
-              let cxt = P.paren_group f 1 @@ fun _ ->  expression 0 cxt f e in
-              P.space f ; 
-              cxt 
-        in
-        let cxt = block cxt f s in
-        semi f;
-        cxt
-      end
+    begin 
+      (match label with 
+       | Some i ->
+         P.string f i ; 
+         P.string f L.colon;
+         P.newline f ;
+       | None -> ());
+      let cxt = 
+        match e.expression_desc with
+        | Number (Int {i = 1l}) ->
+          P.string f L.while_;
+          P.string f "(";
+          P.string f L.true_;
+          P.string f ")"; 
+          P.space f ;
+          cxt 
+        | _ -> 
+          P.string f L.while_;
+          let cxt = P.paren_group f 1 @@ fun _ ->  expression 0 cxt f e in
+          P.space f ; 
+          cxt 
+      in
+      let cxt = block cxt f s in
+      semi f;
+      cxt
+    end
   | ForRange (for_ident_expression, finish, id, direction, s, env) -> 
     let action cxt  = 
       P.vgroup f 0 @@ fun _ -> 
-        let cxt = P.group f 0 @@ fun _ -> 
-            (* The only place that [semi] may have semantics here *)
-            P.string f "for";
-            P.paren_group f 1 @@ fun _ -> 
-              let cxt, new_id = 
-                (match for_ident_expression, finish.expression_desc with 
-                 | Some ident_expression , (Number _ | Var _ ) -> 
-                   P.string f L.var;
-                   P.space f;
-                   let cxt  =  ident cxt f id in
-                   P.space f; 
-                   P.string f L.eq;
-                   P.space f;
-                   expression 0 cxt f ident_expression, None
-                 | Some ident_expression, _ -> 
-                   P.string f L.var;
-                   P.space f;
-                   let cxt  =  ident cxt f id in
-                   P.space f;
-                   P.string f L.eq;
-                   P.space f; 
-                   let cxt = expression 1 cxt f ident_expression in
-                   P.space f ; 
-                   P.string f L.comma;
-                   let id = Ext_ident.create (Ident.name id ^ "_finish") in
-                   let cxt = ident cxt f id in
-                   P.space f ; 
-                   P.string f L.eq;
-                   P.space f;
-                   expression 1 cxt f finish, Some id
-                 | None, (Number _ | Var _) -> 
-                   cxt, None 
-                 | None , _ -> 
-                   P.string f L.var;
-                   P.space f ;
-                   let id = Ext_ident.create (Ident.name id ^ "_finish") in
-                   let cxt = ident cxt f id in
-                   P.space f ; 
-                   P.string f L.eq ; 
-                   P.space f ; 
-                   expression 15 cxt f finish, Some id
-                ) in
+      let cxt = P.group f 0 @@ fun _ -> 
+        (* The only place that [semi] may have semantics here *)
+        P.string f "for";
+        P.paren_group f 1 @@ fun _ -> 
+        let cxt, new_id = 
+          (match for_ident_expression, finish.expression_desc with 
+           | Some ident_expression , (Number _ | Var _ ) -> 
+             P.string f L.var;
+             P.space f;
+             let cxt  =  ident cxt f id in
+             P.space f; 
+             P.string f L.eq;
+             P.space f;
+             expression 0 cxt f ident_expression, None
+           | Some ident_expression, _ -> 
+             P.string f L.var;
+             P.space f;
+             let cxt  =  ident cxt f id in
+             P.space f;
+             P.string f L.eq;
+             P.space f; 
+             let cxt = expression 1 cxt f ident_expression in
+             P.space f ; 
+             P.string f L.comma;
+             let id = Ext_ident.create (Ident.name id ^ "_finish") in
+             let cxt = ident cxt f id in
+             P.space f ; 
+             P.string f L.eq;
+             P.space f;
+             expression 1 cxt f finish, Some id
+           | None, (Number _ | Var _) -> 
+             cxt, None 
+           | None , _ -> 
+             P.string f L.var;
+             P.space f ;
+             let id = Ext_ident.create (Ident.name id ^ "_finish") in
+             let cxt = ident cxt f id in
+             P.space f ; 
+             P.string f L.eq ; 
+             P.space f ; 
+             expression 15 cxt f finish, Some id
+          ) in
 
-              semi f ; 
-              P.space f;
-              let cxt = ident cxt f id in
-              P.space f;
-              let right_prec  = 
+        semi f ; 
+        P.space f;
+        let cxt = ident cxt f id in
+        P.space f;
+        let right_prec  = 
 
-                match direction with 
-                | Upto -> 
-                  let (_,_,right) = op_prec Le  in
-                  P.string f L.le;
-                  right
-                | Downto -> 
-                  let (_,_,right) = op_prec Ge in
-                  P.string f L.ge ;
-                  right
-              in
-              P.space f ; 
-              let cxt  = 
-                match new_id with 
-                | Some i -> expression   right_prec cxt  f (E.var i)
-                | None -> expression  right_prec cxt  f finish
-              in
-              semi f; 
-              P.space f;
-              let ()  = 
-                match direction with 
-                | Upto -> P.string f L.plus_plus
-                | Downto -> P.string f L.minus_minus in
-              ident cxt f id
+          match direction with 
+          | Upto -> 
+            let (_,_,right) = op_prec Le  in
+            P.string f L.le;
+            right
+          | Downto -> 
+            let (_,_,right) = op_prec Ge in
+            P.string f L.ge ;
+            right
         in
-        block  cxt f s  in
+        P.space f ; 
+        let cxt  = 
+          match new_id with 
+          | Some i -> expression   right_prec cxt  f (E.var i)
+          | None -> expression  right_prec cxt  f finish
+        in
+        semi f; 
+        P.space f;
+        let ()  = 
+          match direction with 
+          | Upto -> P.string f L.plus_plus
+          | Downto -> P.string f L.minus_minus in
+        ident cxt f id
+      in
+      block  cxt f s  in
     let lexical = Js_closure.get_lexical_scope env in
     if Ident_set.is_empty lexical 
     then action cxt
@@ -1514,11 +1552,11 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
 
         (* P.string f "return ";(\* ASI -- when there is a comment*\) *)
         P.group f return_indent @@ fun _ -> 
-          let cxt =  expression 0 cxt f e in
-          semi f;
-          cxt 
-          (* There MUST be a space between the return and its
-             argument. A line return will not work *)
+        let cxt =  expression 0 cxt f e in
+        semi f;
+        cxt 
+        (* There MUST be a space between the return and its
+           argument. A line return will not work *)
     end
   | Int_switch (e, cc, def) ->
     P.string f L.switch;  
@@ -1527,16 +1565,16 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
     in
     P.space f;
     P.brace_vgroup f 1 @@ fun _ -> 
-      let cxt = loop cxt f (fun f i -> P.string f (string_of_int i) ) cc in
-      (match def with
-       | None -> cxt
-       | Some def ->
-         P.group f 1 @@ fun _ -> 
-           P.string f L.default;
-           P.string f L.colon;
-           P.newline f;
-           statement_list  false cxt  f def 
-      )
+    let cxt = loop cxt f (fun f i -> P.string f (string_of_int i) ) cc in
+    (match def with
+     | None -> cxt
+     | Some def ->
+       P.group f 1 @@ fun _ -> 
+       P.string f L.default;
+       P.string f L.colon;
+       P.newline f;
+       statement_list  false cxt  f def 
+    )
 
   | String_switch (e, cc, def) ->
     P.string f L.switch;
@@ -1545,50 +1583,50 @@ and statement_desc top cxt f (s : J.statement_desc) : Ext_pp_scope.t =
     in
     P.space f;
     P.brace_vgroup f 1 @@ fun _ -> 
-      let cxt = loop cxt f (fun f i -> pp_quote_string f i ) cc in
-      (match def with
-       | None -> cxt
-       | Some def ->
-         P.group f 1 @@ fun _ -> 
-           P.string f L.default;
-           P.string f L.colon;
-           P.newline f;
-           statement_list  false cxt  f def )
+    let cxt = loop cxt f (fun f i -> pp_string f i ) cc in
+    (match def with
+     | None -> cxt
+     | Some def ->
+       P.group f 1 @@ fun _ -> 
+       P.string f L.default;
+       P.string f L.colon;
+       P.newline f;
+       statement_list  false cxt  f def )
 
   | Throw e ->
     P.string f L.throw;
     P.space f ;
     P.group f throw_indent @@ fun _ -> 
 
-      let cxt = expression 0 cxt f e in
-      semi f ; cxt 
+    let cxt = expression 0 cxt f e in
+    semi f ; cxt 
 
   (* There must be a space between the return and its
      argument. A line return would not work *)
   | Try (b, ctch, fin) ->
     P.vgroup f 0 @@ fun _-> 
-      P.string f "try";
-      P.space f ; 
-      let cxt = block cxt f b in
-      let cxt = 
-        match ctch with
-        | None ->
-          cxt
-        | Some (i, b) ->
-          P.newline f;
-          P.string f "catch (";
-          let cxt = ident cxt f i in
-          P.string f ")";
-          block cxt f b
-      in 
-      begin match fin with
-        | None -> cxt
-        | Some b ->
-          P.group f 1 @@ fun _ -> 
-            P.string f "finally";
-            P.space f;
-            block cxt f b 
-      end
+    P.string f "try";
+    P.space f ; 
+    let cxt = block cxt f b in
+    let cxt = 
+      match ctch with
+      | None ->
+        cxt
+      | Some (i, b) ->
+        P.newline f;
+        P.string f "catch (";
+        let cxt = ident cxt f i in
+        P.string f ")";
+        block cxt f b
+    in 
+    begin match fin with
+      | None -> cxt
+      | Some b ->
+        P.group f 1 @@ fun _ -> 
+        P.string f "finally";
+        P.space f;
+        block cxt f b 
+    end
 (* similar to [block] but no braces *)
 and statement_list top cxt f  b =
   match b with
@@ -1605,6 +1643,8 @@ and block cxt f b =
   P.brace_vgroup f 1 (fun _ -> statement_list false cxt   f b )
 
 
+(** Exports printer *)
+(** Print exports in Google module format, CommonJS format *)
 let exports cxt f (idents : Ident.t list) = 
   let outer_cxt, reversed_list, margin = 
     List.fold_left (fun (cxt, acc, len ) (id : Ident.t) -> 
@@ -1627,8 +1667,35 @@ let exports cxt f (idents : Ident.t list) =
     ) reversed_list;
   outer_cxt  
 
+(** Print module in ES6 format, it is ES6, trailing comma is valid ES6 code *)
+let es6_export cxt f (idents : Ident.t list) = 
+  let outer_cxt, reversed_list, margin = 
+    List.fold_left (fun (cxt, acc, len ) (id : Ident.t) -> 
+        let s = Ext_ident.convert true id.name in        
+        let str,cxt  = str_of_ident cxt id in         
+        cxt, ( (s,str) :: acc ) , max len (String.length s)   )
+      (cxt, [], 0)  idents in    
+  P.newline f ;
+  P.string f L.export ; 
+  P.space f ; 
+  P.brace_vgroup f 1 begin fun _ -> 
+    Ext_list.rev_iter (fun (s,export) -> 
+        P.group f 0 @@ (fun _ ->  
+            P.string f export;          
+            P.nspace f (margin - String.length s +  1) ;
+            if not @@ Ext_string.equal export s then begin 
+              P.string f L.as_ ;
+              P.space f;
+              P.string f s
+            end ;             
+            P.string f L.comma ;);
+        P.newline f;
+      ) reversed_list;
+  end;
+  outer_cxt  
 
-(* Node style *)
+
+(** Node or Google module style imports *)
 let requires require_lit cxt f (modules : (Ident.t * string) list ) =
   P.newline f ; 
   (* the context used to print the following program *)  
@@ -1649,11 +1716,43 @@ let requires require_lit cxt f (modules : (Ident.t * string) list ) =
       P.space f;
       P.string f require_lit;
       P.paren_group f 0 @@ (fun _ ->
-          pp_string f ~utf:true ~quote:(best_string_quote s) file  );
+          pp_string f file  );
       semi f ;
       P.newline f ;
     ) reversed_list;
   outer_cxt
+(** ES6 module style imports *)
+let imports  cxt f (modules : (Ident.t * string) list ) =
+  P.newline f ; 
+  (* the context used to print the following program *)  
+  let outer_cxt, reversed_list, margin  =
+    List.fold_left
+      (fun (cxt, acc, len) (id,s) ->
+         let str, cxt = str_of_ident cxt id  in
+         cxt, ((str,s) :: acc), (max len (String.length str))
+      )
+      (cxt, [], 0)  modules in
+  P.force_newline f ;    
+  Ext_list.rev_iter (fun (s,file) ->
+      
+      P.string f L.import;
+      P.space f ;
+      P.string f L.star ;
+      P.space f ; (* import * as xx \t from 'xx*) 
+      P.string f L.as_ ; 
+      P.space f ; 
+      P.string f s ; 
+      P.nspace f (margin - String.length s + 1) ;      
+      P.string f L.from;
+      P.space f;
+      pp_string f file ;
+      semi f ;
+      P.newline f ;
+    ) reversed_list;
+  outer_cxt
+
+
+
 
 let program f cxt   ( x : J.program ) = 
   let () = P.force_newline f in
@@ -1677,7 +1776,7 @@ let goog_program ~output_prefix f goog_package (x : J.deps_program)  =
          (fun x -> 
             Lam_module_ident.id x,
             Js_program_loader.string_of_module_id
-              ~output_prefix `Goog x)
+              ~output_prefix Goog x)
          x.modules) 
   in
   program f cxt x.program  
@@ -1693,13 +1792,13 @@ let node_program ~output_prefix f ( x : J.deps_program) =
             Lam_module_ident.id x,
             Js_program_loader.string_of_module_id
               ~output_prefix
-              `NodeJS x)
+              NodeJS x)
          x.modules)
   in
   program f cxt x.program  
 
 
-let amd_program ~output_prefix f (  x : J.deps_program) = 
+let amd_program ~output_prefix kind f (  x : J.deps_program) = 
   P.newline f ; 
   let cxt = Ext_pp_scope.empty in
   P.vgroup f 1 @@ fun _ -> 
@@ -1708,10 +1807,10 @@ let amd_program ~output_prefix f (  x : J.deps_program) =
   P.string f (Printf.sprintf "%S" L.exports);
 
   List.iter (fun x ->
-      let s = Js_program_loader.string_of_module_id ~output_prefix `AmdJS x in
+      let s = Js_program_loader.string_of_module_id ~output_prefix kind x in
       P.string f L.comma ;
       P.space f; 
-      pp_string f ~utf:true ~quote:(best_string_quote s) s;
+      pp_string f  s;
     ) x.modules ;
   P.string f "]";
   P.string f L.comma;
@@ -1736,16 +1835,33 @@ let amd_program ~output_prefix f (  x : J.deps_program) =
   P.string f ")";
   v
 
+
+let es6_program  ~output_prefix fmt f (  x : J.deps_program) = 
+  let cxt = 
+    imports
+      Ext_pp_scope.empty
+      f
+      (List.map 
+         (fun x -> 
+            Lam_module_ident.id x,
+            Js_program_loader.string_of_module_id
+              ~output_prefix
+              fmt x)
+         x.modules)
+  in
+  let () = P.force_newline f in 
+  let cxt = statement_list true cxt f x.program.block in 
+  let () = P.force_newline f in 
+  es6_export cxt f x.program.exports
+
+
+
 (** Make sure github linguist happy
     {[
       require('Linguist')
-      Linguist::FileBlob.new('jscomp/test/test_u.js').generated?
+        Linguist::FileBlob.new('jscomp/test/test_u.js').generated?
     ]}
 *)
-let bs_header = 
-  "// Generated by BUCKLESCRIPT VERSION " ^
-  Bs_version.version ^
-  " , PLEASE EDIT WITH CARE"
 
 let pp_deps_program
     ~output_prefix
@@ -1754,25 +1870,27 @@ let pp_deps_program
   begin
     if not !Js_config.no_version_header then 
       begin 
-        P.string f bs_header;
+        P.string f Bs_version.header;
         P.newline f
       end ; 
     P.string f L.strict_directive; 
     P.newline f ;    
     ignore (match kind with 
-     | `AmdJS -> 
-       amd_program ~output_prefix f program
-     | `NodeJS -> 
-       node_program ~output_prefix f program
-     | `Goog  -> 
-       let goog_package = 
-         let v = Js_config.get_module_name () in
-         match Js_config.get_package_name () with 
-         | None 
-           -> v 
-         | Some x -> x ^ "." ^ v 
-       in 
-       goog_program ~output_prefix f goog_package  program
+        | Es6 | Es6_global -> 
+          es6_program ~output_prefix kind f program
+        | AmdJS | AmdJS_global -> 
+          amd_program ~output_prefix kind f program
+        | NodeJS -> 
+          node_program ~output_prefix f program
+        | Goog  -> 
+          let goog_package = 
+            let v = Js_config.get_module_name () in
+            match Js_config.get_package_name () with 
+            | None 
+              -> v 
+            | Some x -> x ^ "." ^ v 
+          in 
+          goog_program ~output_prefix f goog_package  program
       ) ;
     P.newline f ;
     P.string f (
@@ -1813,4 +1931,4 @@ let string_of_expression e =
     Buffer.contents buffer     
   end
 
- 
+

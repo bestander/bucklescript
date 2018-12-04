@@ -80,7 +80,7 @@ let ml_var_dot ?comment ( id  : Ident.t) e : J.expression =
   {expression_desc = Var (Qualified(id, Ml, Some e)); comment }
 
 (** 
-  module as a value 
+   module as a value 
    {[
      var http = require("http")
    ]}
@@ -92,7 +92,11 @@ let external_var_dot ?comment  ~external_name:name ?dot (id : Ident.t) : t =
 let ml_var ?comment (id : Ident.t) : t  = 
   {expression_desc = Var (Qualified (id, Ml, None)); comment}
 
-let str ?(pure=true) ?comment s : t =  {expression_desc = Str (pure,s); comment}
+let str ?(pure=true)  ?comment s : t =  
+  {expression_desc = Str (pure,s); comment}
+
+let unicode ?comment s : t = 
+  {expression_desc = Unicode (s); comment}
 
 let raw_js_code ?comment info s : t =
   {expression_desc = Raw_js_code (s,info) ; comment }
@@ -236,6 +240,12 @@ let rec seq ?comment (e0 : t) (e1 : t) : t =
   | _ -> 
     {expression_desc = Seq(e0,e1); comment}
 
+let fuse_to_seq x xs = 
+  if xs = [] then x  
+  else List.fold_left seq x xs 
+
+let empty_string_literal : t = 
+  {expression_desc = Str (true,""); comment = None}  
 
 let zero_int_literal : t =   
   {expression_desc = Number (Int {i = 0l; c = None}) ; comment = None}
@@ -283,7 +293,7 @@ let small_int i : t =
   | i -> int (Int32.of_int i) 
 
 
-let access ?comment (e0 : t)  (e1 : t) : t = 
+let access ?comment (e0 : t)  (e1 : t) : t =
   match e0.expression_desc, e1.expression_desc with
   | Array (l,_mutable_flag) , Number (Int {i; _}) when no_side_effect e0-> 
     List.nth l  (Int32.to_int i)  (* Float i -- should not appear here *)
@@ -293,7 +303,7 @@ let access ?comment (e0 : t)  (e1 : t) : t =
 let string_access ?comment (e0 : t)  (e1 : t) : t = 
   match e0.expression_desc, e1.expression_desc with
   | Str (_,s) , Number (Int {i; _}) 
-    -> 
+    ->  (* Don't optimize {j||j} *)
     let i = Int32.to_int i  in
     if i >= 0 && i < String.length s then 
       (* TODO: check exception when i is out of range..
@@ -377,7 +387,8 @@ let array_length ?comment (e : t) : t =
 
 let string_length ?comment (e : t) : t =
   match e.expression_desc with 
-  | Str(_,v) -> int ?comment (Int32.of_int (String.length v))
+  | Str(_,v) -> int ?comment (Int32.of_int (String.length v)) 
+    (* No optimization for {j||j}*)
   | _ -> { expression_desc = Length (e, String) ; comment }
 
 let bytes_length ?comment (e : t) : t = 
@@ -385,6 +396,7 @@ let bytes_length ?comment (e : t) : t =
   (* TODO: use array instead? *)
   | Array (l, _) -> int ?comment (Int32.of_int (List.length l))
   | Str(_,v) -> int ?comment (Int32.of_int @@ String.length v)
+  (* No optimization for unicode *)
   | _ -> { expression_desc = Length (e, Bytes) ; comment }
 
 let function_length ?comment (e : t) : t = 
@@ -412,7 +424,7 @@ let char_of_int ?comment (v : t) : t =
 
 let char_to_int ?comment (v : t) : t = 
   match v.expression_desc with 
-  | Str (_, x) ->
+  | Str (_, x) -> (* No optimization for .. *)
     assert (String.length x = 1) ;
     int ~comment:(Printf.sprintf "%S"  x )  
       (Int32.of_int @@ Char.code x.[0])
@@ -461,14 +473,14 @@ let var_dot ?comment (x : Ident.t)  (e1 : string) : t =
 
 let bind_call ?comment obj  (e1 : string) args  : t = 
   call ~info:Js_call_info.dummy {expression_desc = 
-     Bind ({expression_desc = Dot (obj,  e1, true); comment} , obj);
-   comment = None } args 
+                                   Bind ({expression_desc = Dot (obj,  e1, true); comment} , obj);
+                                 comment = None } args 
 
 let bind_var_call ?comment (x : Ident.t)  (e1 : string) args  : t = 
   let obj =  var x in 
   call ~info:Js_call_info.dummy {expression_desc = 
-     Bind ({expression_desc = Dot (obj,  e1, true); comment} , obj);
-   comment = None } args 
+                                   Bind ({expression_desc = Dot (obj,  e1, true); comment} , obj);
+                                 comment = None } args 
 
 
 (* Dot .....................**)        
@@ -484,7 +496,7 @@ let assign ?comment e0 e1 : t = {expression_desc = Bin(Eq, e0,e1); comment}
      this should be optmized away for [if] ,[cond] to produce 
     more readable code
 *)         
-let to_ocaml_boolean ?comment (e : t) : t = 
+let bool_of_boolean ?comment (e : t) : t = 
   match e.expression_desc with 
   | Int_of_boolean _
   | Number _ -> e 
@@ -505,7 +517,7 @@ let bool v = if  v then caml_true else caml_false
 
 (** Here we have to use JS [===], and therefore, we are introducing 
     Js boolean, so be sure to convert it back to OCaml boolean
- *)
+*)
 let rec triple_equal ?comment (e0 : t) (e1 : t ) : t = 
   match e0.expression_desc, e1.expression_desc with
   | Var (Id ({name = "undefined"|"null"; } as id)), 
@@ -533,7 +545,7 @@ let rec triple_equal ?comment (e0 : t) (e1 : t ) : t =
   | Char_of_int a , Char_of_int b -> 
     triple_equal ?comment a b 
   | _ -> 
-    to_ocaml_boolean  {expression_desc = Bin(EqEqEq, e0,e1); comment}
+    bool_of_boolean  {expression_desc = Bin(EqEqEq, e0,e1); comment}
 
 
 (** Arith operators *)
@@ -573,25 +585,25 @@ let bin ?comment (op : J.binop) e0 e1 : t =
 let rec and_ ?comment (e1 : t) (e2 : t) : t = 
   match e1.expression_desc, e2.expression_desc with 
   |  Int_of_boolean e1 , Int_of_boolean e2 ->
-    to_ocaml_boolean @@ and_ ?comment e1 e2
+    bool_of_boolean @@ and_ ?comment e1 e2
 
-(*
-   {[ a && (b && c) === (a && b ) && c ]}
-   is not used: benefit is not clear 
-  | Int_of_boolean e10, Bin(And, {expression_desc = Int_of_boolean e20 }, e3) 
-    -> 
-    and_ ?comment 
-      { e1 with expression_desc 
-                = 
-                  J.Int_of_boolean { expression_desc = Bin (And, e10,e20); comment = None}
-      }
-      e3
-*)
+  (*
+     {[ a && (b && c) === (a && b ) && c ]}
+     is not used: benefit is not clear 
+     | Int_of_boolean e10, Bin(And, {expression_desc = Int_of_boolean e20 }, e3) 
+      -> 
+      and_ ?comment 
+        { e1 with expression_desc 
+                  = 
+                    J.Int_of_boolean { expression_desc = Bin (And, e10,e20); comment = None}
+        }
+        e3
+  *)
   (* Note that 
      {[ "" && 3 ]}
      return  "" instead of false, so [e1] is indeed useful
   *)
-  
+
   (* optimization if [e1 = e2], then and_ e1 e2 -> e2
      be careful for side effect        
   *)
@@ -612,7 +624,7 @@ let rec or_ ?comment (e1 : t) (e2 : t) =
   match e1.expression_desc, e2.expression_desc with 
   | Int_of_boolean e1 , Int_of_boolean e2
     ->
-    to_ocaml_boolean @@ or_ ?comment e1 e2
+    bool_of_boolean @@ or_ ?comment e1 e2
   | Var i, Var j when Js_op_util.same_vident  i j 
     -> 
     e1
@@ -650,17 +662,17 @@ and js_not ({expression_desc; comment} as e : t) origin : t =
   match expression_desc with 
   | Bin(EqEqEq , e0,e1) 
     -> 
-    to_ocaml_boolean {expression_desc = Bin(NotEqEq, e0,e1); comment}
+    bool_of_boolean {expression_desc = Bin(NotEqEq, e0,e1); comment}
   | Bin(NotEqEq , e0,e1) -> 
-    to_ocaml_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}
+    bool_of_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}
   | Bin(Lt, a, b) -> 
-    to_ocaml_boolean {e with expression_desc = Bin (Ge,a,b)}
+    bool_of_boolean {e with expression_desc = Bin (Ge,a,b)}
   | Bin(Ge,a,b) -> 
-    to_ocaml_boolean {e with expression_desc = Bin (Lt,a,b)}
+    bool_of_boolean {e with expression_desc = Bin (Lt,a,b)}
   | Bin(Le,a,b) -> 
-    to_ocaml_boolean {e with expression_desc = Bin (Gt,a,b)}
+    bool_of_boolean {e with expression_desc = Bin (Gt,a,b)}
   | Bin(Gt,a,b) -> 
-    to_ocaml_boolean {e with expression_desc = Bin (Le,a,b)}
+    bool_of_boolean {e with expression_desc = Bin (Le,a,b)}
   | _ -> {expression_desc = Caml_not origin; comment = None}
 
 let rec ocaml_boolean_under_condition (b : t) =
@@ -687,7 +699,7 @@ let rec ocaml_boolean_under_condition (b : t) =
     if u' == u then b 
     else {b with expression_desc = Js_not u'} 
   | _ -> b 
-  
+
 let rec econd ?comment (b : t) (t : t) (f : t) : t = 
   match b.expression_desc , t.expression_desc, f.expression_desc with
 
@@ -830,7 +842,7 @@ let rec float_equal ?comment (e0 : t) (e1 : t) : t =
     float_equal ?comment a b
 
   | _ ->  
-    to_ocaml_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}
+    bool_of_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}
 
 
 let int_equal = float_equal 
@@ -838,9 +850,10 @@ let rec string_equal ?comment (e0 : t) (e1 : t) : t =
   match e0.expression_desc, e1.expression_desc with     
   | Str (_, a0), Str(_, b0) 
     -> bool  (Ext_string.equal a0 b0)
+  | Unicode a0, Unicode b0 -> bool (Ext_string.equal a0 b0)
   | _ , _ 
     ->
-    to_ocaml_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}     
+    bool_of_boolean {expression_desc = Bin(EqEqEq, e0,e1); comment}     
 
 
 let is_type_number ?comment (e : t) : t = 
@@ -878,46 +891,46 @@ let public_method_call meth_name obj label cache args =
   let len = List.length args in 
   (* econd (int_equal (tag obj ) obj_int_tag_literal) *)
   if len <= 7 then          
-    runtime_call Js_config.curry 
+    runtime_call Js_config.caml_oo_curry 
       ("js" ^ string_of_int (len + 1) )
       (label:: ( int cache) :: obj::args)
   else 
-    runtime_call Js_config.curry "js"
+    runtime_call Js_config.caml_oo_curry "js"
       [label; 
        int cache;
        obj ;  
        arr NA (obj::args)
       ]
 
-    (* TODO: handle arbitrary length of args .. 
-       we can reduce part of the overhead by using
-       `__js` -- a easy ppx {{ x ##.hh }} 
-       the downside is that no way to swap ocaml/js implementation 
-       for object part, also need encode arity..
-       how about x#|getElementById|2|
-    *)
-    (* ( *)
-    (*   let fn = bind (dot obj meth_name) obj in *)
-    (*   if len = 0 then  *)
-    (*     dot obj meth_name *)
-    (*     (\* Note that when no args supplied,  *)
-    (*        it is not necessarily a function, [bind] *)
-    (*        is dangerous *)
-    (*        so if user write such code *)
-    (*        {[ *)
-    (*          let  u = x # say in *)
-    (*          u 3               *)
-    (*        ]}     *)
-    (*        It's reasonable to drop [this] support        *)
-    (*     *\) *)
-    (*   else if len <=8 then  *)
-    (*     let len_str = string_of_int len in *)
-    (*     runtime_call Js_config.curry (Literals.app ^len_str)  *)
-    (*       (fn ::  args) *)
-    (*   else  *)
-    (*     runtime_call Js_config.curry Literals.app_array            *)
-    (*       [fn  ; arr NA args ]             *)
-    (* ) *)
+(* TODO: handle arbitrary length of args .. 
+   we can reduce part of the overhead by using
+   `__js` -- a easy ppx {{ x ##.hh }} 
+   the downside is that no way to swap ocaml/js implementation 
+   for object part, also need encode arity..
+   how about x#|getElementById|2|
+*)
+(* ( *)
+(*   let fn = bind (dot obj meth_name) obj in *)
+(*   if len = 0 then  *)
+(*     dot obj meth_name *)
+(*     (\* Note that when no args supplied,  *)
+(*        it is not necessarily a function, [bind] *)
+(*        is dangerous *)
+(*        so if user write such code *)
+(*        {[ *)
+(*          let  u = x # say in *)
+(*          u 3               *)
+(*        ]}     *)
+(*        It's reasonable to drop [this] support        *)
+(*     *\) *)
+(*   else if len <=8 then  *)
+(*     let len_str = string_of_int len in *)
+(*     runtime_call Js_config.curry (Literals.app ^len_str)  *)
+(*       (fn ::  args) *)
+(*   else  *)
+(*     runtime_call Js_config.curry Literals.app_array            *)
+(*       [fn  ; arr NA args ]             *)
+(* ) *)
 
 let set_tag ?comment e tag : t = 
   seq {expression_desc = Caml_block_set_tag (e,tag); comment } unit 
@@ -978,7 +991,7 @@ let uint32 ?comment n : J.expression =
 
 
 let string_comp cmp ?comment  e0 e1 = 
-  to_ocaml_boolean @@ bin ?comment cmp e0 e1
+  bool_of_boolean @@ bin ?comment cmp e0 e1
 
 
 let rec int_comp (cmp : Lambda.comparison) ?comment  (e0 : t) (e1 : t) = 
@@ -993,11 +1006,13 @@ let rec int_comp (cmp : Lambda.comparison) ?comment  (e0 : t) (e1 : t) =
     -> int_comp cmp l r (* = 0 > 0 < 0 *)
   | Ceq, _, _ -> int_equal e0 e1 
   | _ ->          
-    to_ocaml_boolean @@ bin ?comment (Lam_compile_util.jsop_of_comp cmp) e0 e1
+    bool_of_boolean @@ bin ?comment (Lam_compile_util.jsop_of_comp cmp) e0 e1
 
 let float_comp cmp ?comment  e0 e1 = 
-  to_ocaml_boolean @@ bin ?comment (Lam_compile_util.jsop_of_comp cmp) e0 e1
+  bool_of_boolean @@ bin ?comment (Lam_compile_util.jsop_of_comp cmp) e0 e1
 
+let js_comp cmp ?comment  e0 e1 = 
+  bool_of_boolean @@ bin ?comment (Lam_compile_util.jsop_of_comp cmp) e0 e1
 
 
 let rec int32_lsr ?comment
@@ -1020,9 +1035,9 @@ let rec int32_lsr ?comment
     Number (Int {i = 0l} | Uint 0l | Nint 0n) 
     -> int32_lsr ?comment e1 e2
   | _, _ ->
-     { comment ; 
-       expression_desc = Bin (Lsr, e1,e2) (* uint32 *)
-     }
+    { comment ; 
+      expression_desc = Bin (Lsr, e1,e2) (* uint32 *)
+    }
 
 let to_uint32 ?comment (e : J.expression)  : J.expression =
   int32_lsr ?comment e zero_int_literal
@@ -1042,7 +1057,7 @@ let rec is_out ?comment (e : t) (range : t) : t  =
       (
         Bin (Plus , {expression_desc = Number (Int {i ; _}) }, {expression_desc = Var _; _})
       | Bin (Plus, {expression_desc = Var _; _}, {expression_desc = Number (Int {i ; _}) }))
-     
+
       ->
       not (or_ (triple_equal e (int (Int32.neg i ))) (triple_equal e (int (Int32.sub Int32.one  i))))        
     | Number (Int {i = 1l}), 
@@ -1063,12 +1078,12 @@ let rec is_out ?comment (e : t) (range : t) : t  =
       or_ (int_comp Cgt e (int ( k)))  (int_comp Clt e  zero_int_literal)
 
     | _, Bin (Bor ,
-             ({expression_desc =
-                (Bin((Plus | Minus ) ,
-                    {expression_desc = Number (Int {i ; _}) }, {expression_desc = Var _; _})
-                |Bin((Plus | Minus ) ,
-                    {expression_desc = Var _; _}, {expression_desc = Number (Int {i ; _}) } ))
-                } as e), {expression_desc = Number (Int {i=0l} | Uint 0l | Nint 0n); _})
+              ({expression_desc =
+                  (Bin((Plus | Minus ) ,
+                       {expression_desc = Number (Int {i ; _}) }, {expression_desc = Var _; _})
+                  |Bin((Plus | Minus ) ,
+                       {expression_desc = Var _; _}, {expression_desc = Number (Int {i ; _}) } ))
+               } as e), {expression_desc = Number (Int {i=0l} | Uint 0l | Nint 0n); _})
       ->  
       (* TODO: check correctness *)
       is_out ?comment e range 
@@ -1087,7 +1102,7 @@ let rec float_add ?comment (e1 : t) (e2 : t) =
   | Bin(Plus, a1 , ({expression_desc = Number (Int {i = k; _})}  )), 
     Number (Int { i =j; _}) -> 
     {comment ; expression_desc = Bin(Plus, a1,  (int (Int32.add k  j)))}
-    (* bin ?comment Plus a1 (int (k + j)) *)
+  (* bin ?comment Plus a1 (int (k + j)) *)
 
   (* TODO remove commented code  ?? *)
   (* | Bin(Plus, a0 , ({expression_desc = Number (Int a1)}  )), *)
@@ -1106,14 +1121,14 @@ let rec float_add ?comment (e1 : t) (e2 : t) =
   (*   ->  *)
   (*     bin ?comment Plus  e2 e1 *)
   | _ -> {comment ; expression_desc = Bin(Plus, e1,e2)}
-    (* bin ?comment Plus e1 e2 *)
+(* bin ?comment Plus e1 e2 *)
 (* associative is error prone due to overflow *)
 and float_minus ?comment  (e1 : t) (e2 : t) : t = 
   match e1.expression_desc, e2.expression_desc with 
   | Number (Int {i;_}), Number (Int {i = j;_}) -> 
     int ?comment (Int32.sub i  j)
   | _ ->  {comment ; expression_desc = Bin(Minus, e1,e2)}
-    (* bin ?comment Minus e1 e2 *)
+(* bin ?comment Minus e1 e2 *)
 
 
 
@@ -1152,10 +1167,10 @@ let int32_div ~checked ?comment
   | e1_desc , Number (Int {i = i1} ) when i1 <> 0l
     -> 
     begin match e1_desc with 
-    | Number(Int {i = i0})
-      -> 
-      int (Int32.div i0 i1)
-    | _ -> to_int32 (float_div ?comment e1 e2)
+      | Number(Int {i = i0})
+        -> 
+        int (Int32.div i0 i1)
+      | _ -> to_int32 (float_div ?comment e1 e2)
     end
   | _, _ -> 
     if checked  then 
@@ -1286,15 +1301,22 @@ let js_bool ?comment x : t =
 let is_undef ?comment x = triple_equal ?comment x undefined
 
 
-let not_implemented ?comment (s : string) =  
-  call ~info:Js_call_info.ml_full_call
-    {
-      comment ;
-      expression_desc = 
-        Fun (false,[], (
-            [{J.statement_desc =
-                Throw (str ?comment 
-                         (s ^ " not implemented by bucklescript yet\n")) ;
-              comment}]) ,
-             Js_fun_env.empty 0)
-    } []
+let not_implemented ?comment (s : string) : t =  
+  runtime_call
+    Js_config.missing_polyfill
+    "not_implemented" 
+    [str (s ^ " not implemented by bucklescript yet\n")]
+
+  (* call ~info:Js_call_info.ml_full_call *)
+  (*   { *)
+  (*     comment ; *)
+  (*     expression_desc =  *)
+  (*       Fun (false,[], ( *)
+  (*           [{J.statement_desc = *)
+  (*               Throw (str ?comment  *)
+  (*                        (s ^ " not implemented by bucklescript yet\n")) ; *)
+  (*             comment}]) , *)
+  (*            Js_fun_env.empty 0) *)
+  (*   } [] *)
+
+

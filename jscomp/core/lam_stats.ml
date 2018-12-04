@@ -77,7 +77,7 @@ type boxed_nullable
 type kind = 
   | ImmutableBlock of element array * boxed_nullable
   | MutableBlock of element array 
-  | Constant of Lambda.structured_constant
+  | Constant of Lam.constant
   | Module of Ident.t
         (** Global module, local module is treated as an array
          *)
@@ -88,13 +88,13 @@ type kind =
   | NA 
   (* | Boxed_nullable of Ident.t  *)
     (** 
-       {[ let v/2 =  js_from_nullable u]} 
+       {[ let v/2 =  Pnull_to_opt u]} 
 
-       {[ let v/2 = js_from_nullable exp]}
+       {[ let v/2 = Pnull_to_opt exp]}
        can be translated into 
        {[
          let v/1 = exp in 
-         let v/2 =a js_from_nullable exp 
+         let v/2 =a Pnull_to_opt exp 
        ]}
        so that [Pfield v/2 0] will be replaced by [v/1], 
        [Lif(v/1)] will be translated into [Lif (v/2 === undefined )]
@@ -124,7 +124,6 @@ type meta = {
   (** we don't need count arities for all identifiers, for identifiers
       for sure it's not a function, there is no need to count them
   *)
-  (** required modules completed by [alias_pass] *)
-  mutable required_modules : Lam_module_ident.t list ;
+  
 }
 

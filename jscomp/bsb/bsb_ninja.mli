@@ -25,29 +25,6 @@
 
 
 
-module Rules : sig
-  type t  
-  val get_name : t  -> out_channel -> string
-    
-  val define :
-    command:string ->
-    ?depfile:string ->
-    ?restat:unit -> 
-    ?description:string ->
-    string -> t 
-
-  val build_ast_and_deps : t
-  val build_ast_and_deps_from_reason_impl : t 
-  val build_ast_and_deps_from_reason_intf : t 
-  val build_bin_deps : t 
-  val reload : t 
-  val copy_resources : t
-  val build_ml_from_mll : t 
-  val build_cmj_js : t
-  val build_cmj_cmi_js : t 
-  val build_cmi : t
-end
-
 
 (** output should always be marked explicitly,
    otherwise the build system can not figure out clearly
@@ -63,18 +40,30 @@ val output_build :
   ?restat:unit ->
   output:string ->
   input:string ->
-  rule:Rules.t -> out_channel -> unit
+  rule:Bsb_rule.t -> out_channel -> unit
 
 
 val phony  :
   ?order_only_deps:string list ->
   inputs:string list -> output:string -> out_channel -> unit
 
-val output_kvs : (string * string) list -> out_channel -> unit
+val output_kv : string ->  string -> out_channel -> unit 
+val output_kvs : (string * string) array -> out_channel -> unit
 
-type info = string list  * string list 
+type info = {
+  all_config_deps : string list  ;
+  all_installs :  string list 
+}
+
+val zero : info 
+
+
 val handle_file_groups : out_channel ->
-  package_specs:Bsb_default.package_specs ->  
+  package_specs:Bsb_config.package_specs ->  
   js_post_build_cmd:string option -> 
+  files_to_install:String_hash_set.t ->  
   Bsb_build_ui.file_group list ->
   info -> info
+
+(** TODO: need clean up when running across projects process *)
+(* val files_to_install : String_hash_set.t  *)

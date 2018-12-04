@@ -1,21 +1,22 @@
 'use strict';
 
-var Block                   = require("../../lib/js/block");
-var Curry                   = require("../../lib/js/curry");
-var CamlinternalOO          = require("../../lib/js/camlinternalOO");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var Mt                      = require("./mt");
-var Caml_exceptions         = require("../../lib/js/caml_exceptions");
-var Caml_obj                = require("../../lib/js/caml_obj");
+var Mt                      = require("./mt.js");
+var Block                   = require("../../lib/js/block.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Caml_obj                = require("../../lib/js/caml_obj.js");
+var Caml_oo_curry           = require("../../lib/js/caml_oo_curry.js");
+var CamlinternalOO          = require("../../lib/js/camlinternalOO.js");
+var Caml_exceptions         = require("../../lib/js/caml_exceptions.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
-var shared = [
+var shared = ["m"];
+
+var shared$1 = [
   "move",
   "get_x"
 ];
 
-var shared$1 = ["x"];
-
-var shared$2 = ["m"];
+var shared$2 = ["x"];
 
 var suites = [/* [] */0];
 
@@ -39,7 +40,7 @@ function eq(loc, x, y) {
 }
 
 function point_init($$class) {
-  var ids = CamlinternalOO.new_methods_variables($$class, shared, shared$1);
+  var ids = CamlinternalOO.new_methods_variables($$class, shared$1, shared$2);
   var move = ids[0];
   var get_x = ids[1];
   var x = ids[2];
@@ -61,13 +62,13 @@ function point_init($$class) {
   };
 }
 
-var point = CamlinternalOO.make_class(shared, point_init);
+var point = CamlinternalOO.make_class(shared$1, point_init);
 
 function colored_point_init($$class) {
   var ids = CamlinternalOO.new_methods_variables($$class, ["color"], ["c"]);
   var color = ids[0];
   var c = ids[1];
-  var inh = CamlinternalOO.inherits($$class, shared$1, 0, [
+  var inh = CamlinternalOO.inherits($$class, shared$2, 0, [
         "get_x",
         "move"
       ], point, 1);
@@ -104,14 +105,12 @@ function lookup_obj(obj, _param) {
       var obj$prime = param[0];
       if (Caml_obj.caml_equal(obj, obj$prime)) {
         return obj$prime;
-      }
-      else {
+      } else {
         _param = param[1];
         continue ;
         
       }
-    }
-    else {
+    } else {
       throw Caml_builtin_exceptions.not_found;
     }
   };
@@ -127,7 +126,7 @@ function c_init($$class) {
   };
 }
 
-var c = CamlinternalOO.make_class(shared$2, c_init);
+var c = CamlinternalOO.make_class(shared, c_init);
 
 function d_init($$class) {
   var ids = CamlinternalOO.get_method_labels($$class, [
@@ -136,7 +135,7 @@ function d_init($$class) {
       ]);
   var n = ids[0];
   var as_c = ids[1];
-  var inh = CamlinternalOO.inherits($$class, 0, 0, shared$2, c, 1);
+  var inh = CamlinternalOO.inherits($$class, 0, 0, shared, c, 1);
   var obj_init = inh[0];
   CamlinternalOO.set_methods($$class, /* array */[
         n,
@@ -189,7 +188,7 @@ var c2$prime = [
 ];
 
 function functional_point_init($$class) {
-  var ids = CamlinternalOO.new_methods_variables($$class, shared, shared$1);
+  var ids = CamlinternalOO.new_methods_variables($$class, shared$1, shared$2);
   var move = ids[0];
   var get_x = ids[1];
   var x = ids[2];
@@ -212,24 +211,24 @@ function functional_point_init($$class) {
   };
 }
 
-var functional_point = CamlinternalOO.make_class(shared, functional_point_init);
+var functional_point = CamlinternalOO.make_class(shared$1, functional_point_init);
 
 var p$1 = Curry._2(functional_point[0], 0, 7);
 
-var tmp = Curry.js2(-933174511, 2, p$1, 3);
+var tmp = Caml_oo_curry.js2(-933174511, 2, p$1, 3);
 
-eq('File "class6_test.ml", line 60, characters 5-12', /* tuple */[
+eq("File \"class6_test.ml\", line 60, characters 5-12", /* tuple */[
       7,
       10,
       7
     ], /* tuple */[
-      Curry.js1(291546447, 1, p$1),
-      Curry.js1(291546447, 3, tmp),
-      Curry.js1(291546447, 4, p$1)
+      Caml_oo_curry.js1(291546447, 1, p$1),
+      Caml_oo_curry.js1(291546447, 3, tmp),
+      Caml_oo_curry.js1(291546447, 4, p$1)
     ]);
 
 function bad_functional_point_init($$class) {
-  var ids = CamlinternalOO.new_methods_variables($$class, shared, shared$1);
+  var ids = CamlinternalOO.new_methods_variables($$class, shared$1, shared$2);
   var move = ids[0];
   var get_x = ids[1];
   var x = ids[2];
@@ -250,7 +249,7 @@ function bad_functional_point_init($$class) {
   };
 }
 
-var table$1 = CamlinternalOO.create_table(shared);
+var table$1 = CamlinternalOO.create_table(shared$1);
 
 var env_init$1 = bad_functional_point_init(table$1);
 
@@ -267,16 +266,16 @@ var bad_functional_point = [
 
 var p$2 = Curry._2(bad_functional_point_000, 0, 7);
 
-var tmp$1 = Curry.js2(-933174511, 6, p$2, 3);
+var tmp$1 = Caml_oo_curry.js2(-933174511, 6, p$2, 3);
 
-eq('File "class6_test.ml", line 74, characters 5-12', /* tuple */[
+eq("File \"class6_test.ml\", line 74, characters 5-12", /* tuple */[
       7,
       10,
       7
     ], /* tuple */[
-      Curry.js1(291546447, 5, p$2),
-      Curry.js1(291546447, 7, tmp$1),
-      Curry.js1(291546447, 8, p$2)
+      Caml_oo_curry.js1(291546447, 5, p$2),
+      Caml_oo_curry.js1(291546447, 7, tmp$1),
+      Caml_oo_curry.js1(291546447, 8, p$2)
     ]);
 
 Mt.from_pair_suites("class6_test.ml", suites[0]);

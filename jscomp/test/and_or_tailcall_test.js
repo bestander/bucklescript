@@ -1,20 +1,18 @@
 'use strict';
 
-var Block = require("../../lib/js/block");
-var Mt    = require("./mt");
+var Mt    = require("./mt.js");
+var Block = require("../../lib/js/block.js");
 
 function f(b, _, _n) {
   while(true) {
     var n = _n;
     if (n > 100000) {
       return /* false */0;
-    }
-    else if (b) {
+    } else if (b) {
       _n = n + 1 | 0;
       continue ;
       
-    }
-    else {
+    } else {
       return /* false */0;
     }
   };
@@ -25,11 +23,9 @@ function or_f(b, _, _n) {
     var n = _n;
     if (n > 100000) {
       return /* false */0;
-    }
-    else if (b) {
+    } else if (b) {
       return /* true */1;
-    }
-    else {
+    } else {
       _n = n + 1 | 0;
       continue ;
       

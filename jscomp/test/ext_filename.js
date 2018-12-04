@@ -1,21 +1,23 @@
 'use strict';
 
-var Filename                = require("../../lib/js/filename");
-var Block                   = require("../../lib/js/block");
-var Literals                = require("./literals");
-var Caml_string             = require("../../lib/js/caml_string");
-var Curry                   = require("../../lib/js/curry");
-var Sys                     = require("../../lib/js/sys");
-var Ext_string              = require("./ext_string");
-var Format                  = require("../../lib/js/format");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var Ext_pervasives          = require("./ext_pervasives");
-var CamlinternalLazy        = require("../../lib/js/camlinternalLazy");
-var $$String                = require("../../lib/js/string");
-var Caml_sys                = require("../../lib/js/caml_sys");
-var Bytes                   = require("../../lib/js/bytes");
-var Pervasives              = require("../../lib/js/pervasives");
-var List                    = require("../../lib/js/list");
+var Sys                     = require("../../lib/js/sys.js");
+var List                    = require("../../lib/js/list.js");
+var Block                   = require("../../lib/js/block.js");
+var Bytes                   = require("../../lib/js/bytes.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Format                  = require("../../lib/js/format.js");
+var Js_exn                  = require("../../lib/js/js_exn.js");
+var $$String                = require("../../lib/js/string.js");
+var Caml_sys                = require("../../lib/js/caml_sys.js");
+var Filename                = require("../../lib/js/filename.js");
+var Literals                = require("./literals.js");
+var Ext_string              = require("./ext_string.js");
+var Pervasives              = require("../../lib/js/pervasives.js");
+var Caml_string             = require("../../lib/js/caml_string.js");
+var Ext_pervasives          = require("./ext_pervasives.js");
+var CamlinternalLazy        = require("../../lib/js/camlinternalLazy.js");
+var Caml_missing_polyfill   = require("../../lib/js/caml_missing_polyfill.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 var node_sep = "/";
 
@@ -30,8 +32,7 @@ var cwd = Block.__(246, [function () {
 function path_as_directory(x) {
   if (x === "" || Ext_string.ends_with(x, Filename.dir_sep)) {
     return x;
-  }
-  else {
+  } else {
     return x + Filename.dir_sep;
   }
 }
@@ -44,8 +45,7 @@ function absolute_path(s) {
     s$2 = Filename.concat(tag === 250 ? cwd[0] : (
             tag === 246 ? CamlinternalLazy.force_lazy_block(cwd) : cwd
           ), s$1);
-  }
-  else {
+  } else {
     s$2 = s$1;
   }
   var aux = function (_s) {
@@ -54,20 +54,19 @@ function absolute_path(s) {
       var match_000 = Curry._1(Filename.basename, s);
       var match_001 = Curry._1(Filename.dirname, s);
       var dir = match_001;
-      var base = match_000;
       if (dir === s) {
         return dir;
-      }
-      else if (base === Filename.current_dir_name) {
-        _s = dir;
-        continue ;
-        
-      }
-      else if (base === Filename.parent_dir_name) {
-        return Curry._1(Filename.dirname, aux(dir));
-      }
-      else {
-        return Filename.concat(aux(dir), base);
+      } else {
+        var base = match_000;
+        if (base === Filename.current_dir_name) {
+          _s = dir;
+          continue ;
+          
+        } else if (base === Filename.parent_dir_name) {
+          return Curry._1(Filename.dirname, aux(dir));
+        } else {
+          return Filename.concat(aux(dir), base);
+        }
       }
     };
   };
@@ -79,7 +78,8 @@ function chop_extension($staropt$star, name) {
   try {
     return Filename.chop_extension(name);
   }
-  catch (exn){
+  catch (raw_exn){
+    var exn = Js_exn.internalToOCamlException(raw_exn);
     if (exn[0] === Caml_builtin_exceptions.invalid_argument) {
       return Curry._2(Format.ksprintf(Pervasives.invalid_arg, /* Format */[
                       /* String_literal */Block.__(11, [
@@ -100,8 +100,7 @@ function chop_extension($staropt$star, name) {
                         ]),
                       "Filename.chop_extension ( %s : %s )"
                     ]), loc, name);
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -111,11 +110,11 @@ function chop_extension_if_any(fname) {
   try {
     return Filename.chop_extension(fname);
   }
-  catch (exn){
+  catch (raw_exn){
+    var exn = Js_exn.internalToOCamlException(raw_exn);
     if (exn[0] === Caml_builtin_exceptions.invalid_argument) {
       return fname;
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -140,16 +139,13 @@ function relative_path(file_or_dir_1, file_or_dir_2) {
             _dir1 = dir1[1];
             continue ;
             
-          }
-          else {
+          } else {
             exit = 1;
           }
-        }
-        else {
+        } else {
           exit = 1;
         }
-      }
-      else {
+      } else {
         exit = 1;
       }
       if (exit === 1) {
@@ -164,15 +160,13 @@ function relative_path(file_or_dir_1, file_or_dir_2) {
   if (ys) {
     if (ys[0] === node_parent) {
       return $$String.concat(node_sep, ys);
-    }
-    else {
+    } else {
       return $$String.concat(node_sep, /* :: */[
                   node_current,
                   ys
                 ]);
     }
-  }
-  else {
+  } else {
     return $$String.concat(node_sep, /* :: */[
                 node_current,
                 ys
@@ -180,16 +174,16 @@ function relative_path(file_or_dir_1, file_or_dir_2) {
   }
 }
 
-function node_relative_path(file1, dep_file) {
+function node_relative_path(node_modules_shorten, file1, dep_file) {
   var file2 = dep_file[1];
   var v = Ext_string.find(/* None */0, Literals.node_modules, file2);
   var len = file2.length;
-  if (v >= 0) {
+  if (node_modules_shorten && v >= 0) {
     var skip = function (_i) {
       while(true) {
         var i = _i;
         if (i >= len) {
-          return Curry._1(Ext_pervasives.failwithf('File "ext_filename.ml", line 159, characters 38-45', /* Format */[
+          return Curry._1(Ext_pervasives.failwithf("File \"ext_filename.ml\", line 162, characters 38-45", /* Format */[
                           /* String_literal */Block.__(11, [
                               "invalid path: ",
                               /* String */Block.__(2, [
@@ -199,23 +193,20 @@ function node_relative_path(file1, dep_file) {
                             ]),
                           "invalid path: %s"
                         ]), file2);
-        }
-        else {
+        } else {
           var curr_char = file2.charCodeAt(i);
           if (curr_char === os_path_separator_char || curr_char === /* "." */46) {
             _i = i + 1 | 0;
             continue ;
             
-          }
-          else {
+          } else {
             return i;
           }
         }
       };
     };
     return Ext_string.tail_from(file2, skip(v + Literals.node_modules_length | 0));
-  }
-  else {
+  } else {
     return relative_path(dep_file[0] >= 781515420 ? /* `File */[
                   781515420,
                   absolute_path(dep_file[1])
@@ -228,25 +219,23 @@ function node_relative_path(file1, dep_file) {
                 ] : /* `Dir */[
                   3405101,
                   absolute_path(file1[1])
-                ]) + (node_sep + chop_extension_if_any(Curry._1(Filename.basename, file2)));
+                ]) + (node_sep + Curry._1(Filename.basename, file2));
   }
 }
 
 function find_root_filename(_cwd, filename) {
   while(true) {
     var cwd = _cwd;
-    if (Caml_sys.caml_sys_file_exists(Filename.concat(cwd, filename))) {
+    if (Caml_missing_polyfill.not_implemented("caml_sys_file_exists not implemented by bucklescript yet\n")) {
       return cwd;
-    }
-    else {
+    } else {
       var cwd$prime = Curry._1(Filename.dirname, cwd);
       if (cwd$prime.length < cwd.length) {
         _cwd = cwd$prime;
         continue ;
         
-      }
-      else {
-        return Curry._2(Ext_pervasives.failwithf('File "ext_filename.ml", line 202, characters 13-20', /* Format */[
+      } else {
+        return Curry._2(Ext_pervasives.failwithf("File \"ext_filename.ml\", line 205, characters 13-20", /* Format */[
                         /* String */Block.__(2, [
                             /* No_padding */0,
                             /* String_literal */Block.__(11, [
@@ -289,14 +278,11 @@ function module_name_of_file_if_any(file) {
 function combine(p1, p2) {
   if (p1 === "" || p1 === Filename.current_dir_name) {
     return p2;
-  }
-  else if (p2 === "" || p2 === Filename.current_dir_name) {
+  } else if (p2 === "" || p2 === Filename.current_dir_name) {
     return p1;
-  }
-  else if (Curry._1(Filename.is_relative, p2)) {
+  } else if (Curry._1(Filename.is_relative, p2)) {
     return Filename.concat(p1, p2);
-  }
-  else {
+  } else {
     return p2;
   }
 }
@@ -313,15 +299,21 @@ function split_aux(p) {
               dir,
               acc
             ];
-    }
-    else {
-      _acc = /* :: */[
-        Curry._1(Filename.basename, p$1),
-        acc
-      ];
-      _p = dir;
-      continue ;
-      
+    } else {
+      var new_path = Curry._1(Filename.basename, p$1);
+      if (new_path === Filename.dir_sep) {
+        _p = dir;
+        continue ;
+        
+      } else {
+        _acc = /* :: */[
+          new_path,
+          acc
+        ];
+        _p = dir;
+        continue ;
+        
+      }
     }
   };
 }
@@ -332,8 +324,7 @@ function rel_normalized_absolute_path(from, to_) {
   var root2 = match$1[0];
   if (match[0] !== root2) {
     return root2;
-  }
-  else {
+  } else {
     var _xss = match[1];
     var _yss = match$1[1];
     while(true) {
@@ -347,25 +338,21 @@ function rel_normalized_absolute_path(from, to_) {
             _xss = xs;
             continue ;
             
-          }
-          else {
+          } else {
             var start = List.fold_left(function (acc, _) {
-                  return Filename.concat(acc, "..");
-                }, "..", xs);
+                  return Filename.concat(acc, Ext_string.parent_dir_lit);
+                }, Ext_string.parent_dir_lit, xs);
             return List.fold_left(Filename.concat, start, yss);
           }
-        }
-        else {
+        } else {
           return List.fold_left(function (acc, _) {
-                      return Filename.concat(acc, "..");
-                    }, "..", xs);
+                      return Filename.concat(acc, Ext_string.parent_dir_lit);
+                    }, Ext_string.parent_dir_lit, xs);
         }
-      }
-      else if (yss) {
+      } else if (yss) {
         return List.fold_left(Filename.concat, yss[0], yss[1]);
-      }
-      else {
-        return "";
+      } else {
+        return Ext_string.empty;
       }
     };
   }
@@ -375,8 +362,7 @@ function normalize_absolute_path(x) {
   var drop_if_exist = function (xs) {
     if (xs) {
       return xs[1];
-    }
-    else {
+    } else {
       return /* [] */0;
     }
   };
@@ -385,26 +371,25 @@ function normalize_absolute_path(x) {
       var paths = _paths;
       var acc = _acc;
       if (paths) {
+        var xs = paths[1];
         var x = paths[0];
-        switch (x) {
-          case "." : 
-              _paths = paths[1];
-              continue ;
-              case ".." : 
-              _paths = paths[1];
-              _acc = drop_if_exist(acc);
-              continue ;
-              default:
-            _paths = paths[1];
-            _acc = /* :: */[
-              x,
-              acc
-            ];
-            continue ;
-            
+        _paths = xs;
+        if (x === Ext_string.current_dir_lit) {
+          continue ;
+          
+        } else if (x === Ext_string.parent_dir_lit) {
+          _acc = drop_if_exist(acc);
+          continue ;
+          
+        } else {
+          _acc = /* :: */[
+            x,
+            acc
+          ];
+          continue ;
+          
         }
-      }
-      else {
+      } else {
         return acc;
       }
     };
@@ -423,13 +408,11 @@ function normalize_absolute_path(x) {
         _acc = Filename.concat(rev_paths$1[0], acc);
         continue ;
         
-      }
-      else {
+      } else {
         return Filename.concat(root, acc);
       }
     };
-  }
-  else {
+  } else {
     return root;
   }
 }
@@ -438,8 +421,7 @@ function get_extension(x) {
   var pos = Ext_string.rindex_neg(x, /* "." */46);
   if (pos < 0) {
     return "";
-  }
-  else {
+  } else {
     return Ext_string.tail_from(x, pos);
   }
 }
@@ -450,11 +432,9 @@ if (Sys.unix) {
   simple_convert_node_path_to_os_path = function (x) {
     return x;
   };
-}
-else if (Sys.win32 || Sys.cygwin) {
+} else if (Sys.win32 || Sys.cygwin) {
   simple_convert_node_path_to_os_path = Ext_string.replace_slash_backward;
-}
-else {
+} else {
   var s = "Unknown OS : Unix";
   throw [
         Caml_builtin_exceptions.failure,

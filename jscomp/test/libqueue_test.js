@@ -1,10 +1,10 @@
 'use strict';
 
-var Curry                   = require("../../lib/js/curry");
-var Queue                   = require("../../lib/js/queue");
-var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions");
-var List                    = require("../../lib/js/list");
-var Caml_obj                = require("../../lib/js/caml_obj");
+var List                    = require("../../lib/js/list.js");
+var Curry                   = require("../../lib/js/curry.js");
+var Queue                   = require("../../lib/js/queue.js");
+var Caml_obj                = require("../../lib/js/caml_obj.js");
+var Caml_builtin_exceptions = require("../../lib/js/caml_builtin_exceptions.js");
 
 function to_list(q) {
   return List.rev(Queue.fold(function (l, x) {
@@ -42,8 +42,7 @@ function does_raise(f, q) {
   catch (exn){
     if (exn === Queue.Empty) {
       return /* true */1;
-    }
-    else {
+    } else {
       throw exn;
     }
   }
@@ -772,7 +771,8 @@ Queue.iter(function (j) {
               ]
             ];
       }
-      return i$7[0] = i$7[0] + 1 | 0;
+      i$7[0] = i$7[0] + 1 | 0;
+      return /* () */0;
     }, q$5);
 
 var q1$1 = /* record */[
